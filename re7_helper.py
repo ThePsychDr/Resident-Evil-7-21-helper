@@ -129,33 +129,28 @@ OPPONENTS_SURVIVAL = [
         "mode": "Survival",
         "desc": "Sack head with barbed wire marks.",
         "ai": "SHIELD SPAMMER",
-        "trumps": ["Shield Assault", "Go For 17"],
+        "trumps": ["Shield Assault"],
         "stay_val": 16,
         "hp": 5,
         "tip": (
             "Packs lots of Shield cards, then sacrifices them.\n"
-            "'Shield Assault' only triggers after he draws 3 Shields in a row.\n"
-            "When triggered: removes his 3 Shields and raises YOUR bet by 3.\n"
-            "'Go For 17' changes the target — closest to 17 wins the round.\n"
-            "COUNTER: 'Destroy' Shield Assault before the bet goes up.\n"
-            "When 'Go For 17' is active, aim to stay at exactly 17.\n"
-            "Commonly plays: Shield"
+            "'Shield Assault' removes 3 of his Shields to raise YOUR bet by 3.\n"
+            "COUNTER: Use 'Destroy' on Shield Assault.\n"
+            "Stack bet-ups to push damage past his shields."
         ),
     },
     {
         "name": "Tally Mark Hoffman (Upgraded)",
         "mode": "Survival",
-        "desc": "Upgraded tally mark variant. Smarter AI, packs Twenty-One-Up.",
+        "desc": "Upgraded tally mark variant. Smarter AI, more trump cards.",
         "ai": "BASIC+",
-        "trumps": ["Twenty-One-Up"],
+        "trumps": [],
         "stay_val": 17,
         "hp": 5,
         "tip": (
             "Slightly smarter than the first Tally Mark.\n"
-            "!! DANGER: 'Twenty-One-Up' sets the bet to 21 — near-instant kill !!\n"
-            "If he reaches exactly 21 and stays confidently, assume he has it.\n"
-            "STRATEGY: Hold 'Destroy' in reserve specifically for Twenty-One-Up.\n"
-            "Commonly plays: One-Up, Draw Card+"
+            "Still no special trumps but plays more strategically.\n"
+            "Plays a bit tighter — stay sharp."
         ),
     },
     {
@@ -215,17 +210,15 @@ OPPONENTS_SURVIVAL_PLUS = [
         "mode": "Survival+",
         "desc": "Sack head with barbed wire / side-to-side slash marks.",
         "ai": "SHIELD SPAMMER",
-        "trumps": ["Shield Assault", "Shield Assault+", "Go For 17"],
+        "trumps": ["Shield Assault", "Shield Assault+"],
         "stay_val": 14,
         "hp": 10,
         "tip": (
             "Always packs lots of Shield cards, then sacrifices them.\n"
-            "'Shield Assault' only triggers after he draws 3 Shields in a row.\n"
-            "When triggered: removes his 3 Shields and raises YOUR bet by 3.\n"
-            "'Shield Assault+' removes 2 Shields and raises YOUR bet by 5.\n"
-            "'Go For 17' changes the target — closest to 17 wins the round.\n"
+            "'Shield Assault' removes 3 Shields to raise YOUR bet by 3.\n"
+            "'Shield Assault+' removes 2 Shields to raise YOUR bet by 5.\n"
             "COUNTER: Use 'Destroy' on Shield Assault+.\n"
-            "When 'Go For 17' is active, aim to stay at exactly 17."
+            "Stack bet-ups to push damage past his shields."
         ),
     },
     {
@@ -238,13 +231,11 @@ OPPONENTS_SURVIVAL_PLUS = [
         "hp": 10,
         "tip": (
             "RARE ENCOUNTER — special rewards for defeating him!\n"
-            "!! WARNING: 'Escape' RESETS THE ENTIRE MATCH if it triggers !!\n"
-            "If he loses a round while Escape is on the table, the whole\n"
-            "fight resets — the round does NOT count toward enemies defeated.\n"
-            "STRATEGY: 'Destroy' Escape immediately every round — top priority.\n"
-            "Alternatively: use Two-Up / Two-Up+ / Perfect Draw+ to build a\n"
-            "death bet so he dies before Escape can trigger.\n"
-            "Commonly plays: None"
+            "'Escape' lets him void the round if he's losing.\n"
+            "As long as Escape is on the table, he flees on loss.\n"
+            "STRATEGY: 'Destroy' his Escape, then finish him.\n"
+            "Stack bet-ups so when you win, he takes massive damage.\n"
+            "He may re-play Escape each round — save multiple Destroys."
         ),
     },
 ]
@@ -276,18 +267,18 @@ BOSS_SURVIVAL_PLUS_FINAL = {
     "mode": "Survival+",
     "desc": "Knives and scissors embedded in head. ALWAYS opponent #10.",
     "ai": "GAME BREAKER",
-    "trumps": ["Oblivion", "Dead Silence"],
+    "trumps": ["Oblivion", "Dead Silence", "Perfect Draw"],
     "stay_val": 18,
     "hp": 10,
     "tip": (
         "!! FINAL BOSS — MOST DANGEROUS OPPONENT !!\n"
-        "Has the best luck of all opponents — almost always gets high numbers.\n"
-        "Commonly spams: Ultimate Draw, Two-Up+\n"
+        "Has tons of Perfect Draws — almost always gets high numbers.\n"
         "'Dead Silence' prevents you from drawing ANY cards (even via trumps).\n"
         "'Oblivion' cancels the entire round — annoying but not fatal.\n"
         "STRATEGY:\n"
         " 1) Save 'Destroy' for Dead Silence (highest priority).\n"
-        " 2) His Ultimate Draws mean he'll often hit 21 — don't assume he's safe.\n"
+        " 2) If he uses Perfect Draw and you know his total, use\n"
+        "    'Exchange' — if your last card > his, it busts him.\n"
         " 3) Oblivion wastes your good hands but keep pressure up.\n"
         " 4) 'Perfect Draw' (if unlocked) is huge here."
     ),
@@ -303,25 +294,24 @@ TRUMPS = {
     "Twenty-One Up": {"cat": "Bet", "desc": "Sets bet to 21 (often instant-kill territory)."},
     "Shield": {"cat": "Defense", "desc": "Reduces damage taken this round by 1."},
     "Shield+": {"cat": "Defense", "desc": "Reduces damage taken this round by 2."},
-    "Shield Assault": {"cat": "Bet", "desc": "Triggered after drawing 3 Shields in a row: removes those 3 Shields and increases opponent's bet by 3."},
-    "Shield Assault+": {"cat": "Bet", "desc": "Removes 2 Shields and increases opponent's bet by 5."},
+    "Shield Assault": {"cat": "Defense", "desc": "Reduces damage by 3; deals 1 damage to you when played."},
+    "Shield Assault+": {"cat": "Defense", "desc": "Reduces damage by 5; deals 1 damage to you when played."},
     "Return": {"cat": "Cards", "desc": "Returns your last drawn card to the deck."},
     "Exchange": {"cat": "Cards", "desc": "Swaps one of your cards with a random remaining card."},
     "Perfect Draw": {"cat": "Cards", "desc": "Draws the exact card needed for 21 (unlockable)."},
-    "Curse": {"cat": "Cards", "desc": "Discards a random trump card from the opponent and forces them to draw the highest number in the deck."},
+    "Curse": {"cat": "Cards", "desc": "Forces opponent to draw the HIGHEST remaining card."},
     "Black Magic": {"cat": "Cards", "desc": "Forces opponent to draw a specific chosen card."},
-    "Conjure": {"cat": "Cards", "desc": "Draw three trump cards; user's bet is increased by 1 while this card is on the table."},
+    "Conjure": {"cat": "Cards", "desc": "Adds a card from outside the deck to the user's hand."},
     "Destroy": {"cat": "Counter", "desc": "Removes the LAST trump card the opponent played."},
     "Destroy+": {"cat": "Counter", "desc": "Removes ALL opponent trump cards played this round."},
     "Love Your Enemy": {"cat": "Attack", "desc": "Forces opponent to draw a card (often causing a bust)."},
-    "Mind Shift": {"cat": "Attack", "desc": "Opponent loses half their trump cards at end of round. Removed if opponent plays two trumps in the same round."},
-    "Escape": {"cat": "Special", "desc": "If user loses the round while this is on the table, the entire match resets. Round does not count toward enemies defeated."},
+    "Mind Shift": {"cat": "Attack", "desc": "Steals one of the opponent's trump cards."},
+    "Escape": {"cat": "Special", "desc": "Cancels the round. No damage to either side."},
     "Oblivion": {"cat": "Special", "desc": "Cancels the round — no winner, no loser."},
-    "Dead Silence": {"cat": "Special", "desc": "Prevents opponent from drawing any more cards, even via trump card effects."},
-    "Desire": {"cat": "Special", "desc": "Opponent's bet is increased by half the number of trump cards they are currently holding."},
-    "Happiness": {"cat": "Special", "desc": "Both players draw one trump card."},
+    "Dead Silence": {"cat": "Special", "desc": "Prevents opponent from drawing any more cards."},
+    "Desire": {"cat": "Special", "desc": "Increases bet based on opponent's trump count."},
+    "Happiness": {"cat": "Special", "desc": "Heals the user when they win the round."},
     "Go for 24": {"cat": "Special", "desc": "Changes round target from 21 to 24 (unlockable)."},
-    "Go For 17": {"cat": "Special", "desc": "Closest to 17 wins the round. Replaces any other 'Go For' card currently on the table."},
     "Harvest": {"cat": "Special", "desc": "Draw a trump whenever any trump is used."},
 }
 
@@ -451,21 +441,16 @@ def display_round_history(history) -> None:
     for entry in history:
         rnd = entry["round"]
         result = entry["result"]
-        you = entry["your_total"]
-        opp = entry["opp_total"]
         dmg = entry["damage"]
         who = entry["damage_to"]
-        note = entry.get("note", "")
         if result == "VOID":
             line = f" │ R{rnd}: VOID (Escape/Oblivion) — no damage"
         elif result == "TIE":
-            line = f" │ R{rnd}: TIE ({you} vs {opp}) — no damage"
+            line = f" │ R{rnd}: TIE — no damage"
         else:
             winner = "YOU WON" if result == "WIN" else "YOU LOST"
             target_lbl = "opponent" if who == "opponent" else "you"
-            line = f" │ R{rnd}: {winner} ({you} vs {opp}) → {dmg} dmg to {target_lbl}"
-        if note:
-            line += f" [{note}]"
+            line = f" │ R{rnd}: {winner} → {dmg} dmg to {target_lbl}"
         print(f"{line:<55s}│")
     print(" └─────────────────────────────────────────────────┘")
 
@@ -816,17 +801,6 @@ def generate_advice(
     return priority_warnings, advice_lines
 
 
-def calculate_damage(winner_total: int, loser_total: int, bet_modifier: int = 0) -> int:
-    """
-    Practical damage model for recording results:
-      base = |winner_total - loser_total|  (minimum 1)
-      total = base + bet_modifier
-    Then shields reduce the loser damage.
-    """
-    base = abs(winner_total - loser_total)
-    return max(1, base + bet_modifier)
-
-
 def bust_outcome(your_total: int, opp_total: int, target: int) -> str:
     """Resolve bust-vs-bust outcome for challenge calculations."""
     if your_total <= target:
@@ -928,15 +902,18 @@ def evaluate_bust_challenge(u_total: int, o_visible_total: int, remaining, targe
 def record_round_result(round_num: int, player_hp: int, opp_hp: int):
     """
     Ask what happened and update HP.
+    Damage in RE7 21 is based on the bet amount, not score difference.
+    - Survival: 1 finger per loss (base bet = 1)
+    - Survival+/Normal: voltage/saw moves by the bet amount
     Returns: (new_player_hp, new_opp_hp, round_entry_dict or None)
     """
     print_header("ROUND RESULT")
     print(" What happened this round?\n")
     print(" 1. I WON")
     print(" 2. I LOST")
-    print(" 3. TIE (same totals)")
+    print(" 3. TIE (no damage)")
     print(" 4. VOID (Escape / Oblivion cancelled)")
-    print(" 5. Cancel (don't record, go back)")
+    print(" 5. Cancel (go back)")
 
     choice = input("\n Result (1-5): ").strip()
 
@@ -944,12 +921,12 @@ def record_round_result(round_num: int, player_hp: int, opp_hp: int):
         return player_hp, opp_hp, None
 
     if choice == "4":
-        entry = {"round": round_num, "result": "VOID", "your_total": 0, "opp_total": 0, "damage": 0, "damage_to": "none"}
+        entry = {"round": round_num, "result": "VOID", "damage": 0, "damage_to": "none"}
         print(" Round voided. No HP changes.")
         return player_hp, opp_hp, entry
 
     if choice == "3":
-        entry = {"round": round_num, "result": "TIE", "your_total": 0, "opp_total": 0, "damage": 0, "damage_to": "none"}
+        entry = {"round": round_num, "result": "TIE", "damage": 0, "damage_to": "none"}
         print(" Tie. No HP changes.")
         return player_hp, opp_hp, entry
 
@@ -958,84 +935,35 @@ def record_round_result(round_num: int, player_hp: int, opp_hp: int):
         return player_hp, opp_hp, None
 
     try:
-        your_final = input(" Your final total: ").strip()
-        your_final = int(your_final) if your_final else 0
-
-        opp_final = input(" Opponent's final total: ").strip()
-        opp_final = int(opp_final) if opp_final else 0
-
-        print(" Total bet modifier from trumps (One Up, Two Up, etc.):")
-        print(" (Combined extra amount, or 0 for none)")
-        bet_mod = input(" > ").strip()
-        bet_mod = int(bet_mod) if bet_mod else 0
-
-        print(" Shield reduction on the LOSER (Shield, Shield+, etc.):")
-        print(" (Total shield value, or 0 for none)")
-        shield = input(" > ").strip()
-        shield = int(shield) if shield else 0
-
-        target_input = input(" Round target used (21/24/27, Enter=21): ").strip()
-        target = int(target_input) if target_input else 21
-        if target not in (21, 24, 27):
-            print(" Invalid target entered. Using 21.")
-            target = 21
-
-        derived = resolve_round_outcome(your_final, opp_final, target)
-        selected = "WIN" if choice == "1" else "LOSS"
-        if derived != selected:
-            print(
-                f"\n WARNING: Totals imply {derived}, but selected result was {selected}."
-            )
-            use_auto = input(" Use totals-derived result instead? (y/n): ").strip().lower()
-            if use_auto == "y":
-                if derived == "TIE":
-                    print(" Auto-set to TIE. No HP changes.")
-                    entry = {
-                        "round": round_num,
-                        "result": "TIE",
-                        "your_total": your_final,
-                        "opp_total": opp_final,
-                        "damage": 0,
-                        "damage_to": "none",
-                        "note": f"auto@{target}",
-                    }
-                    return player_hp, opp_hp, entry
-                choice = "1" if derived == "WIN" else "2"
-                print(f" Auto-set to {derived}.")
+        print("\n How much damage was dealt?")
+        print(" (The bet amount shown on screen — base is 1, trumps raise it)")
+        dmg_input = input(" Damage: ").strip()
+        actual_dmg = int(dmg_input) if dmg_input else 1
+        actual_dmg = max(0, actual_dmg)
 
         if choice == "1":
-            raw_dmg = calculate_damage(your_final, opp_final, bet_mod)
-            actual_dmg = max(0, raw_dmg - shield)
-            print(f"\n Damage to opponent: {raw_dmg} base - {shield} shields = {actual_dmg}")
+            print(f"\n → {actual_dmg} damage to opponent!")
             opp_hp = max(0, opp_hp - actual_dmg)
             entry = {
                 "round": round_num,
                 "result": "WIN",
-                "your_total": your_final,
-                "opp_total": opp_final,
                 "damage": actual_dmg,
                 "damage_to": "opponent",
-                "note": f"bet+{bet_mod} shld-{shield}" if (bet_mod or shield) else "",
             }
         else:
-            raw_dmg = calculate_damage(opp_final, your_final, bet_mod)
-            actual_dmg = max(0, raw_dmg - shield)
-            print(f"\n Damage to YOU: {raw_dmg} base - {shield} shields = {actual_dmg}")
+            print(f"\n → {actual_dmg} damage to YOU!")
             player_hp = max(0, player_hp - actual_dmg)
             entry = {
                 "round": round_num,
                 "result": "LOSS",
-                "your_total": your_final,
-                "opp_total": opp_final,
                 "damage": actual_dmg,
                 "damage_to": "you",
-                "note": f"bet+{bet_mod} shld-{shield}" if (bet_mod or shield) else "",
             }
 
         return player_hp, opp_hp, entry
 
     except ValueError:
-        print(" Error reading values. Skipping.")
+        print(" Error reading value. Skipping.")
         return player_hp, opp_hp, None
 
 
