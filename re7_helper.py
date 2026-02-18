@@ -708,11 +708,10 @@ def generate_advice(
     behavior_key = (opp_behavior or "auto").strip().lower()
 
     behavior_label = {
-        "stay": "Opponent stayed (no more draws)",
-        "hit_once": "Opponent forced to hit once",
-        "auto": f"Opponent follows AI stay threshold ({stay_val}+)",
-        "hit_to_threshold": f"Opponent follows AI stay threshold ({stay_val}+)",
-    }.get(behavior_key, f"Opponent modeled with stay threshold ({stay_val}+)")
+        "stay": "Opponent stopped drawing",
+        "auto": f"Opponent AI draws until {stay_val}+",
+        "hit_to_threshold": f"Opponent AI draws until {stay_val}+",
+    }.get(behavior_key, f"Opponent AI draws until {stay_val}+")
 
     # Rough estimate for potential damage if you lose (for messaging only)
     if u_total <= target:
@@ -746,15 +745,54 @@ def generate_advice(
         f"Lose {hit_probs['loss'] * 100:.1f}% (Bust draw chance: {bust_pct:.1f}%)."
     )
 
-    win_edge = hit_probs["win"] - stay_probs["win"]
-    if win_edge >= 0.15 and not (player_hp <= 3 and safe_pct < 50):
+    # Force draw analysis (Love Your Enemy — stay at your total, force opponent to draw)
+    force_probs = None
+    opp_bust_from_force = 0.0
+    if remaining and behavior_key != "stay":
+        force_probs = {"win": 0.0, "tie": 0.0, "loss": 0.0}
+        card_weight = 1.0 / len(remaining)
+        opp_bust_count = 0
+
+        for forced_card in remaining:
+            new_opp_total = o_visible_total + forced_card
+            if new_opp_total > target:
+                opp_bust_count += 1
+            after_remaining = [c for c in remaining if c != forced_card]
+            # After forced draw, opponent continues with normal AI
+            opp_dist = opponent_total_distribution(
+                new_opp_total, after_remaining, stay_val, target, behavior="auto"
+            )
+            outcome = outcome_probabilities(u_total, opp_dist, target)
+            force_probs["win"] += outcome["win"] * card_weight
+            force_probs["tie"] += outcome["tie"] * card_weight
+            force_probs["loss"] += outcome["loss"] * card_weight
+
+        opp_bust_from_force = (opp_bust_count / len(remaining)) * 100
         advice_lines.append(
-            f"ACTION: HIT — model gives +{win_edge * 100:.1f}% win chance over staying."
+            "If you FORCE A DRAW (Love Your Enemy) -> "
+            f"Win {force_probs['win'] * 100:.1f}% | Tie {force_probs['tie'] * 100:.1f}% | "
+            f"Lose {force_probs['loss'] * 100:.1f}% "
+            f"(busts opponent: {opp_bust_from_force:.0f}%)."
         )
-        return priority_warnings, advice_lines
-    if win_edge <= -0.15:
+
+    # ── Action recommendation ──
+    # Find the best option among STAY, HIT, and FORCE DRAW
+    options = {
+        "STAY": stay_probs["win"],
+        "HIT": hit_probs["win"],
+    }
+    if force_probs is not None:
+        options["FORCE A DRAW (Love Your Enemy)"] = force_probs["win"]
+
+    best_option = max(options, key=options.get)
+    best_win = options[best_option]
+    second_best_win = max(v for k, v in options.items() if k != best_option)
+    win_edge = best_win - second_best_win
+
+    if win_edge >= 0.15 and not (player_hp <= 3 and safe_pct < 50 and best_option == "HIT"):
         advice_lines.append(
-            f"ACTION: STAY — model favors staying by {abs(win_edge) * 100:.1f}%."
+            f"ACTION: {best_option} — best win chance at {best_win * 100:.1f}% "
+            f"(+{win_edge * 100:.1f}% over next best)."
         )
         return priority_warnings, advice_lines
 
@@ -978,14 +1016,8 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
     if target > 21:
         print(f" ★ 'Go for 24' is ACTIVE — target is {target}!")
 
-    print("\n Opponent draw behavior this round:")
-    print(" 1. Opponent already STAYED")
-    print(" 2. Opponent still following normal AI (stay threshold)")
-    print(" 3. Opponent is forced to HIT once")
-    print(" Return/Enter. First round")
-
-    behavior_raw = input(" > ").strip()
-    opp_behavior = {"1": "stay", "2": "auto", "3": "hit_once"}.get(behavior_raw, "auto")
+    # Default to normal AI behavior; override only if needed
+    opp_behavior = "auto"
 
     try:
         print(f"\n Enter YOUR card values (space-separated, e.g., '10 6'):")
@@ -1030,6 +1062,32 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         remaining = [c for c in range(1, 12) if c not in accounted]
         u_total = sum(u_hand)
         o_total = sum(o_vis)
+
+        # What did the opponent do?
+        print("\n What did the opponent do?")
+        print("  1. Opponent hit (drew a card, still playing)  [Enter]")
+        print("  2. Opponent stayed (done drawing)")
+        print("  3. I forced a draw (Love Your Enemy / similar)")
+        beh_input = input(" > ").strip()
+        if beh_input == "2":
+            opp_behavior = "stay"
+        elif beh_input == "3":
+            forced_raw = input(" What card did they draw? ").strip()
+            if forced_raw:
+                forced_card = int(forced_raw)
+                if 1 <= forced_card <= 11:
+                    o_total += forced_card
+                    o_vis.append(forced_card)
+                    if forced_card in remaining:
+                        remaining.remove(forced_card)
+                    if forced_card not in accounted:
+                        accounted = sorted(set(accounted + [forced_card]))
+                    print(f" → Opponent now at {o_total} (drew {forced_card})")
+                else:
+                    print(" Invalid card, ignoring.")
+            opp_behavior = "auto"  # After forced draw, they continue with normal AI
+        else:
+            opp_behavior = "auto"
 
         display_card_matrix(accounted)
 
