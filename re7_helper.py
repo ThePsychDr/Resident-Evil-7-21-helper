@@ -42,25 +42,31 @@ GAME_MODES = {
     },
     "2": {
         "name": "Survival 21",
-        "desc": "Gauntlet of 5 Hoffman opponents with one health bar.",
-        "player_hp": 10,
+        "desc": "Gauntlet of 5 Hoffman opponents — finger-chopping mode.",
+        "player_hp": 5,
         "opponent_hp": 5,
         "rules": (
-            "You face 5 Hoffman opponents in a row.\n"
+            "Finger-chopping mode: you and each opponent have 5 HP (fingers).\n"
+            "You face 5 Hoffman variants in a row.\n"
             "Your HP carries over between fights — conserve health!\n"
-            "Each opponent has 5 HP. Opponents have unique AI.\n"
+            "Final opponent (#5) is always Molded Hoffman.\n"
             "Winning unlocks Survival+ mode."
         ),
     },
     "3": {
         "name": "Survival+ 21",
-        "desc": "Harder gauntlet: tougher AI, deadlier trumps, same health bar.",
+        "desc": "Harder gauntlet: 10 opponents, electric rig, tougher AI.",
         "player_hp": 10,
-        "opponent_hp": 5,
+        "opponent_hp": 10,
         "rules": (
-            "You face 6 upgraded Hoffman opponents in a row.\n"
+            "Electric rig mode: you and each opponent have 10 HP.\n"
+            "You face 10 Hoffman variants in a row.\n"
+            "Your HP carries over — every point matters!\n"
+            "Opponent order is random EXCEPT:\n"
+            "  #5 is ALWAYS Molded Hoffman (mid-boss).\n"
+            "  #10 is ALWAYS Undead Hoffman (final boss).\n"
+            "  Mr. Big Head may appear randomly.\n"
             "AI is more aggressive, trump cards are deadlier.\n"
-            "Your HP carries over. Opponents have 5 HP each.\n"
             "Completion unlocks 'Perfect Draw' trump and the trophy."
         ),
     },
@@ -88,72 +94,80 @@ OPPONENTS_NORMAL = [
 
 OPPONENTS_SURVIVAL = [
     {
-        "name": "Hoffman #1 (Warm-Up)",
+        "name": "Tally Mark Hoffman",
         "mode": "Survival",
-        "desc": "Basic Hoffman. Plays straightforward 21.",
+        "desc": "Sack head with tally marks. Basic AI, no special trumps.",
         "ai": "BASIC",
-        "trumps": ["One Up", "Shield"],
+        "trumps": [],
         "stay_val": 16,
         "hp": 5,
         "tip": (
-            "Easy opponent. Play normally and conserve HP.\n"
+            "Easiest opponent. No special trump cards.\n"
+            "Play normally and conserve HP.\n"
             "Don't waste strong trumps — save them for later fights."
         ),
     },
     {
-        "name": "Hoffman #2 (Shield User)",
+        "name": "Bloody Handprints Hoffman",
         "mode": "Survival",
-        "desc": "Uses Shield cards to reduce damage taken.",
-        "ai": "SHIELD USER",
-        "trumps": ["Shield", "Shield+", "One Up"],
+        "desc": "Sack head covered in bloody handprints.",
+        "ai": "TRUMP STEALER",
+        "trumps": ["Happiness", "Desire", "Mind Shift"],
         "stay_val": 16,
         "hp": 5,
         "tip": (
-            "He stacks shields to absorb damage.\n"
-            "Use 'Destroy' on his Shield+ if he plays it.\n"
-            "Stack bet-ups to push damage past shields."
+            "'Mind Shift' makes you lose half your trumps unless\n"
+            "you play two trump cards during the round.\n"
+            "'Desire' raises your bet based on how many trumps YOU hold.\n"
+            "'Happiness' lets both players draw a trump card.\n"
+            "STRATEGY: Don't hoard trumps — Desire punishes it.\n"
+            "Play two trumps per round to avoid Mind Shift penalty."
         ),
     },
     {
-        "name": "Hoffman #3 (Aggressive)",
+        "name": "Barbed Wire Hoffman",
         "mode": "Survival",
-        "desc": "Plays aggressively and bets high.",
-        "ai": "AGGRESSIVE",
-        "trumps": ["Two Up", "One Up"],
-        "stay_val": 18,
+        "desc": "Sack head with barbed wire marks.",
+        "ai": "SHIELD SPAMMER",
+        "trumps": ["Shield Assault"],
+        "stay_val": 16,
         "hp": 5,
         "tip": (
-            "He raises the bet frequently.\n"
-            "If you can win, great — the damage goes both ways.\n"
-            "If losing, use 'Shield' to reduce incoming damage."
+            "Packs lots of Shield cards, then sacrifices them.\n"
+            "'Shield Assault' removes 3 of his Shields to raise YOUR bet by 3.\n"
+            "COUNTER: Use 'Destroy' on Shield Assault.\n"
+            "Stack bet-ups to push damage past his shields."
         ),
     },
     {
-        "name": "Hoffman #4 (Trump Heavy)",
+        "name": "Tally Mark Hoffman (Upgraded)",
         "mode": "Survival",
-        "desc": "Uses multiple trump cards per round.",
-        "ai": "TRUMP HEAVY",
-        "trumps": ["Curse", "One Up", "Shield"],
+        "desc": "Upgraded tally mark variant. Smarter AI, more trump cards.",
+        "ai": "BASIC+",
+        "trumps": [],
         "stay_val": 17,
         "hp": 5,
         "tip": (
-            "'Curse' forces you to draw the HIGHEST remaining card.\n"
-            "If you're at 15+ and the 11 is still in deck, this is lethal.\n"
-            "Use 'Destroy' on Curse, or hold 'Return'/'Exchange'."
+            "Slightly smarter than the first Tally Mark.\n"
+            "Still no special trumps but plays more strategically.\n"
+            "Plays a bit tighter — stay sharp."
         ),
     },
     {
-        "name": "Hoffman #5 (Survival Boss)",
+        "name": "Molded Hoffman (Survival Boss)",
         "mode": "Survival",
-        "desc": "Final Survival opponent. Tough and unpredictable.",
-        "ai": "BOSS",
-        "trumps": ["Two Up", "Curse", "Shield+"],
-        "stay_val": 18,
+        "desc": "Head covered in black mold. Final boss of Survival.",
+        "ai": "DECK MANIPULATOR",
+        "trumps": ["Curse", "Conjure"],
+        "stay_val": 17,
         "hp": 5,
         "tip": (
-            "He combines bet-raising with Curse — very dangerous.\n"
-            "Your HP is likely low by now. Play conservatively.\n"
-            "Prioritize 'Destroy' for his Curse.\n"
+            "!! SURVIVAL BOSS !!\n"
+            "'Curse' discards one of your trumps AND forces you to draw\n"
+            "the HIGHEST remaining card — can be lethal.\n"
+            "'Conjure' lets him draw 3 trumps (his bet goes up by 1).\n"
+            "STRATEGY: Save 'Destroy' for Curse.\n"
+            "Use 'Return'/'Exchange' to fix a forced bad draw.\n"
             "Winning this unlocks Survival+ mode."
         ),
     },
@@ -161,18 +175,17 @@ OPPONENTS_SURVIVAL = [
 
 OPPONENTS_SURVIVAL_PLUS = [
     {
-        "name": "Barbed-Wire Hoffman",
+        "name": "Tally Mark Hoffman",
         "mode": "Survival+",
-        "desc": "Sack head wrapped in barbed wire.",
-        "ai": "SHIELD SPAMMER",
-        "trumps": ["Shield Assault", "Shield Assault+"],
-        "stay_val": 14,
-        "hp": 5,
+        "desc": "Sack head with tally marks. No special trumps but sharper AI.",
+        "ai": "BASIC+",
+        "trumps": [],
+        "stay_val": 17,
+        "hp": 10,
         "tip": (
-            "He spams 'Shield Assault' to reduce incoming damage to 0.\n"
-            "Shield Assault also deals 1 damage to YOU when played.\n"
-            "COUNTER: Stack bet-ups to push damage past shields.\n"
-            "Use 'Destroy' if he plays Shield Assault+."
+            "No special trump cards, but smarter than Survival version.\n"
+            "The more marks on the sack, the deadlier the variant.\n"
+            "Decent player — don't underestimate."
         ),
     },
     {
@@ -182,85 +195,94 @@ OPPONENTS_SURVIVAL_PLUS = [
         "ai": "TRUMP STEALER",
         "trumps": ["Desire", "Mind Shift", "Happiness"],
         "stay_val": 16,
-        "hp": 5,
+        "hp": 10,
         "tip": (
-            "'Mind Shift' STEALS one of your trump cards.\n"
-            "'Desire' increases bet based on how many trumps YOU hold.\n"
-            "'Happiness' heals him when he wins a round.\n"
-            "STRATEGY: Destroy Mind Shift immediately.\n"
-            "Don't hoard trumps — Desire punishes you for holding many."
+            "'Mind Shift' makes you lose half your trumps unless\n"
+            "you play two trump cards during the round.\n"
+            "'Desire' raises your bet based on how many trumps YOU hold.\n"
+            "'Happiness' lets both players draw a trump card.\n"
+            "STRATEGY: Don't hoard trumps — Desire punishes it.\n"
+            "Play two trumps per round to avoid Mind Shift penalty."
         ),
     },
     {
-        "name": "Molded Hoffman",
+        "name": "Barbed Wire Hoffman",
         "mode": "Survival+",
-        "desc": "Head covered in black mold/fungus.",
-        "ai": "DECK MANIPULATOR",
-        "trumps": ["Curse", "Black Magic", "Conjure"],
-        "stay_val": 17,
-        "hp": 5,
+        "desc": "Sack head with barbed wire / side-to-side slash marks.",
+        "ai": "SHIELD SPAMMER",
+        "trumps": ["Shield Assault", "Shield Assault+"],
+        "stay_val": 14,
+        "hp": 10,
         "tip": (
-            "!! CRITICAL DANGER !!\n"
-            "'Curse' forces you to draw the HIGHEST remaining card.\n"
-            "'Black Magic' forces you to draw a SPECIFIC card.\n"
-            "'Conjure' lets him add a card from outside the deck.\n"
-            "STRATEGY: Save 'Destroy' for Curse. Use 'Return'/'Exchange'\n"
-            "to fix a forced bad draw. Card-count obsessively."
-        ),
-    },
-    {
-        "name": "Tally Mark Hoffman",
-        "mode": "Survival+",
-        "desc": "Sack head covered in tally marks.",
-        "ai": "ONE-SHOT KILLER",
-        "trumps": ["Twenty-One Up"],
-        "stay_val": 17,
-        "hp": 5,
-        "tip": (
-            "!! EXTREME DANGER !!\n"
-            "If he reaches EXACTLY 21, he plays 'Twenty-One Up'.\n"
-            "That sets bet to 21 → can be an instant kill.\n"
-            "STRATEGY: Hold 'Destroy' at all times for this fight.\n"
-            "If he stays confidently, assume he has 21.\n"
-            "Use 'Love Your Enemy' to force him to draw and possibly bust."
+            "Always packs lots of Shield cards, then sacrifices them.\n"
+            "'Shield Assault' removes 3 Shields to raise YOUR bet by 3.\n"
+            "'Shield Assault+' removes 2 Shields to raise YOUR bet by 5.\n"
+            "COUNTER: Use 'Destroy' on Shield Assault+.\n"
+            "Stack bet-ups to push damage past his shields."
         ),
     },
     {
         "name": "Mr. Big Head Hoffman",
         "mode": "Survival+",
-        "desc": "Giant cartoon bobble-head mask.",
+        "desc": "Giant gray cartoon mask, missing right eye. RARE random encounter.",
         "ai": "COWARD / ESCAPE ARTIST",
-        "trumps": ["Escape", "Shield+"],
+        "trumps": ["Escape"],
         "stay_val": 19,
-        "hp": 5,
+        "hp": 10,
         "tip": (
-            "He plays 'Escape' to void the round if he's losing.\n"
-            "Escape cancels the round — no damage to either side.\n"
+            "RARE ENCOUNTER — special rewards for defeating him!\n"
+            "'Escape' lets him void the round if he's losing.\n"
+            "As long as Escape is on the table, he flees on loss.\n"
             "STRATEGY: 'Destroy' his Escape, then finish him.\n"
-            "Stack bet-ups so when you win, he dies in one hit."
-        ),
-    },
-    {
-        "name": "Undead Hoffman",
-        "mode": "Survival+",
-        "desc": "The Final Boss of Survival+.",
-        "ai": "GAME BREAKER",
-        "trumps": ["Oblivion", "Dead Silence", "Curse"],
-        "stay_val": 18,
-        "hp": 5,
-        "tip": (
-            "!! FINAL BOSS — MOST DANGEROUS OPPONENT !!\n"
-            "'Oblivion' cancels the entire round (no damage).\n"
-            "'Dead Silence' prevents you from drawing any more cards.\n"
-            "'Curse' forces you to draw the highest remaining card.\n"
-            "STRATEGY:\n"
-            " 1) Save 'Destroy' for Dead Silence (highest priority).\n"
-            " 2) Oblivion is annoying but not fatal.\n"
-            " 3) Card-count carefully — know what Curse will force.\n"
-            " 4) 'Perfect Draw' (if unlocked) is huge here."
+            "Stack bet-ups so when you win, he takes massive damage.\n"
+            "He may re-play Escape each round — save multiple Destroys."
         ),
     },
 ]
+
+# Fixed bosses in Survival+ (always appear at specific positions)
+BOSS_SURVIVAL_PLUS_MID = {
+    "name": "Molded Hoffman (Mid-Boss)",
+    "mode": "Survival+",
+    "desc": "Head covered in black mold/fungus. ALWAYS opponent #5.",
+    "ai": "DECK MANIPULATOR",
+    "trumps": ["Curse", "Black Magic", "Conjure"],
+    "stay_val": 17,
+    "hp": 10,
+    "tip": (
+        "!! MID-BOSS — ALWAYS FIGHT #5 !!\n"
+        "'Curse' discards one of your trumps AND forces you to draw\n"
+        "the HIGHEST remaining card.\n"
+        "'Black Magic' discards half your trumps, raises bet by 10\n"
+        "(instant death if you lose!), AND he draws the best card.\n"
+        "'Conjure' lets him draw 3 trumps (his bet +1 — slight advantage for you).\n"
+        "STRATEGY: Save 'Destroy' for Black Magic (highest priority!).\n"
+        "Use 'Return'/'Exchange' to fix forced bad draws.\n"
+        "Card-count obsessively — know what Curse will force."
+    ),
+}
+
+BOSS_SURVIVAL_PLUS_FINAL = {
+    "name": "Undead Hoffman (Final Boss)",
+    "mode": "Survival+",
+    "desc": "Knives and scissors embedded in head. ALWAYS opponent #10.",
+    "ai": "GAME BREAKER",
+    "trumps": ["Oblivion", "Dead Silence", "Perfect Draw"],
+    "stay_val": 18,
+    "hp": 10,
+    "tip": (
+        "!! FINAL BOSS — MOST DANGEROUS OPPONENT !!\n"
+        "Has tons of Perfect Draws — almost always gets high numbers.\n"
+        "'Dead Silence' prevents you from drawing ANY cards (even via trumps).\n"
+        "'Oblivion' cancels the entire round — annoying but not fatal.\n"
+        "STRATEGY:\n"
+        " 1) Save 'Destroy' for Dead Silence (highest priority).\n"
+        " 2) If he uses Perfect Draw and you know his total, use\n"
+        "    'Exchange' — if your last card > his, it busts him.\n"
+        " 3) Oblivion wastes your good hands but keep pressure up.\n"
+        " 4) 'Perfect Draw' (if unlocked) is huge here."
+    ),
+}
 
 # ============================================================
 # TRUMP CARD DATABASE
@@ -625,6 +647,9 @@ def generate_advice(
     priority_warnings = []
 
     stay_val = int(intel.get("stay_val", 17))
+    # Adjust opponent AI threshold when target is raised (e.g., Go for 24)
+    if target > 21:
+        stay_val += (target - 21)
 
     # ── HP-aware urgency ──
     if player_hp <= 3:
@@ -1007,14 +1032,13 @@ def record_round_result(round_num: int, player_hp: int, opp_hp: int):
 # ============================================================
 # SINGLE ROUND ANALYSIS
 # ============================================================
-def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int) -> None:
+def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21) -> None:
     """Run the solver for one round of 21 (read-only, no HP changes)."""
     display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
 
-    go24 = input("\n Is 'Go for 24' active? (y/n): ").strip().lower()
-    target = 24 if go24 == "y" else 21
-    if target == 24:
-        print(" ★ Target changed to 24!")
+    print(f"\n Current target: {target}")
+    if target > 21:
+        print(f" ★ 'Go for 24' is ACTIVE — target is {target}!")
 
     print("\n Opponent draw behavior this round:")
     print(" 1. Opponent already STAYED")
@@ -1121,6 +1145,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int) -> int:
     opp_max = int(intel["hp"])
     round_num = 0
     round_history = []
+    current_target = 21  # Persists across rounds; toggle with 'G'
 
     print_header(f"FIGHT: vs. {intel['name']}")
     display_opponent_info(intel)
@@ -1132,9 +1157,11 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int) -> int:
         display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
 
         while True:
-            print(f"\n ─── Round {round_num} Menu ───")
+            target_label = f" [Target: {current_target}]" if current_target != 21 else ""
+            print(f"\n ─── Round {round_num} Menu ───{target_label}")
             print(" A. Analyze hand (get advice)")
             print(" D. Done — record round result")
+            print(f" G. Toggle 'Go for 24' (currently: {'ON → target 24' if current_target == 24 else 'OFF → target 21'})")
             print(" T. Trump card reference")
             print(" I. Opponent intel")
             print(" H. Round history")
@@ -1144,7 +1171,11 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int) -> int:
             action = input("\n Action: ").strip().upper()
 
             if action == "A":
-                analyze_round(intel, player_hp, player_max, opp_hp, opp_max)
+                analyze_round(intel, player_hp, player_max, opp_hp, opp_max, current_target)
+
+            elif action == "G":
+                current_target = 24 if current_target == 21 else 21
+                print(f" ★ Target set to {current_target}!")
 
             elif action == "D":
                 player_hp, opp_hp, entry = record_round_result(round_num, player_hp, opp_hp)
@@ -1190,7 +1221,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int) -> int:
                     return player_hp
 
             else:
-                print(" Invalid action. Use A/D/T/I/H/S/Q.")
+                print(" Invalid action. Use A/D/G/T/I/H/S/Q.")
 
     return player_hp
 
@@ -1204,30 +1235,78 @@ def get_opponent_list(mode_key: str):
     if mode_key == "2":
         return OPPONENTS_SURVIVAL
     if mode_key == "3":
+        # Survival+ uses dynamic selection — return pool for reference
         return OPPONENTS_SURVIVAL_PLUS
     return []
+
+
+def select_survival_plus_opponent(fight_num: int) -> dict:
+    """Select the opponent for a given Survival+ fight number (1-10)."""
+    if fight_num == 5:
+        print(f"\n ★ Fight #{fight_num} is ALWAYS Molded Hoffman (mid-boss)!")
+        input(" Press Enter to continue...")
+        return BOSS_SURVIVAL_PLUS_MID
+
+    if fight_num == 10:
+        print(f"\n ★ Fight #{fight_num} is ALWAYS Undead Hoffman (final boss)!")
+        input(" Press Enter to continue...")
+        return BOSS_SURVIVAL_PLUS_FINAL
+
+    print(f"\n Who are you facing for fight #{fight_num}?")
+    print(" Identify by the sack on their head:\n")
+
+    pool = OPPONENTS_SURVIVAL_PLUS
+    for i, opp in enumerate(pool):
+        print(f" {i + 1}. {opp['name']} — {opp.get('desc', '')}")
+
+    while True:
+        choice = input(f"\n Select (1-{len(pool)}): ").strip()
+        try:
+            idx = int(choice) - 1
+            if 0 <= idx < len(pool):
+                return pool[idx]
+            print(" Invalid selection.")
+        except ValueError:
+            print(" Enter a number.")
 
 
 def run_mode(mode_key: str) -> None:
     """Run a full game mode — progress through opponents sequentially."""
     mode = GAME_MODES[mode_key]
-    opponents = get_opponent_list(mode_key)
 
     player_hp = int(mode["player_hp"])
     player_max = int(mode["player_hp"])
 
+    if mode_key == "3":
+        total_opponents = 10
+    elif mode_key == "2":
+        total_opponents = len(OPPONENTS_SURVIVAL)
+    else:
+        total_opponents = len(OPPONENTS_NORMAL)
+
     print_header(f"{mode['name']}")
     print(f"\n {mode['rules']}")
     print(f"\n Starting HP: {player_hp}")
-    print(f" Opponents: {len(opponents)}")
+    print(f" Opponents: {total_opponents}")
     input("\n Press Enter to begin...")
 
-    for idx, opp in enumerate(opponents):
+    for idx in range(total_opponents):
+        fight_num = idx + 1
+
         if player_hp <= 0:
             break
 
-        print_header(f"{mode['name']} — OPPONENT {idx + 1}/{len(opponents)}")
+        print_header(f"{mode['name']} — OPPONENT {fight_num}/{total_opponents}")
         print(f" Your HP: {player_hp}/{player_max}")
+
+        if mode_key == "3":
+            # Survival+ — dynamic selection
+            opp = select_survival_plus_opponent(fight_num)
+        else:
+            # Normal / Survival — fixed order
+            opponents = get_opponent_list(mode_key)
+            opp = opponents[idx]
+
         print(f" Next: {opp['name']} ({opp.get('ai','?')}) — {opp['hp']} HP")
 
         if idx > 0:
@@ -1241,12 +1320,12 @@ def run_mode(mode_key: str) -> None:
         if player_hp <= 0:
             print_header("GAME OVER")
             print(f" Defeated by {opp['name']}.")
-            print(f" Opponents beaten: {idx}/{len(opponents)}")
+            print(f" Opponents beaten: {idx}/{total_opponents}")
             return
 
     if player_hp > 0:
         print_header(f"★ {mode['name']} COMPLETE! ★")
-        print(f" All {len(opponents)} opponents defeated!")
+        print(f" All {total_opponents} opponents defeated!")
         print(f" Remaining HP: {player_hp}/{player_max}")
 
         if mode_key == "2":
@@ -1264,7 +1343,8 @@ def run_free_play() -> None:
     sections = [
         ("Normal", OPPONENTS_NORMAL),
         ("Survival", OPPONENTS_SURVIVAL),
-        ("Survival+", OPPONENTS_SURVIVAL_PLUS),
+        ("Survival+ (Random Pool)", OPPONENTS_SURVIVAL_PLUS),
+        ("Survival+ (Bosses)", [BOSS_SURVIVAL_PLUS_MID, BOSS_SURVIVAL_PLUS_FINAL]),
     ]
 
     for section_name, opp_list in sections:
@@ -1507,7 +1587,7 @@ def main() -> None:
         print("\n SELECT MODE:\n")
         print(" 1. Normal 21 (vs. Lucas — tutorial)")
         print(" 2. Survival 21 (5-opponent gauntlet)")
-        print(" 3. Survival+ 21 (6-opponent hard gauntlet)")
+        print(" 3. Survival+ 21 (10-opponent hard gauntlet)")
         print(" 4. Free Play (pick any opponent)")
         print(" C. Challenge Lab (priority unlock planner)")
         print()
