@@ -982,6 +982,8 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
     print(" 1. Opponent already STAYED")
     print(" 2. Opponent still following normal AI (stay threshold)")
     print(" 3. Opponent is forced to HIT once")
+    print(" Return/Enter. First round")
+
     behavior_raw = input(" > ").strip()
     opp_behavior = {"1": "stay", "2": "auto", "3": "hit_once"}.get(behavior_raw, "auto")
 
