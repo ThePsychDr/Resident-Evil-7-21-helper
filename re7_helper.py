@@ -1065,13 +1065,36 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
 
         # What did the opponent do?
         print("\n What did the opponent do?")
-        print("  Enter/ return. First round (your turn)")
-        print("  1. Opponent hit (drew a card)")
+        print("  1. Opponent hit (drew a card, still playing)  [Enter]")
         print("  2. Opponent stayed (done drawing)")
         print("  3. I forced a draw (Love Your Enemy / similar)")
         beh_input = input(" > ").strip()
         if beh_input == "2":
             opp_behavior = "stay"
+            print(" What is their total? (visible cards + any hidden)")
+            opp_total_raw = input(" Opponent total: ").strip()
+            if opp_total_raw:
+                new_total = int(opp_total_raw)
+                hidden_sum = new_total - o_total
+                if 1 <= hidden_sum <= 11 and hidden_sum in remaining:
+                    # Single hidden card, auto-remove from deck
+                    remaining.remove(hidden_sum)
+                    accounted = sorted(set(accounted + [hidden_sum]))
+                    print(f" → Hidden card: {hidden_sum} (removed from deck)")
+                elif hidden_sum > 11:
+                    # Multiple hidden cards — ask
+                    print(f" Hidden cards sum to {hidden_sum}. Enter card values (space-separated):")
+                    hidden_raw = input(" > ").strip()
+                    if hidden_raw:
+                        for hc in [int(x) for x in hidden_raw.split()]:
+                            if hc in remaining:
+                                remaining.remove(hc)
+                            if hc not in accounted:
+                                accounted = sorted(set(accounted + [hc]))
+                o_total = new_total
+                print(f" → Opponent locked in at {o_total}")
+            else:
+                print(f" → Using visible total: {o_total}")
         elif beh_input == "3":
             forced_raw = input(" What card did they draw? ").strip()
             if forced_raw:
@@ -1095,8 +1118,9 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         safe_pct, bust_pct, perfect_draws = calculate_probabilities(remaining, u_total, target)
         safe_count = len([c for c in remaining if u_total + c <= target])
 
+        opp_label = "OPPONENT FINAL" if opp_behavior == "stay" else "OPPONENT VISIBLE"
         print(f"\n YOUR TOTAL: {u_total} (cards: {u_hand})")
-        print(f" OPPONENT VISIBLE: {o_total} (cards: {o_vis})")
+        print(f" {opp_label}: {o_total} (cards: {o_vis})")
         print(f" TARGET: {target}")
         print(f" SAFE HIT CHANCE: {safe_pct:.0f}% ({safe_count}/{len(remaining)} cards)")
         print(f" BUST CHANCE: {bust_pct:.0f}%")
