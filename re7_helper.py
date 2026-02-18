@@ -129,28 +129,33 @@ OPPONENTS_SURVIVAL = [
         "mode": "Survival",
         "desc": "Sack head with barbed wire marks.",
         "ai": "SHIELD SPAMMER",
-        "trumps": ["Shield Assault"],
+        "trumps": ["Shield Assault", "Go For 17"],
         "stay_val": 16,
         "hp": 5,
         "tip": (
             "Packs lots of Shield cards, then sacrifices them.\n"
-            "'Shield Assault' removes 3 of his Shields to raise YOUR bet by 3.\n"
-            "COUNTER: Use 'Destroy' on Shield Assault.\n"
-            "Stack bet-ups to push damage past his shields."
+            "'Shield Assault' only triggers after he draws 3 Shields in a row.\n"
+            "When triggered: removes his 3 Shields and raises YOUR bet by 3.\n"
+            "'Go For 17' changes the target — closest to 17 wins the round.\n"
+            "COUNTER: 'Destroy' Shield Assault before the bet goes up.\n"
+            "When 'Go For 17' is active, aim to stay at exactly 17.\n"
+            "Commonly plays: Shield"
         ),
     },
     {
         "name": "Tally Mark Hoffman (Upgraded)",
         "mode": "Survival",
-        "desc": "Upgraded tally mark variant. Smarter AI, more trump cards.",
+        "desc": "Upgraded tally mark variant. Smarter AI, packs Twenty-One-Up.",
         "ai": "BASIC+",
-        "trumps": [],
+        "trumps": ["Twenty-One-Up"],
         "stay_val": 17,
         "hp": 5,
         "tip": (
             "Slightly smarter than the first Tally Mark.\n"
-            "Still no special trumps but plays more strategically.\n"
-            "Plays a bit tighter — stay sharp."
+            "!! DANGER: 'Twenty-One-Up' sets the bet to 21 — near-instant kill !!\n"
+            "If he reaches exactly 21 and stays confidently, assume he has it.\n"
+            "STRATEGY: Hold 'Destroy' in reserve specifically for Twenty-One-Up.\n"
+            "Commonly plays: One-Up, Draw Card+"
         ),
     },
     {
@@ -210,15 +215,17 @@ OPPONENTS_SURVIVAL_PLUS = [
         "mode": "Survival+",
         "desc": "Sack head with barbed wire / side-to-side slash marks.",
         "ai": "SHIELD SPAMMER",
-        "trumps": ["Shield Assault", "Shield Assault+"],
+        "trumps": ["Shield Assault", "Shield Assault+", "Go For 17"],
         "stay_val": 14,
         "hp": 10,
         "tip": (
             "Always packs lots of Shield cards, then sacrifices them.\n"
-            "'Shield Assault' removes 3 Shields to raise YOUR bet by 3.\n"
-            "'Shield Assault+' removes 2 Shields to raise YOUR bet by 5.\n"
+            "'Shield Assault' only triggers after he draws 3 Shields in a row.\n"
+            "When triggered: removes his 3 Shields and raises YOUR bet by 3.\n"
+            "'Shield Assault+' removes 2 Shields and raises YOUR bet by 5.\n"
+            "'Go For 17' changes the target — closest to 17 wins the round.\n"
             "COUNTER: Use 'Destroy' on Shield Assault+.\n"
-            "Stack bet-ups to push damage past his shields."
+            "When 'Go For 17' is active, aim to stay at exactly 17."
         ),
     },
     {
@@ -231,11 +238,13 @@ OPPONENTS_SURVIVAL_PLUS = [
         "hp": 10,
         "tip": (
             "RARE ENCOUNTER — special rewards for defeating him!\n"
-            "'Escape' lets him void the round if he's losing.\n"
-            "As long as Escape is on the table, he flees on loss.\n"
-            "STRATEGY: 'Destroy' his Escape, then finish him.\n"
-            "Stack bet-ups so when you win, he takes massive damage.\n"
-            "He may re-play Escape each round — save multiple Destroys."
+            "!! WARNING: 'Escape' RESETS THE ENTIRE MATCH if it triggers !!\n"
+            "If he loses a round while Escape is on the table, the whole\n"
+            "fight resets — the round does NOT count toward enemies defeated.\n"
+            "STRATEGY: 'Destroy' Escape immediately every round — top priority.\n"
+            "Alternatively: use Two-Up / Two-Up+ / Perfect Draw+ to build a\n"
+            "death bet so he dies before Escape can trigger.\n"
+            "Commonly plays: None"
         ),
     },
 ]
@@ -267,18 +276,18 @@ BOSS_SURVIVAL_PLUS_FINAL = {
     "mode": "Survival+",
     "desc": "Knives and scissors embedded in head. ALWAYS opponent #10.",
     "ai": "GAME BREAKER",
-    "trumps": ["Oblivion", "Dead Silence", "Perfect Draw"],
+    "trumps": ["Oblivion", "Dead Silence"],
     "stay_val": 18,
     "hp": 10,
     "tip": (
         "!! FINAL BOSS — MOST DANGEROUS OPPONENT !!\n"
-        "Has tons of Perfect Draws — almost always gets high numbers.\n"
+        "Has the best luck of all opponents — almost always gets high numbers.\n"
+        "Commonly spams: Ultimate Draw, Two-Up+\n"
         "'Dead Silence' prevents you from drawing ANY cards (even via trumps).\n"
         "'Oblivion' cancels the entire round — annoying but not fatal.\n"
         "STRATEGY:\n"
         " 1) Save 'Destroy' for Dead Silence (highest priority).\n"
-        " 2) If he uses Perfect Draw and you know his total, use\n"
-        "    'Exchange' — if your last card > his, it busts him.\n"
+        " 2) His Ultimate Draws mean he'll often hit 21 — don't assume he's safe.\n"
         " 3) Oblivion wastes your good hands but keep pressure up.\n"
         " 4) 'Perfect Draw' (if unlocked) is huge here."
     ),
@@ -294,24 +303,25 @@ TRUMPS = {
     "Twenty-One Up": {"cat": "Bet", "desc": "Sets bet to 21 (often instant-kill territory)."},
     "Shield": {"cat": "Defense", "desc": "Reduces damage taken this round by 1."},
     "Shield+": {"cat": "Defense", "desc": "Reduces damage taken this round by 2."},
-    "Shield Assault": {"cat": "Defense", "desc": "Reduces damage by 3; deals 1 damage to you when played."},
-    "Shield Assault+": {"cat": "Defense", "desc": "Reduces damage by 5; deals 1 damage to you when played."},
+    "Shield Assault": {"cat": "Bet", "desc": "Triggered after drawing 3 Shields in a row: removes those 3 Shields and increases opponent's bet by 3."},
+    "Shield Assault+": {"cat": "Bet", "desc": "Removes 2 Shields and increases opponent's bet by 5."},
     "Return": {"cat": "Cards", "desc": "Returns your last drawn card to the deck."},
     "Exchange": {"cat": "Cards", "desc": "Swaps one of your cards with a random remaining card."},
     "Perfect Draw": {"cat": "Cards", "desc": "Draws the exact card needed for 21 (unlockable)."},
-    "Curse": {"cat": "Cards", "desc": "Forces opponent to draw the HIGHEST remaining card."},
+    "Curse": {"cat": "Cards", "desc": "Discards a random trump card from the opponent and forces them to draw the highest number in the deck."},
     "Black Magic": {"cat": "Cards", "desc": "Forces opponent to draw a specific chosen card."},
-    "Conjure": {"cat": "Cards", "desc": "Adds a card from outside the deck to the user's hand."},
+    "Conjure": {"cat": "Cards", "desc": "Draw three trump cards; user's bet is increased by 1 while this card is on the table."},
     "Destroy": {"cat": "Counter", "desc": "Removes the LAST trump card the opponent played."},
     "Destroy+": {"cat": "Counter", "desc": "Removes ALL opponent trump cards played this round."},
     "Love Your Enemy": {"cat": "Attack", "desc": "Forces opponent to draw a card (often causing a bust)."},
-    "Mind Shift": {"cat": "Attack", "desc": "Steals one of the opponent's trump cards."},
-    "Escape": {"cat": "Special", "desc": "Cancels the round. No damage to either side."},
+    "Mind Shift": {"cat": "Attack", "desc": "Opponent loses half their trump cards at end of round. Removed if opponent plays two trumps in the same round."},
+    "Escape": {"cat": "Special", "desc": "If user loses the round while this is on the table, the entire match resets. Round does not count toward enemies defeated."},
     "Oblivion": {"cat": "Special", "desc": "Cancels the round — no winner, no loser."},
-    "Dead Silence": {"cat": "Special", "desc": "Prevents opponent from drawing any more cards."},
-    "Desire": {"cat": "Special", "desc": "Increases bet based on opponent's trump count."},
-    "Happiness": {"cat": "Special", "desc": "Heals the user when they win the round."},
+    "Dead Silence": {"cat": "Special", "desc": "Prevents opponent from drawing any more cards, even via trump card effects."},
+    "Desire": {"cat": "Special", "desc": "Opponent's bet is increased by half the number of trump cards they are currently holding."},
+    "Happiness": {"cat": "Special", "desc": "Both players draw one trump card."},
     "Go for 24": {"cat": "Special", "desc": "Changes round target from 21 to 24 (unlockable)."},
+    "Go For 17": {"cat": "Special", "desc": "Closest to 17 wins the round. Replaces any other 'Go For' card currently on the table."},
     "Harvest": {"cat": "Special", "desc": "Draw a trump whenever any trump is used."},
 }
 
