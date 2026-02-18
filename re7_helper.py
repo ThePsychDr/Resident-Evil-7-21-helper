@@ -1065,7 +1065,8 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
 
         # What did the opponent do?
         print("\n What did the opponent do?")
-        print("  1. Opponent hit (drew a card, still playing)  [Enter]")
+        print("  Enter/ return. First round (your turn)")
+        print("  1. Opponent hit (drew a card)")
         print("  2. Opponent stayed (done drawing)")
         print("  3. I forced a draw (Love Your Enemy / similar)")
         beh_input = input(" > ").strip()
