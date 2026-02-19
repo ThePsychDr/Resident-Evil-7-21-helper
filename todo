@@ -3,3 +3,5 @@ TODO:
 >Make sure the weighing is taking the remaining cards in deck into account
 > test recommendations in early game vs late game esp taking your current health/ trumps into account.
 (adjust if new enemy behavior is obvserved)
+
+-add suggestion to restart run if chances of a winning run drops to ~20% or less
