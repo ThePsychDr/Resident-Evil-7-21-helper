@@ -1,14 +1,4 @@
 TODO:
--Fix trump cards
--Add logic to consider which trump cards should be played (ask what the player has, then remember, takes enemy ai into account, asks if player held trumps changed after opponents turn due to ai trumps or player trumps. Recontinue probablity calculations after taking that into effect)
-^maybe can be modled if certain ai only plays certain trumps
-Instead of    print(f" P. Play a trump card ({trump_count} in hand)")
- Auto suggest a trump card if necesary (play conservative to save from big damage and to survive later rounds/ harder opponents. Take into account what trumps the opponent likes to play and when. )
-- figure out if Undead Hoffman (Final Boss) can play his special trumps multiple times in a round
-
--Change challenge mode/ suggestions based on above logic (remove Defeat an opponent despite being bust. option from menu) Just give instructions when at a high probability in survival/ survival+ if the challenge isnt already completed.
--- Important Trump unlocks that require different play styles (main focus until unlocked):
-Defeat an opponent despite being bust.	Starting Trump Card +1
-
-
--add a notice that 21 base tutorial against lucas logic is currently not working properly
+- Test trump weight system 
+>Make sure the weighing is taking the remaining cards in deck into account
+> test recommendations in early game vs late game esp taking your current health/ trumps into account.
