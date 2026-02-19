@@ -33,7 +33,7 @@ Example (Normal 21) // What to change marked throughout (also apply these change
  │ Stays at: 16+
  └─ Sack head with tally marks. Basic AI, no special trumps.
 
-//He played trump cards as seen in the log. There should be a trump section and special trump section in the target description accurate to 21/ 21+ depending on which is being played) it was 4 tally hoffman (Continually resetting always got 4 tally first. I tested if different ones show up)
+(TODO) He played trump cards as seen in the log. There should be a trump section and special trump section in the target description accurate to 21/ 21+ depending on which is being played) it was 4 tally hoffman (Continually resetting always got 4 tally first. I tested if different ones show up)
 
  INTEL:
  Easiest opponent. No special trump cards.
@@ -185,9 +185,8 @@ Don't waste strong trumps — save them for later fights.
 
  If YOU HIT now -> Win 37.7% | Tie 7.8% | Lose 54.6% (Bust draw chance: 62.5%).
 
-(Dont show this if you dont have love your enemy) If you FORCE A DRAW (Love Your Enemy) -> Win 49.7% | Tie 9.5% | Lose 40.8% (busts opponent: 0%).
-
-(only show if possible with current bet/ trump cards. also take enemy previous action into account) If you BUST ON PURPOSE -> Best card: 5 (total 22) → Win 35.4%. [Completes bust-win challenge!]
+TODO: (Dont show this if you dont have love your enemy) If you FORCE A DRAW (Love Your Enemy) -> Win 49.7% | Tie 9.5% | Lose 40.8% (busts opponent: 0%).
+  (only show if possible with current bet/ trump cards. also take enemy previous action into account) If you BUST ON PURPOSE -> Best card: 5 (total 22) → Win 35.4%. [Completes bust-win challenge!]
 
  ACTION: STAY — your 17 likely meets/beats his ~16.
 
@@ -203,19 +202,16 @@ Don't waste strong trumps — save them for later fights.
  │ o reach 21).                                         │
  └─────────────────────────────────────────────────┘
 
-Instead of outputting: 
+(TODO) Instead of outputting: 
  ┌─ TRUMP CARD ADVICE ─────────────────────────────┐
  │ HIGH-VALUE CARDS: Perfect Draw+ [cost:90] — save for │
  │ bosses if possible.                                  │
  │ 'Perfect Draw+' [cost:90] — draws best card (need 4 t│
  │ o reach 21).                                         │
  └─────────────────────────────────────────────────┘
-
-(TODO) take into account its the first round and dont display weight to user (not useful info)
-only when in challenge lab - avoid taking any damage. consider that it is the first round 
-
+ Take into account its the first round and dont display weight to user (not useful info to be displayed)
+Only when in "challenge lab - avoid taking any damage." Consider that it is the first round in 21 and 21+ and suggest restarting if damage is taking
 Output which option to do last ((before opponent tip and enemy advice))
-
 Change your card input to always remember your face down card (unless a trump is played that changed that)
 
  (Opponent hasn't stayed — odds are estimates. Select '2' when they stop drawing.)
@@ -235,7 +231,7 @@ Change your card input to always remember your face down card (unless a trump is
 Play normally and conserve HP.
 Don't waste strong trumps — save them for later fights.
 
---opponent tip also doesnt have to be repeated after every action. Just print once when fights begin and then consider the tips for the weight/ challenge system throughout the round.
+(TODO) opponent tip also doesnt have to be repeated after every action. Just print once when fights begin and then consider the tips for the weight/ challenge system throughout the round.
 
  ┌─ TRUMP CARD ADVICE ─────────────────────────────┐
  │ HIGH-VALUE CARDS: Perfect Draw+ [cost:90] — save for │
@@ -287,4 +283,4 @@ Don't waste strong trumps — save them for later fights.
  │ Tally Mark Hoffman [███████████████] 5/5 (100%)            │
  └─────────────────────────────────────────────────────┘
 
-He had a higher card then won. ( See if possible to calculate probablities better based on opponent)
+He had a higher card then won. ( See if possible to calculate probablities better based on opponent and if the save logic can be applied to 21+)
