@@ -388,83 +388,90 @@ BOSS_SURVIVAL_PLUS_FINAL = {
 # ============================================================
 TRUMPS = {
     # ── Bet Up — increases OPPONENT's bet while on table ──
-    "One-Up": {"cat": "Bet", "desc": "Opponent's bet +1 while on table. Also, draw 1 trump card."},
-    "Two-Up": {"cat": "Bet", "desc": "Opponent's bet +2 while on table. Also, draw 1 trump card."},
-    "Two-Up+": {"cat": "Bet", "desc": "Return opponent's last face-up card to deck. Opponent's bet +2 while on table."},
+    #   weight: utility value (higher = save for harder fights). 0 = enemy-only card.
+    #   etype: "Bet Modifier", "Draw Forcer", "Board Wipe", "Target Modifier", "Defensive", "Special", "Attack"
+    "One-Up": {"cat": "Bet", "desc": "Opponent's bet +1 while on table. Also, draw 1 trump card.", "weight": 10, "etype": "Bet Modifier"},
+    "Two-Up": {"cat": "Bet", "desc": "Opponent's bet +2 while on table. Also, draw 1 trump card.", "weight": 20, "etype": "Bet Modifier"},
+    "Two-Up+": {"cat": "Bet", "desc": "Return opponent's last face-up card to deck. Opponent's bet +2 while on table.", "weight": 50, "etype": "Bet Modifier"},
 
     # ── Draw Number Card — draw a specific numbered card ──
-    "2 Card": {"cat": "Cards", "desc": "Draw the 2 card. If not in deck, nothing happens."},
-    "3 Card": {"cat": "Cards", "desc": "Draw the 3 card. If not in deck, nothing happens."},
-    "4 Card": {"cat": "Cards", "desc": "Draw the 4 card. If not in deck, nothing happens."},
-    "5 Card": {"cat": "Cards", "desc": "Draw the 5 card. If not in deck, nothing happens."},
-    "6 Card": {"cat": "Cards", "desc": "Draw the 6 card. If not in deck, nothing happens."},
-    "7 Card": {"cat": "Cards", "desc": "Draw the 7 card. If not in deck, nothing happens."},
+    "2 Card": {"cat": "Cards", "desc": "Draw the 2 card. If not in deck, nothing happens.", "weight": 15, "etype": "Draw Forcer"},
+    "3 Card": {"cat": "Cards", "desc": "Draw the 3 card. If not in deck, nothing happens.", "weight": 15, "etype": "Draw Forcer"},
+    "4 Card": {"cat": "Cards", "desc": "Draw the 4 card. If not in deck, nothing happens.", "weight": 15, "etype": "Draw Forcer"},
+    "5 Card": {"cat": "Cards", "desc": "Draw the 5 card. If not in deck, nothing happens.", "weight": 15, "etype": "Draw Forcer"},
+    "6 Card": {"cat": "Cards", "desc": "Draw the 6 card. If not in deck, nothing happens.", "weight": 15, "etype": "Draw Forcer"},
+    "7 Card": {"cat": "Cards", "desc": "Draw the 7 card. If not in deck, nothing happens.", "weight": 15, "etype": "Draw Forcer"},
 
     # ── Remove/Return/Swap ──
-    "Remove": {"cat": "Cards", "desc": "Return opponent's last face-up card to the deck."},
-    "Return": {"cat": "Cards", "desc": "Return your last face-up card to the deck."},
-    "Exchange": {"cat": "Cards", "desc": "Swap the last face-up cards drawn by you and opponent. Face-down cards can't be swapped."},
+    "Remove": {"cat": "Cards", "desc": "Return opponent's last face-up card to the deck.", "weight": 45, "etype": "Draw Forcer"},
+    "Return": {"cat": "Cards", "desc": "Return your last face-up card to the deck.", "weight": 40, "etype": "Draw Forcer"},
+    "Exchange": {"cat": "Cards", "desc": "Swap the last face-up cards drawn by you and opponent. Face-down cards can't be swapped.", "weight": 75, "etype": "Draw Forcer"},
 
     # ── Trump Management ──
-    "Trump Switch": {"cat": "Switch", "desc": "Discard 2 of your trumps at random, draw 3 trumps. Works even with <2 trumps."},
-    "Trump Switch+": {"cat": "Switch", "desc": "Discard 1 of your trumps at random, draw 4 trumps. Works even with 0 other trumps."},
+    "Trump Switch": {"cat": "Switch", "desc": "Discard 2 of your trumps at random, draw 3 trumps. Works even with <2 trumps.", "weight": 20, "etype": "Special"},
+    "Trump Switch+": {"cat": "Switch", "desc": "Discard 1 of your trumps at random, draw 4 trumps. Works even with 0 other trumps.", "weight": 30, "etype": "Special"},
 
     # ── Defense — reduces YOUR bet while on table ──
-    "Shield": {"cat": "Defense", "desc": "Your bet -1 while on table."},
-    "Shield+": {"cat": "Defense", "desc": "Your bet -2 while on table."},
+    "Shield": {"cat": "Defense", "desc": "Your bet -1 while on table.", "weight": 10, "etype": "Defensive"},
+    "Shield+": {"cat": "Defense", "desc": "Your bet -2 while on table.", "weight": 20, "etype": "Defensive"},
 
     # ── Counter / Destroy ──
-    "Destroy": {"cat": "Counter", "desc": "Remove opponent's last trump card from the table."},
-    "Destroy+": {"cat": "Counter", "desc": "Remove ALL opponent's trump cards from the table."},
-    "Destroy++": {"cat": "Counter", "desc": "Remove ALL opponent's trumps. Opponent can't use trumps while on table."},
+    "Destroy": {"cat": "Counter", "desc": "Remove opponent's last trump card from the table.", "weight": 60, "etype": "Board Wipe"},
+    "Destroy+": {"cat": "Counter", "desc": "Remove ALL opponent's trump cards from the table.", "weight": 90, "etype": "Board Wipe"},
+    "Destroy++": {"cat": "Counter", "desc": "Remove ALL opponent's trumps. Opponent can't use trumps while on table.", "weight": 100, "etype": "Board Wipe"},
 
     # ── Best Card Draw ──
-    "Perfect Draw": {"cat": "Cards", "desc": "Draw the best possible card from the deck."},
-    "Perfect Draw+": {"cat": "Cards", "desc": "Draw the best possible card. Opponent's bet +5 while on table."},
-    "Ultimate Draw": {"cat": "Cards", "desc": "Draw the best possible card. Also, draw 2 trump cards."},
+    "Perfect Draw": {"cat": "Cards", "desc": "Draw the best possible card from the deck.", "weight": 80, "etype": "Draw Forcer"},
+    "Perfect Draw+": {"cat": "Cards", "desc": "Draw the best possible card. Opponent's bet +5 while on table.", "weight": 90, "etype": "Draw Forcer"},
+    "Ultimate Draw": {"cat": "Cards", "desc": "Draw the best possible card. Also, draw 2 trump cards.", "weight": 100, "etype": "Draw Forcer"},
 
     # ── Target Changers ──
-    "Go for 17": {"cat": "Target", "desc": "Closest to 17 wins while on table. Replaces other 'Go For' cards."},
-    "Go for 24": {"cat": "Target", "desc": "Closest to 24 wins while on table. Replaces other 'Go For' cards."},
-    "Go for 27": {"cat": "Target", "desc": "Closest to 27 wins while on table. Replaces other 'Go For' cards."},
+    "Go for 17": {"cat": "Target", "desc": "Closest to 17 wins while on table. Replaces other 'Go For' cards.", "weight": 30, "etype": "Target Modifier"},
+    "Go for 24": {"cat": "Target", "desc": "Closest to 24 wins while on table. Replaces other 'Go For' cards.", "weight": 35, "etype": "Target Modifier"},
+    "Go for 27": {"cat": "Target", "desc": "Closest to 27 wins while on table. Replaces other 'Go For' cards.", "weight": 40, "etype": "Target Modifier"},
 
     # ── Trump Draw ──
-    "Harvest": {"cat": "Switch", "desc": "Draw a trump card after every trump you use while on table."},
-    "Love Your Enemy": {"cat": "Cards", "desc": "Opponent draws the best possible card for THEM from the deck."},
+    "Harvest": {"cat": "Switch", "desc": "Draw a trump card after every trump you use while on table.", "weight": 50, "etype": "Special"},
+    "Love Your Enemy": {"cat": "Cards", "desc": "Opponent draws the best possible card for THEM from the deck.", "weight": 60, "etype": "Draw Forcer"},
 
-    # ── Enemy-exclusive trump cards ──
-    "Happiness": {"cat": "Switch", "desc": "Both players draw 1 trump card. (Enemy-used)"},
-    "Desire": {"cat": "Attack", "desc": "YOUR bet increased by half YOUR held trump count while on table. (Enemy-used)"},
-    "Desire+": {"cat": "Attack", "desc": "YOUR bet increased by YOUR full held trump count while on table. (Enemy-used)"},
+    # ── Enemy-exclusive trump cards (weight 0 = not player-obtainable) ──
+    "Happiness": {"cat": "Switch", "desc": "Both players draw 1 trump card. (Enemy-used)", "weight": 0, "etype": "Attack"},
+    "Desire": {"cat": "Attack", "desc": "YOUR bet increased by half YOUR held trump count while on table. (Enemy-used)", "weight": 0, "etype": "Attack"},
+    "Desire+": {"cat": "Attack", "desc": "YOUR bet increased by YOUR full held trump count while on table. (Enemy-used)", "weight": 0, "etype": "Attack"},
     "Mind Shift": {
         "cat": "Attack",
         "desc": "You lose half your trumps at end of round. Removed if you play 2 trumps in a round. (Enemy-used)",
+        "weight": 0, "etype": "Attack",
     },
     "Mind Shift+": {
         "cat": "Attack",
         "desc": "You lose ALL trumps at end of round. Removed if you play 3 trumps in a round. (Enemy-used)",
+        "weight": 0, "etype": "Attack",
     },
     "Shield Assault": {
         "cat": "Attack",
         "desc": "Enemy removes 3 of HIS Shields. YOUR bet +3 while on table. (Enemy-used)",
+        "weight": 0, "etype": "Attack",
     },
     "Shield Assault+": {
         "cat": "Attack",
         "desc": "Enemy removes 2 of HIS Shields. YOUR bet +5 while on table. (Enemy-used)",
+        "weight": 0, "etype": "Attack",
     },
-    "Curse": {"cat": "Attack", "desc": "Discard one of your trumps at random. You draw the highest card in deck. (Enemy-used)"},
+    "Curse": {"cat": "Attack", "desc": "Discard one of your trumps at random. You draw the highest card in deck. (Enemy-used)", "weight": 0, "etype": "Attack"},
     "Black Magic": {
         "cat": "Attack",
         "desc": "Remove half your trumps. Your bet +10. Enemy draws best possible card. (Enemy-used)",
+        "weight": 0, "etype": "Attack",
     },
-    "Conjure": {"cat": "Attack", "desc": "Enemy draws 3 trumps. Enemy's bet +1 while on table. (Enemy-used)"},
-    "Dead Silence": {"cat": "Attack", "desc": "You cannot draw cards (even via trump effects) while on table. (Enemy-used)"},
-    "Twenty-One Up": {"cat": "Attack", "desc": "Enemy must hit exactly 21. YOUR bet +21 while on table. (Boss-only)"},
+    "Conjure": {"cat": "Attack", "desc": "Enemy draws 3 trumps. Enemy's bet +1 while on table. (Enemy-used)", "weight": 0, "etype": "Attack"},
+    "Dead Silence": {"cat": "Attack", "desc": "You cannot draw cards (even via trump effects) while on table. (Enemy-used)", "weight": 0, "etype": "Attack"},
+    "Twenty-One Up": {"cat": "Attack", "desc": "Enemy must hit exactly 21. YOUR bet +21 while on table. (Boss-only)", "weight": 0, "etype": "Attack"},
 
     # ── Special ──
-    "Escape": {"cat": "Special", "desc": "You don't take damage if you lose while on table. Match resets if used."},
-    "Oblivion": {"cat": "Special", "desc": "Cancels this round. Begins a new round. No damage to either side."},
-    "Desperation": {"cat": "Special", "desc": "Story-only. Both bets become 100. Opponent can't draw cards."},
+    "Escape": {"cat": "Special", "desc": "You don't take damage if you lose while on table. Match resets if used.", "weight": 0, "etype": "Special"},
+    "Oblivion": {"cat": "Special", "desc": "Cancels this round. Begins a new round. No damage to either side.", "weight": 0, "etype": "Special"},
+    "Desperation": {"cat": "Special", "desc": "Story-only. Both bets become 100. Opponent can't draw cards.", "weight": 0, "etype": "Special"},
 }
 
 # ============================================================
@@ -717,11 +724,14 @@ def recommend_trump_play(
     player_hp: int,
     opp_hp: int,
     opp_behavior: str = "auto",
+    fight_num: int = 0,
+    mode_key: str = "3",
 ) -> list:
     """
     Smart trump card auto-suggestion engine.
     Considers: game state, enemy AI patterns, conservative survival strategy,
     upcoming harder opponents, and challenge completion.
+    Prioritizes lowest utility_weight cards first for non-boss fights.
     Returns list of recommendation strings with priority markers.
     """
     if not trump_hand:
@@ -738,6 +748,18 @@ def recommend_trump_play(
 
     # Count destroy cards for resource management
     destroys_held = sum(1 for c in trump_hand if c.startswith("Destroy"))
+
+    # ══════════════════════════════════════════════════════
+    # GAUNTLET RESOURCE MANAGEMENT — fight_num awareness
+    # In Survival+, fights 5 and 10 are bosses that NEED Destroys.
+    # ══════════════════════════════════════════════════════
+    if mode_key == "3" and fight_num > 0 and not is_boss:
+        if fight_num < 5 and destroys_held > 0:
+            recs.append(f"⚠ SAVE DESTROY CARDS — Molded Hoffman (fight #5) needs them for Black Magic!")
+        elif fight_num > 5 and fight_num < 10 and destroys_held > 0:
+            recs.append(f"\033[91m★★ SAVE ALL DESTROY CARDS FOR FIGHT #10 — Undead Hoffman's Dead Silence is LETHAL!\033[0m")
+    elif mode_key == "2" and fight_num > 0 and fight_num < 5 and destroys_held > 0:
+        recs.append(f"⚠ SAVE Destroy cards — Molded Hoffman (fight #5) needs them for Curse/Black Magic!")
 
     # ══════════════════════════════════════════════════════
     # PRIORITY 1: EMERGENCY — You're busted
@@ -1775,7 +1797,7 @@ def record_round_result(round_num: int, player_hp: int, opp_hp: int):
 # ============================================================
 # SINGLE ROUND ANALYSIS
 # ============================================================
-def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21, dead_cards: list = None, challenges_completed: set = None, available_trumps: set = None, trump_hand: list = None) -> list:
+def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21, dead_cards: list = None, challenges_completed: set = None, available_trumps: set = None, trump_hand: list = None, fight_num: int = 0, mode_key: str = "3") -> list:
     """Run the solver for one round of 21 (read-only, no HP changes).
     Returns updated dead_cards list for persistence across rounds."""
     if dead_cards is None:
@@ -1918,7 +1940,8 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
                 stay_val = max(1, stay_val)
             trump_recs = recommend_trump_play(
                 trump_hand, u_total, o_total, remaining, target, stay_val,
-                intel, player_hp, opp_hp, opp_behavior
+                intel, player_hp, opp_hp, opp_behavior,
+                fight_num=fight_num, mode_key=mode_key
             )
             if trump_recs:
                 print("\n ┌─ TRUMP CARD ADVICE ─────────────────────────────┐")
@@ -1942,16 +1965,180 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
 # ============================================================
 # FIGHT LOOP — Multiple rounds vs. one opponent until death
 # ============================================================
-def fight_opponent(intel: dict, player_hp: int, player_max: int, challenges_completed: set = None, available_trumps: set = None) -> int:
+def handle_interrupt(dead_cards: list, current_target: int, player_bet: int = 1, opp_bet: int = 1) -> tuple:
+    """
+    Interrupt handler: enemy played a trump card mid-round.
+    Lets user declare what happened so we can update game state.
+    Returns updated (dead_cards, current_target, player_bet, opp_bet, interrupt_msg).
+    """
+    print("\n ┌─ ENEMY TRUMP INTERRUPT ──────────────────────────┐")
+    print(" │ What did the opponent just do?                   │")
+    print(" │                                                  │")
+    print(" │  1. Drew/added a card (to their hand)            │")
+    print(" │  2. Removed one of YOUR cards (Two-Up+, etc.)    │")
+    print(" │  3. Raised YOUR bet (Desire, Shield Assault)     │")
+    print(" │  4. Swapped/exchanged cards                      │")
+    print(" │  5. Changed target (Go for 17, etc.)             │")
+    print(" │  6. Used Destroy on YOUR trump                   │")
+    print(" │  7. Played Dead Silence (you can't draw)         │")
+    print(" │  8. Played Oblivion (round cancelled)            │")
+    print(" │  9. Used Curse (discard trump + forced draw)     │")
+    print(" │ 10. Lowered THEIR bet (Shield on their side)     │")
+    print(" │ 11. Other / multiple effects                     │")
+    print(" │  0. Cancel                                       │")
+    print(" └──────────────────────────────────────────────────┘")
+
+    choice = input("\n > ").strip()
+    msg = ""
+
+    if choice == "1":
+        print(" What card value did opponent draw/add?")
+        v = input(" > ").strip()
+        if v:
+            try:
+                val = int(v)
+                if 1 <= val <= 11 and val not in dead_cards:
+                    dead_cards = sorted(set(dead_cards + [val]))
+                    msg = f"Opponent drew {val}. Removed from available deck."
+                else:
+                    msg = f"Card {v} already accounted for or invalid."
+            except ValueError:
+                msg = "Invalid input."
+
+    elif choice == "2":
+        print(" What card value was removed from YOUR hand?")
+        v = input(" > ").strip()
+        if v:
+            try:
+                val = int(v)
+                if 1 <= val <= 11:
+                    # Card goes back to deck (available pool)
+                    if val in dead_cards:
+                        dead_cards.remove(val)
+                    msg = f"Your card {val} returned to deck pool. Re-analyze to update odds."
+            except ValueError:
+                msg = "Invalid input."
+
+    elif choice == "3":
+        print(" Which enemy card raised YOUR bet?")
+        print("  1. Desire (+ half your trump count)")
+        print("  2. Desire+ (+ your full trump count)")
+        print("  3. Shield Assault (+3)")
+        print("  4. Shield Assault+ (+5)")
+        print("  5. One-Up (+1 to your bet)")
+        print("  6. Other (enter amount)")
+        sub = input(" > ").strip()
+        if sub == "1":
+            print(" How many trumps do you hold?")
+            tc = input(" > ").strip()
+            try:
+                amt = max(1, int(tc) // 2)
+                player_bet += amt
+                msg = f"Desire: your bet +{amt} → now {player_bet}"
+            except ValueError:
+                msg = "Invalid."
+        elif sub == "2":
+            print(" How many trumps do you hold?")
+            tc = input(" > ").strip()
+            try:
+                amt = int(tc)
+                player_bet += amt
+                msg = f"Desire+: your bet +{amt} → now {player_bet}"
+            except ValueError:
+                msg = "Invalid."
+        elif sub == "3":
+            player_bet += 3
+            msg = f"Shield Assault: your bet +3 → now {player_bet}"
+        elif sub == "4":
+            player_bet += 5
+            msg = f"Shield Assault+: your bet +5 → now {player_bet}"
+        elif sub == "5":
+            player_bet += 1
+            msg = f"Enemy One-Up: your bet +1 → now {player_bet}"
+        elif sub == "6":
+            print(" How much did YOUR bet increase by?")
+            v = input(" > ").strip()
+            try:
+                player_bet += int(v)
+                msg = f"Your bet +{v} → now {player_bet}"
+            except ValueError:
+                msg = "Invalid."
+
+    elif choice == "4":
+        print(" What card did YOU lose? (value)")
+        gave = input(" > ").strip()
+        print(" What card did YOU gain? (value)")
+        got = input(" > ").strip()
+        msg = f"Swapped: lost {gave}, gained {got}. Re-analyze to recalculate."
+
+    elif choice == "5":
+        print(" New target value? (17 / 21 / 24 / 27)")
+        t = input(" > ").strip()
+        if t in ("17", "21", "24", "27"):
+            current_target = int(t)
+            msg = f"Target changed to {current_target} by opponent!"
+        else:
+            msg = "Invalid target."
+
+    elif choice == "6":
+        msg = "Enemy destroyed your trump. Use W to update your trump hand."
+
+    elif choice == "7":
+        msg = "★ DEAD SILENCE active — you cannot draw cards! Use Destroy to remove it."
+
+    elif choice == "8":
+        msg = "★ OBLIVION — round cancelled. Press D to end round as VOID."
+
+    elif choice == "9":
+        print(" You lost a random trump. What card were you FORCED to draw? (highest in deck)")
+        v = input(" > ").strip()
+        if v:
+            try:
+                val = int(v)
+                if 1 <= val <= 11:
+                    dead_cards = sorted(set(dead_cards + [val]))
+                    msg = f"Cursed! Forced draw: {val}. Added to your hand. Use W to remove lost trump."
+            except ValueError:
+                msg = "Invalid input."
+
+    elif choice == "10":
+        print(" How much did opponent's bet decrease by?")
+        v = input(" > ").strip()
+        try:
+            opp_bet = max(0, opp_bet - int(v))
+            msg = f"Opponent's bet reduced → now {opp_bet}"
+        except ValueError:
+            msg = "Invalid."
+
+    elif choice == "11":
+        print(" Describe what happened (for your notes):")
+        desc = input(" > ").strip()
+        msg = f"Enemy action: {desc}. Use W/X to manually update state."
+
+    elif choice == "0":
+        msg = ""
+
+    if msg:
+        print(f"\n \033[93m→ {msg}\033[0m")
+        print(" TIP: Press A to re-analyze with updated state.")
+
+    return dead_cards, current_target, player_bet, opp_bet, msg
+
+
+def fight_opponent(intel: dict, player_hp: int, player_max: int,
+                   challenges_completed: set = None, available_trumps: set = None,
+                   mode_key: str = "3", fight_num: int = 1) -> int:
     """
     Fight one opponent across multiple rounds until one side reaches 0 HP.
     Returns player's remaining HP when the fight ends.
+    mode_key: "1" Normal, "2" Survival, "3" Survival+
+    fight_num: which opponent number in the gauntlet (1-10)
     """
     opp_hp = int(intel["hp"])
     opp_max = int(intel["hp"])
     round_num = 0
     round_history = []
-    current_target = 21  # Persists across rounds; toggle with 'G'
+    current_target = 21  # Reset each round (Go For cards are "while on table")
     trump_hand = []  # Player's held trump cards — persists across rounds
 
     print_header(f"FIGHT: vs. {intel['name']}")
@@ -1994,23 +2181,61 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int, challenges_comp
     while player_hp > 0 and opp_hp > 0:
         round_num += 1
         dead_cards = []  # Fresh deck each round
+        player_bet = 1   # Base bet — modified by trumps (resets each round)
+        opp_bet = 1      # Base opponent bet (resets each round)
+        current_target = 21  # Go For cards are "while on table" — reset each round
         print_header(f"ROUND {round_num} vs. {intel['name']}")
         display_round_history(round_history)
         display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
 
+        # ── LUCAS SAW ROUND HARD BYPASS ──
+        # Normal 21 final round: Lucas cheats with Desperation + Perfect Draw.
+        # Standard math is INVALID. Only solution: Love Your Enemy.
+        if mode_key == "1" and round_num == 3:
+            print("\n" + "=" * 60)
+            print("\033[91m" + " ★★★ CRITICAL: LUCAS SAW ROUND — SCRIPTED SEQUENCE ★★★".center(60) + "\033[0m")
+            print("=" * 60)
+            print("""
+ Standard probability logic is SUSPENDED for this round.
+ This is a scripted narrative sequence that breaks normal rules.
+
+ WHAT WILL HAPPEN:
+ • Lucas will play 'Perfect Draw' → guarantees himself 21
+ • Lucas will play 'Desperation' → bets become 100, NO drawing
+
+ WHAT YOU MUST DO:
+ 1. Make sure 'Love Your Enemy' is in your trump hand
+ 2. Wait for Lucas to play Desperation
+ 3. IMMEDIATELY play 'Love Your Enemy'
+ 4. This forces Lucas to draw → he busts past 21 → YOU WIN
+
+ ⚠ Do NOT try to beat him with standard probability or
+   target manipulation. Drawing is permanently locked.
+ ⚠ If you don't have 'Love Your Enemy', you CANNOT win.
+""")
+            print("=" * 60)
+            input("\n Press Enter once this round concludes...")
+            player_hp, opp_hp, entry = record_round_result(round_num, player_hp, opp_hp)
+            if entry is not None:
+                round_history.append(entry)
+            continue
+
         while True:
             target_label = f" [Target: {current_target}]" if current_target != 21 else ""
             trump_count = len(trump_hand)
-            print(f"\n ─── Round {round_num} Menu ───{target_label}")
+            bet_label = ""
+            if player_bet != 1 or opp_bet != 1:
+                bet_label = f" [Your bet: {player_bet} | Opp bet: {opp_bet}]"
+            print(f"\n ─── Round {round_num} Menu ───{target_label}{bet_label}")
             print(" A. Analyze hand (get advice)")
+            print(f" \033[93mI. Interrupt — enemy played a trump!\033[0m")
             print(f" P. Play a trump card ({trump_count} in hand)")
             print(f" W. Edit trump hand ({trump_count} cards)")
             print(" D. Done — record round result")
-            print(f" G. Change target (currently: {current_target})")
             dead_label = f" ({sorted(dead_cards)})" if dead_cards else " (none)"
             print(f" X. Dead cards{dead_label}")
             print(" T. Trump card reference")
-            print(" I. Opponent intel")
+            print(" O. Opponent intel")
             print(" H. Round history")
             print(" S. HP status")
             print(" Q. Quit fight")
@@ -2018,7 +2243,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int, challenges_comp
             action = input("\n Action: ").strip().upper()
 
             if action == "A":
-                dead_cards = analyze_round(intel, player_hp, player_max, opp_hp, opp_max, current_target, dead_cards, challenges_completed, available_trumps, trump_hand)
+                dead_cards = analyze_round(intel, player_hp, player_max, opp_hp, opp_max, current_target, dead_cards, challenges_completed, available_trumps, trump_hand, fight_num=fight_num, mode_key=mode_key)
 
             elif action == "P":
                 if not trump_hand:
@@ -2036,12 +2261,48 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int, challenges_comp
                         print(f"\n Playing: {played}")
                         print(f" Effect: {TRUMPS.get(played, {}).get('desc', '?')}")
 
-                        # Handle target changers
+                        # Handle target changers — auto-updates target
                         if played in ("Go for 17", "Go for 24", "Go for 27"):
                             new_target = int(played.split()[-1])
                             current_target = new_target
                             trump_hand.pop(idx)
                             print(f" ★ Target changed to {current_target}!")
+
+                        # Handle bet modifiers — auto-updates bets
+                        elif played == "One-Up":
+                            opp_bet += 1
+                            trump_hand.pop(idx)
+                            print(f" ★ Opponent's bet +1 → now {opp_bet}. (Also draw 1 trump — use W to add it.)")
+
+                        elif played == "Two-Up":
+                            opp_bet += 2
+                            trump_hand.pop(idx)
+                            print(f" ★ Opponent's bet +2 → now {opp_bet}. (Also draw 1 trump — use W to add it.)")
+
+                        elif played == "Two-Up+":
+                            opp_bet += 2
+                            trump_hand.pop(idx)
+                            print(f" ★ Returned opponent's last face-up card to deck. Opp bet +2 → now {opp_bet}.")
+                            print(" What card was returned? (value, to remove from dead cards)")
+                            r_input = input(" > ").strip()
+                            if r_input:
+                                try:
+                                    rv = int(r_input)
+                                    if rv in dead_cards:
+                                        dead_cards.remove(rv)
+                                        print(f" Card {rv} returned to deck pool.")
+                                except ValueError:
+                                    pass
+
+                        elif played == "Shield":
+                            player_bet = max(0, player_bet - 1)
+                            trump_hand.pop(idx)
+                            print(f" ★ Your bet -1 → now {player_bet}.")
+
+                        elif played == "Shield+":
+                            player_bet = max(0, player_bet - 2)
+                            trump_hand.pop(idx)
+                            print(f" ★ Your bet -2 → now {player_bet}.")
 
                         # Handle Return (needs current hand state — ask for card)
                         elif played == "Return":
@@ -2121,11 +2382,41 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int, challenges_comp
                                     drawn = int(pd_input)
                                     if 1 <= drawn <= 11:
                                         print(f" ★ Drew {drawn} via {played}.")
+                                        if played == "Perfect Draw+":
+                                            opp_bet += 5
+                                            print(f" ★ Opponent's bet +5 → now {opp_bet}.")
+                                        elif played == "Ultimate Draw":
+                                            print(" (Also draw 2 trumps — use W to add them.)")
                                         trump_hand.pop(idx)
                                     else:
                                         print(" Invalid card value.")
                                 except ValueError:
                                     print(" Invalid input.")
+                            else:
+                                print(" Cancelled.")
+
+                        # Handle numbered draw cards (2-7 Card) — with failed draw deduction
+                        elif played in ("2 Card", "3 Card", "4 Card", "5 Card", "6 Card", "7 Card"):
+                            card_val = int(played[0])
+                            print(f"\n Did the draw succeed? (Was {card_val} still in the deck?)")
+                            print(f"  Y = yes, drew {card_val}")
+                            print(f"  N = no, nothing happened (card not in deck)")
+                            result = input(" > ").strip().upper()
+                            if result == "Y":
+                                dead_cards = sorted(set(dead_cards + [card_val]))
+                                trump_hand.pop(idx)
+                                print(f" ★ Drew {card_val}. Added to your hand.")
+                            elif result == "N":
+                                trump_hand.pop(idx)
+                                # ── CRITICAL DEDUCTION ──
+                                # Card not in deck = opponent has it (face-down hidden card)
+                                # unless it's already visible on the board
+                                if card_val not in dead_cards:
+                                    print(f"\n \033[93m★★ INTEL: {card_val} is NOT in the deck!\033[0m")
+                                    print(f" \033[93m   → Opponent's hidden card is almost certainly {card_val}.\033[0m")
+                                    print(f"   (Unless {card_val} was already drawn and you forgot to track it.)")
+                                else:
+                                    print(f" {card_val} was already out of the deck.")
                             else:
                                 print(" Cancelled.")
 
@@ -2138,21 +2429,14 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int, challenges_comp
                 except ValueError:
                     print(" Invalid input.")
 
+            elif action == "I":
+                # ── INTERRUPT: Enemy played a trump card ──
+                dead_cards, current_target, player_bet, opp_bet, int_msg = handle_interrupt(
+                    dead_cards, current_target, player_bet, opp_bet
+                )
+
             elif action == "W":
                 trump_hand = edit_trump_hand(trump_hand)
-                # After opponent's turn, ask if hand changed
-                print("\n Did the opponent play any trumps that affected your hand? (y/n)")
-                if input(" > ").strip().lower() == "y":
-                    print(" Update your hand above using + and -.")
-
-            elif action == "G":
-                print("\n Set target: 17 / 21 / 24 / 27")
-                t_input = input(" > ").strip()
-                if t_input in ("17", "21", "24", "27"):
-                    current_target = int(t_input)
-                    print(f" ★ Target set to {current_target}!")
-                else:
-                    print(" Invalid. Target unchanged.")
 
             elif action == "X":
                 if dead_cards:
@@ -2216,7 +2500,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int, challenges_comp
                 display_trumps_reference()
                 input(" Press Enter to continue...")
 
-            elif action == "I":
+            elif action == "O":
                 display_opponent_info(intel)
 
             elif action == "H":
@@ -2231,7 +2515,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int, challenges_comp
                     return player_hp
 
             else:
-                print(" Invalid action. Use A/D/G/T/I/H/S/Q.")
+                print(" Invalid action. Use A/I/P/W/D/X/T/O/H/S/Q.")
 
     return player_hp
 
@@ -2325,7 +2609,8 @@ def run_mode(mode_key: str, challenges_completed: set = None, available_trumps: 
                 print(" Returning to menu.")
                 return
 
-        player_hp = fight_opponent(opp, player_hp, player_max, challenges_completed, available_trumps)
+        player_hp = fight_opponent(opp, player_hp, player_max, challenges_completed, available_trumps,
+                                   mode_key=mode_key, fight_num=fight_num)
 
         if player_hp <= 0:
             print_header("GAME OVER")
@@ -2372,7 +2657,8 @@ def run_free_play(challenges_completed: set = None, available_trumps: set = None
             hp_input = input(" > ").strip()
             player_hp = int(hp_input) if hp_input else 10
             player_max = player_hp
-            fight_opponent(opp, player_hp, player_max, challenges_completed, available_trumps)
+            fight_opponent(opp, player_hp, player_max, challenges_completed, available_trumps,
+                          mode_key="3", fight_num=0)
         else:
             print(" Invalid selection.")
     except ValueError:
