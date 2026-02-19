@@ -6,3 +6,5 @@ Instead of    print(f" P. Play a trump card ({trump_count} in hand)")
  Auto suggest a trump card if necesary (play conservative to save from big damage and to survive later rounds/ harder opponents. Take into account what trumps the opponent likes to play and when. )
 
 -Change challenge suggestions based on above logic
+
+-add a notice that 21 base tutorial against lucas logic is currently not working properly
