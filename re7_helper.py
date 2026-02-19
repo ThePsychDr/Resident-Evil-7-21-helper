@@ -731,11 +731,25 @@ def recommend_trump_play(
     Smart trump card auto-suggestion engine.
     Considers: game state, enemy AI patterns, conservative survival strategy,
     upcoming harder opponents, and challenge completion.
-    Prioritizes lowest utility_weight cards first for non-boss fights.
+
+    KEY MECHANIC: utility_weight from TRUMPS dict drives card selection.
+    - When multiple cards solve the same problem, lowest weight is suggested first.
+    - High-weight cards (>=60) get a SAVE warning against non-boss opponents.
+    - Boss fights unlock full arsenal — no SAVE warnings.
+
     Returns list of recommendation strings with priority markers.
     """
     if not trump_hand:
         return []
+
+    def get_weight(card_name):
+        """Get utility weight for a card. Higher = more valuable to save."""
+        return TRUMPS.get(card_name, {}).get("weight", 50)
+
+    def weight_tag(card_name):
+        """Return a cost indicator like [w10] for display."""
+        w = get_weight(card_name)
+        return f"[cost:{w}]"
 
     recs = []
     hand_set = set(trump_hand)
@@ -749,9 +763,11 @@ def recommend_trump_play(
     # Count destroy cards for resource management
     destroys_held = sum(1 for c in trump_hand if c.startswith("Destroy"))
 
+    # Weight threshold: cards at or above this are "expensive" — warn before using on non-bosses
+    SAVE_THRESHOLD = 60
+
     # ══════════════════════════════════════════════════════
     # GAUNTLET RESOURCE MANAGEMENT — fight_num awareness
-    # In Survival+, fights 5 and 10 are bosses that NEED Destroys.
     # ══════════════════════════════════════════════════════
     if mode_key == "3" and fight_num > 0 and not is_boss:
         if fight_num < 5 and destroys_held > 0:
@@ -761,22 +777,44 @@ def recommend_trump_play(
     elif mode_key == "2" and fight_num > 0 and fight_num < 5 and destroys_held > 0:
         recs.append(f"⚠ SAVE Destroy cards — Molded Hoffman (fight #5) needs them for Curse/Black Magic!")
 
+    # High-weight card inventory warning (non-boss only)
+    if not is_boss:
+        expensive = [c for c in trump_hand if get_weight(c) >= SAVE_THRESHOLD]
+        if expensive:
+            names = sorted(set(expensive), key=get_weight, reverse=True)
+            top3 = names[:3]
+            recs.append(f"HIGH-VALUE CARDS: {', '.join(f'{n} {weight_tag(n)}' for n in top3)} — save for bosses if possible.")
+
     # ══════════════════════════════════════════════════════
     # PRIORITY 1: EMERGENCY — You're busted
+    # Sort fixes by weight: cheapest fix first
     # ══════════════════════════════════════════════════════
     if busted:
+        fixes = []
+
         if "Return" in hand_set:
-            recs.append("★★ PLAY 'Return' NOW — send back your last card to un-bust!")
+            fixes.append((get_weight("Return"), "★★ PLAY 'Return' — send back your last card to un-bust!"))
         if "Go for 27" in hand_set and u_total <= 27:
-            recs.append(f"★★ PLAY 'Go for 27' — your {u_total} is safe under 27!")
+            fixes.append((get_weight("Go for 27"), f"★★ PLAY 'Go for 27' — your {u_total} is safe under 27!"))
         if "Go for 24" in hand_set and u_total <= 24 and target == 21:
-            recs.append(f"★★ PLAY 'Go for 24' — your {u_total} is safe under 24!")
+            fixes.append((get_weight("Go for 24"), f"★★ PLAY 'Go for 24' — your {u_total} is safe under 24!"))
         if "Exchange" in hand_set:
-            recs.append("★ Consider 'Exchange' — swap your bust card with opponent's.")
-        if not recs:
+            fixes.append((get_weight("Exchange"), "★ 'Exchange' — swap your bust card with opponent's."))
+
+        # Numbered cards that could un-bust (e.g. Return then draw lower)
+        # Not direct fixes but worth noting
+
+        if fixes:
+            # Sort cheapest first
+            fixes.sort(key=lambda x: x[0])
+            recs.append("BUST RECOVERY (cheapest fix first):")
+            for w, msg in fixes:
+                recs.append(f"  {msg}")
+        else:
             shield_cards = [c for c in trump_hand if c.startswith("Shield") and "Assault" not in c]
             if shield_cards:
-                recs.append(f"You're bust — play {', '.join(shield_cards)} to reduce damage taken.")
+                cheapest = min(shield_cards, key=get_weight)
+                recs.append(f"No un-bust cards. Play '{cheapest}' {weight_tag(cheapest)} to reduce damage.")
         return recs
 
     # ══════════════════════════════════════════════════════
@@ -801,7 +839,6 @@ def recommend_trump_play(
 
     # Black Magic (Molded Hoffman) — YOUR bet +10 = instant death
     if "Black Magic" in enemy_trumps:
-        bm_info = trump_behavior.get("Black Magic", {})
         if destroys_held > 0 and "Dead Silence" not in enemy_trumps:
             recs.append("★ SAVE Destroy for Black Magic — YOUR bet +10 = instant death if you lose!")
         elif destroys_held > 0:
@@ -811,10 +848,18 @@ def recommend_trump_play(
     if "Curse" in enemy_trumps and remaining:
         highest = max(remaining)
         if u_total + highest > target:
+            # Suggest cheapest counter
+            counters = []
             if "Return" in hand_set:
-                recs.append(f"If Cursed: use 'Return' to send back the forced {highest} (would bust to {u_total + highest}).")
+                counters.append((get_weight("Return"), f"'Return' {weight_tag('Return')} to send back the forced {highest}"))
             if "Exchange" in hand_set:
-                recs.append("Or 'Exchange' after Curse to give the bad card to opponent.")
+                counters.append((get_weight("Exchange"), f"'Exchange' {weight_tag('Exchange')} to give bad card to opponent"))
+            if counters:
+                counters.sort(key=lambda x: x[0])
+                cheapest = counters[0][1]
+                recs.append(f"If Cursed (forced {highest}, bust to {u_total + highest}): use {cheapest}")
+                if len(counters) > 1:
+                    recs.append(f"  Or: {counters[1][1]}")
 
     # Escape (Mr. Big Head) — destroys win progress
     if "Escape" in enemy_trumps:
@@ -823,9 +868,16 @@ def recommend_trump_play(
 
     # Mind Shift / Mind Shift+ — play 2 (or 3) trumps to remove it
     if "Mind Shift+" in enemy_trumps:
-        recs.append("⚠ Mind Shift+ threat: play 3 trumps this round to remove it, or lose ALL trumps.")
+        # Suggest cheapest trumps to burn
+        by_weight = sorted(trump_hand, key=get_weight)
+        cheapest_3 = by_weight[:3] if len(by_weight) >= 3 else by_weight
+        names = ', '.join(f"'{c}' {weight_tag(c)}" for c in cheapest_3)
+        recs.append(f"⚠ Mind Shift+: play 3 trumps to remove, or lose ALL. Cheapest to burn: {names}")
     elif "Mind Shift" in enemy_trumps:
-        recs.append("⚠ Mind Shift threat: play 2 trumps this round to remove it, or lose half.")
+        by_weight = sorted(trump_hand, key=get_weight)
+        cheapest_2 = by_weight[:2] if len(by_weight) >= 2 else by_weight
+        names = ', '.join(f"'{c}' {weight_tag(c)}" for c in cheapest_2)
+        recs.append(f"⚠ Mind Shift: play 2 trumps to remove, or lose half. Cheapest to burn: {names}")
 
     # Destroy+ (Molded Hoffman) — don't stack too many bet-ups
     if "Destroy+" in enemy_trumps:
@@ -843,72 +895,88 @@ def recommend_trump_play(
     if "Desire" in enemy_trumps or "Desire+" in enemy_trumps:
         d_type = "Desire+" if "Desire+" in enemy_trumps else "Desire"
         count_modifier = "FULL" if "Desire+" in enemy_trumps else "half"
-        recs.append(f"⚠ {d_type}: your bet scales with your {count_modifier} trump count. Use trumps aggressively!")
+        # Suggest cheapest trumps to dump
+        by_weight = sorted(trump_hand, key=get_weight)
+        cheapest = by_weight[:2] if len(by_weight) >= 2 else by_weight
+        dump_names = ', '.join(f"'{c}' {weight_tag(c)}" for c in cheapest)
+        recs.append(f"⚠ {d_type}: bet scales with {count_modifier} trump count. Dump cheap cards: {dump_names}")
 
     # ══════════════════════════════════════════════════════
     # PRIORITY 3: PROACTIVE — Offensive plays
     # ══════════════════════════════════════════════════════
 
-    # Perfect hand — stack damage
+    # Perfect hand — stack damage (cheapest bet-ups first)
     if u_total == target:
         bet_cards = [c for c in trump_hand if c in ("One-Up", "Two-Up", "Two-Up+")]
         if bet_cards:
-            recs.append(f"★ PERFECT {target}! Stack bet-ups: {', '.join(bet_cards)} for max damage!")
+            sorted_bets = sorted(bet_cards, key=get_weight)
+            labels = ', '.join(f"'{c}' {weight_tag(c)}" for c in sorted_bets)
+            recs.append(f"★ PERFECT {target}! Stack bet-ups (cheapest first): {labels}")
 
     # Love Your Enemy — force opponent to draw (best card for them, but can bust)
     if "Love Your Enemy" in hand_set and opp_behavior != "stay":
         if o_visible_total >= target - 3:
             bust_cards = [c for c in remaining if o_visible_total + c > target]
             if bust_cards:
-                recs.append(f"'Love Your Enemy' — gives opponent best card, but {len(bust_cards)}/{len(remaining)} cards bust them!")
+                recs.append(f"'Love Your Enemy' {weight_tag('Love Your Enemy')} — {len(bust_cards)}/{len(remaining)} cards bust opponent!")
 
-    # Perfect Draw when you need exactly the right card
+    # Perfect Draw when you need exactly the right card — suggest cheapest draw option
     if gap_to_target > 0:
-        if "Perfect Draw" in hand_set or "Perfect Draw+" in hand_set or "Ultimate Draw" in hand_set:
-            draw_card = next((c for c in ["Ultimate Draw", "Perfect Draw+", "Perfect Draw"] if c in hand_set), None)
-            if draw_card:
-                recs.append(f"'{ draw_card}' — draws best card for you (need {gap_to_target} to reach {target}).")
+        draw_options = []
+        for card in ["Perfect Draw", "Perfect Draw+", "Ultimate Draw"]:
+            if card in hand_set:
+                draw_options.append((get_weight(card), card))
+        if draw_options:
+            draw_options.sort(key=lambda x: x[0])
+            cheapest = draw_options[0]
+            recs.append(f"'{cheapest[1]}' {weight_tag(cheapest[1])} — draws best card (need {gap_to_target} to reach {target}).")
+            if len(draw_options) > 1 and not is_boss:
+                expensive = [d for d in draw_options[1:] if d[0] >= SAVE_THRESHOLD]
+                if expensive:
+                    recs.append(f"  (SAVE '{expensive[0][1]}' {weight_tag(expensive[0][1])} for bosses — use cheapest draw first.)")
 
-    # Numbered card draws
+    # Numbered card draws — sorted by weight (all equal at 15, but sorted for consistency)
+    num_draws = []
     for card_name in ["2 Card", "3 Card", "4 Card", "5 Card", "6 Card", "7 Card"]:
         if card_name in hand_set:
             needed = int(card_name[0])
             if u_total + needed == target and needed in remaining:
-                recs.append(f"★ '{card_name}' gives you exactly {target}! (if {needed} is still in deck)")
+                num_draws.append((get_weight(card_name), f"★ '{card_name}' {weight_tag(card_name)} gives you exactly {target}!"))
             elif u_total + needed <= target and needed in remaining:
-                recs.append(f"'{card_name}' is safe ({u_total}+{needed}={u_total+needed}).")
+                num_draws.append((get_weight(card_name), f"'{card_name}' {weight_tag(card_name)} is safe ({u_total}+{needed}={u_total+needed})."))
+    if num_draws:
+        num_draws.sort(key=lambda x: x[0])
+        for _, msg in num_draws:
+            recs.append(msg)
 
     # Two-Up+ — removes opponent's card AND raises bet
     if "Two-Up+" in hand_set and opp_behavior != "stay":
-        recs.append("'Two-Up+' returns opponent's last card to deck AND raises their bet by 2.")
+        recs.append(f"'Two-Up+' {weight_tag('Two-Up+')} returns opponent's card to deck AND bet +2.")
 
     # Exchange when opponent has a high visible card and you have a low one
     if "Exchange" in hand_set and opp_behavior != "stay" and gap_to_target > 0:
-        recs.append("'Exchange' can steal opponent's high card and give them your low one.")
+        recs.append(f"'Exchange' {weight_tag('Exchange')} can steal opponent's high card.")
 
     # ══════════════════════════════════════════════════════
     # PRIORITY 4: DEFENSIVE / CONSERVATIVE
     # ══════════════════════════════════════════════════════
 
-    # Low HP — prioritize survival
+    # Low HP — prioritize survival (cheapest shield first)
     if player_hp <= 3:
         shield_cards = [c for c in trump_hand if c.startswith("Shield") and "Assault" not in c]
         if shield_cards:
-            recs.append(f"LOW HP ({player_hp}) — play {', '.join(shield_cards)} to reduce damage.")
+            cheapest = min(shield_cards, key=get_weight)
+            recs.append(f"LOW HP ({player_hp}) — play '{cheapest}' {weight_tag(cheapest)} to reduce damage.")
 
-    # Save trumps for harder opponents (conservative strategy)
-    if not is_boss and destroys_held >= 3:
-        recs.append("TIP: Save extra Destroys — bosses need them more (Molded: Black Magic, Undead: Dead Silence).")
-
-    # Harvest in play? Use trumps freely for value
+    # Harvest should always be played first if held (it pays for itself)
     if "Harvest" in hand_set:
-        recs.append("★ Play 'Harvest' first! Every trump you play afterward draws a replacement.")
+        recs.append(f"★ Play 'Harvest' {weight_tag('Harvest')} FIRST! Every trump afterward draws a replacement.")
 
-    # Trump Switch for value
+    # Trump Switch for value (low weight — good to play early)
     if "Trump Switch+" in hand_set and len(trump_hand) <= 3:
-        recs.append("'Trump Switch+' — discard 1, draw 4. Good value when hand is small.")
+        recs.append(f"'Trump Switch+' {weight_tag('Trump Switch+')} — discard 1, draw 4. Good value when hand is small.")
     elif "Trump Switch" in hand_set and len(trump_hand) <= 2:
-        recs.append("'Trump Switch' — discard 2, draw 3. Net +1 when hand is small.")
+        recs.append(f"'Trump Switch' {weight_tag('Trump Switch')} — discard 2, draw 3. Net +1.")
 
     # ══════════════════════════════════════════════════════
     # FALLBACK
