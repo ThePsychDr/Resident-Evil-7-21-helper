@@ -1183,13 +1183,13 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int) -> int:
     round_num = 0
     round_history = []
     current_target = 21  # Persists across rounds; toggle with 'G'
-    dead_cards = []       # Cards removed by Destroy etc.; persists across rounds
 
     print_header(f"FIGHT: vs. {intel['name']}")
     display_opponent_info(intel)
 
     while player_hp > 0 and opp_hp > 0:
         round_num += 1
+        dead_cards = []  # Fresh deck each round
         print_header(f"ROUND {round_num} vs. {intel['name']}")
         display_round_history(round_history)
         display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
