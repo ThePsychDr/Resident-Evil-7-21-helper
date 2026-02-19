@@ -1,2 +1,5 @@
 TODO:
--Add logic for exchange trump
+-Fix trump cards
+-Code in the actual mechanic (return card + deck restore) so you don’t have to manually mentally adjust totals/deck.
+
+-Add logic to consider which trump cards should be played (ask what the player has, then remember, takes enemy ai into account, asks if player held trumps changed after opponents turn)
