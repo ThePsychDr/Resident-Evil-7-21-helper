@@ -2,3 +2,4 @@ TODO:
 - Test trump weight system 
 >Make sure the weighing is taking the remaining cards in deck into account
 > test recommendations in early game vs late game esp taking your current health/ trumps into account.
+(adjust if new enemy behavior is obvserved)
