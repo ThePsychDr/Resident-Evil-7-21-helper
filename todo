@@ -212,7 +212,7 @@ Don't waste strong trumps — save them for later fights.
  Take into account its the first round and dont display weight to user (not useful info to be displayed)
 Only when in "challenge lab - avoid taking any damage." Consider that it is the first round in 21 and 21+ and suggest restarting if damage is taking
 Output which option to do last ((before opponent tip and enemy advice))
-Change your card input to always remember your face down card (unless a trump is played that changed that)
+Change your card input to always remember your face down card (unless a trump is played that changed that; take into consideration which opponent can play those trump cards/ if you can)
 
  (Opponent hasn't stayed — odds are estimates. Select '2' when they stop drawing.)
 
