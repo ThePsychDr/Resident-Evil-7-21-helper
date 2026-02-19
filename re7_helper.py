@@ -656,6 +656,14 @@ def opponent_total_distribution(o_visible_total: int, remaining, stay_val: int, 
     if behavior == "stay" or o_visible_total > target:
         return {o_visible_total: 1.0}
 
+    if behavior == "stay_hidden":
+        # Opponent has stopped drawing, but they likely have one face-down card.
+        # Model their final as visible_total + one unknown card from the remaining deck.
+        if not deck:
+            return {o_visible_total: 1.0}
+        p = 1.0 / len(deck)
+        return {o_visible_total + c: p for c in deck}
+
     if behavior == "hit_once":
         if not deck:
             return {o_visible_total: 1.0}
@@ -1328,10 +1336,16 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         print("  3. I forced a draw (Love Your Enemy / similar)")
         beh_input = input(" > ").strip()
         if beh_input == "2":
-            opp_behavior = "stay"
-            print(" What's their total? (shown on screen)")
+            # Opponent stopped drawing. In many situations you *can't* know their true total
+            # because they may have a face-down (hidden) card.
+            #
+            # If the game *reveals* their final total (no hidden uncertainty), you can enter it.
+            # Otherwise, just press Enter and we'll model the hidden card as unknown.
+            print(" Do you know their FINAL total (only if the game reveals it)?")
+            print(" (Enter = unknown / hidden card not revealed)")
             opp_total_raw = input(" > ").strip()
             if opp_total_raw:
+                opp_behavior = "stay"
                 new_total = int(opp_total_raw)
                 hidden_sum = new_total - o_total
                 if 1 <= hidden_sum <= 11 and hidden_sum in remaining:
@@ -1352,7 +1366,8 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
                 o_total = new_total
                 print(f" → Opponent locked in at {o_total}")
             else:
-                print(f" → Using visible total: {o_total}")
+                opp_behavior = "stay_hidden"
+                print(f" → Using visible total only: {o_total} (hidden card unknown)")
         elif beh_input == "3":
             forced_raw = input(" What card did they draw? ").strip()
             if forced_raw:
@@ -1376,7 +1391,7 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         safe_pct, bust_pct, perfect_draws = calculate_probabilities(remaining, u_total, target)
         safe_count = len([c for c in remaining if u_total + c <= target])
 
-        opp_label = "OPPONENT FINAL" if opp_behavior == "stay" else "OPPONENT VISIBLE"
+        opp_label = "OPPONENT FINAL" if opp_behavior == "stay" else ("OPPONENT VISIBLE (HIDDEN UNKNOWN)" if opp_behavior == "stay_hidden" else "OPPONENT VISIBLE")
         print(f"\n YOUR TOTAL: {u_total} (cards: {u_hand})")
         print(f" {opp_label}: {o_total} (cards: {o_vis})")
         print(f" TARGET: {target}")
