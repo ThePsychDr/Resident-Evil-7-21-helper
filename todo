@@ -28,6 +28,8 @@ Example (Normal 21) // What to change marked throughout
  │ Stays at: 16+
  └─ Sack head with tally marks. Basic AI, no special trumps.
 
+//He played trump cards as seen in the log. it was 4 tally hoffman
+
  INTEL:
  Easiest opponent. No special trump cards.
 Play normally and conserve HP.
