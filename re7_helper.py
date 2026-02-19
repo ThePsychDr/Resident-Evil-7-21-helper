@@ -430,8 +430,18 @@ CHALLENGE_GOALS = {
 }
 
 
-def setup_challenge_progress():
+def setup_challenge_progress(force_prompt=False):
     """Ask which challenges are completed at session start. Returns set of completed keys."""
+    # Try loading from disk first
+    if not force_prompt:
+        saved_challenges, saved_trumps = load_progress()
+        if saved_challenges is not None:
+            print(f"\n ✓ Loaded save: {len(saved_challenges)} challenges completed")
+            if saved_trumps:
+                print(f"   Unlocked trumps: {', '.join(sorted(saved_trumps))}")
+            print("   (Press U from main menu to update)")
+            return saved_challenges, saved_trumps
+
     completed = set()
     print_header("CHALLENGE PROGRESS")
     print(" Which challenges have you already completed?")
@@ -469,6 +479,9 @@ def setup_challenge_progress():
     else:
         print("\n No challenges completed yet.")
 
+    # Auto-save
+    save_progress(completed, available_trumps)
+
     return completed, available_trumps
 
 CHALLENGE_SOURCES = [
@@ -478,6 +491,329 @@ CHALLENGE_SOURCES = [
     ("TrueAchievements - Survival+ strategy discussion", "https://www.trueachievements.com/a229688/you-gotta-know-when-to-hold-em-achievement"),
     ("EntranceJew odds helper", "https://entrancejew.itch.io/re7-21-tool"),
 ]
+
+# ============================================================
+# SAVE / LOAD SYSTEM
+# ============================================================
+import json
+
+SAVE_FILE = os.path.join(os.path.expanduser("~"), ".re7_21_progress.json")
+
+
+def save_progress(challenges_completed: set, available_trumps: set) -> None:
+    """Persist challenge progress to disk."""
+    data = {
+        "challenges_completed": sorted(challenges_completed),
+        "available_trumps": sorted(available_trumps),
+    }
+    try:
+        with open(SAVE_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+        print(f" ✓ Progress saved to {SAVE_FILE}")
+    except OSError as e:
+        print(f" ⚠ Could not save: {e}")
+
+
+def load_progress():
+    """Load challenge progress from disk. Returns (challenges, trumps) or (None, None)."""
+    try:
+        with open(SAVE_FILE, "r") as f:
+            data = json.load(f)
+        challenges = set(data.get("challenges_completed", []))
+        trumps = set(data.get("available_trumps", []))
+        return challenges, trumps
+    except (OSError, json.JSONDecodeError, KeyError):
+        return None, None
+
+
+# ============================================================
+# PLAYER TRUMP HAND TRACKING
+# ============================================================
+# Player-obtainable trump cards (exclude enemy-only cards)
+PLAYER_TRUMPS = [
+    "One Up", "Two Up", "Two Up+", "Three Up",
+    "Shield", "Shield+",
+    "Return", "Remove", "Exchange",
+    "Perfect Draw", "Perfect Draw+", "Ultimate Draw",
+    "Love Your Enemy",
+    "Go for 17", "Go for 24", "Go for 27",
+    "Destroy", "Destroy+", "Destroy++",
+    "Trump Switch", "Trump Switch+", "Harvest", "Happiness",
+    "Escape", "Oblivion",
+]
+
+
+def display_trump_hand(trump_hand: list) -> None:
+    """Display player's current trump cards."""
+    if not trump_hand:
+        print("\n No trump cards in hand.")
+        return
+    print("\n ┌─ YOUR TRUMP CARDS ──────────────────────────────┐")
+    for i, card in enumerate(trump_hand, 1):
+        desc = TRUMPS.get(card, {}).get("desc", "")
+        print(f" │ {i:>2}. {card:<20s} {desc[:35]:<35s}│")
+    print(" └─────────────────────────────────────────────────┘")
+
+
+def edit_trump_hand(trump_hand: list) -> list:
+    """Let user add/remove trump cards from their hand."""
+    while True:
+        display_trump_hand(trump_hand)
+        print("\n Options:")
+        print("  +  Add trump card(s)")
+        print("  -  Remove a trump card (by number)")
+        print("  c  Clear all")
+        print("  Enter  Done")
+        choice = input(" > ").strip().lower()
+
+        if not choice:
+            return trump_hand
+        elif choice == "c":
+            trump_hand.clear()
+            print(" Hand cleared.")
+        elif choice == "-":
+            if not trump_hand:
+                print(" Hand is empty.")
+                continue
+            num = input(" Remove which # ? ").strip()
+            try:
+                idx = int(num) - 1
+                if 0 <= idx < len(trump_hand):
+                    removed = trump_hand.pop(idx)
+                    print(f" Removed: {removed}")
+                else:
+                    print(" Invalid number.")
+            except ValueError:
+                print(" Invalid input.")
+        elif choice == "+":
+            print("\n Available trump cards:")
+            for i, name in enumerate(PLAYER_TRUMPS, 1):
+                print(f"  {i:>2}. {name}")
+            print(f"\n Enter numbers to add (e.g., '1 3 7'), or card names:")
+            raw = input(" > ").strip()
+            if raw:
+                # Try parsing as numbers first
+                try:
+                    indices = [int(x) for x in raw.split()]
+                    for idx in indices:
+                        if 1 <= idx <= len(PLAYER_TRUMPS):
+                            trump_hand.append(PLAYER_TRUMPS[idx - 1])
+                            print(f"  + {PLAYER_TRUMPS[idx - 1]}")
+                except ValueError:
+                    # Try as card names (partial match)
+                    for part in raw.split(","):
+                        part = part.strip()
+                        matches = [n for n in PLAYER_TRUMPS if part.lower() in n.lower()]
+                        if len(matches) == 1:
+                            trump_hand.append(matches[0])
+                            print(f"  + {matches[0]}")
+                        elif len(matches) > 1:
+                            print(f"  Multiple matches for '{part}': {matches}")
+                        else:
+                            print(f"  No match for '{part}'")
+    return trump_hand
+
+
+def recommend_trump_play(
+    trump_hand: list,
+    u_total: int,
+    o_visible_total: int,
+    remaining: list,
+    target: int,
+    stay_val: int,
+    intel: dict,
+    player_hp: int,
+    opp_hp: int,
+    opp_behavior: str = "auto",
+) -> list:
+    """
+    Recommend which trump cards to play based on game state.
+    Returns list of recommendation strings.
+    """
+    if not trump_hand:
+        return []
+
+    recs = []
+    hand_set = set(trump_hand)
+    enemy_trumps = set(intel.get("trumps", []))
+    gap_to_target = target - u_total if u_total < target else 0
+    opp_gap = target - o_visible_total if o_visible_total < target else 0
+    busted = u_total > target
+
+    # ── EMERGENCY: You're busted ──
+    if busted:
+        if "Return" in hand_set:
+            recs.append("★ PLAY 'Return' — send back your last card to un-bust!")
+        if "Go for 27" in hand_set and u_total <= 27:
+            recs.append(f"★ PLAY 'Go for 27' — your {u_total} is under 27, saves you from bust!")
+        if "Go for 24" in hand_set and u_total <= 24 and target == 21:
+            recs.append(f"★ PLAY 'Go for 24' — your {u_total} is under 24!")
+        if "Exchange" in hand_set:
+            recs.append("Consider 'Exchange' — swap your last card with opponent's (might save you).")
+        if busted and not recs:
+            recs.append("No trump cards can save you from bust. Try to minimize damage with Shield.")
+        return recs
+
+    # ── COUNTER: Enemy dangerous trumps ──
+    if "Dead Silence" in enemy_trumps and u_total < 17:
+        if "Destroy" in hand_set or "Destroy+" in hand_set or "Destroy++" in hand_set:
+            recs.append("★ SAVE Destroy for 'Dead Silence' — highest priority counter!")
+
+    if "Black Magic" in enemy_trumps:
+        if "Destroy" in hand_set or "Destroy+" in hand_set:
+            recs.append("★ SAVE Destroy for 'Black Magic' — it raises your bet to 10 (instant death)!")
+
+    if "Escape" in enemy_trumps:
+        if "Destroy" in hand_set or "Destroy+" in hand_set:
+            recs.append("SAVE Destroy for 'Escape' — otherwise your wins are voided!")
+
+    if "Curse" in enemy_trumps and remaining:
+        highest = max(remaining)
+        if u_total + highest > target:
+            if "Destroy" in hand_set:
+                recs.append(f"SAVE Destroy for 'Curse' — it forces you to draw {highest} (bust to {u_total + highest})!")
+            if "Return" in hand_set:
+                recs.append("Or use 'Return' AFTER Curse to send back the forced card.")
+
+    # ── OFFENSIVE: You're losing ──
+    if u_total < o_visible_total and opp_behavior != "stay":
+        if "Love Your Enemy" in hand_set and o_visible_total >= target - 5:
+            bust_cards = [c for c in remaining if o_visible_total + c > target]
+            if len(bust_cards) > len(remaining) / 2:
+                recs.append(f"★ PLAY 'Love Your Enemy' — {len(bust_cards)}/{len(remaining)} cards bust the opponent!")
+
+    if u_total == target:
+        # Perfect hand — stack damage
+        bet_cards = [c for c in trump_hand if c in ("One Up", "Two Up", "Two Up+", "Three Up")]
+        if bet_cards:
+            recs.append(f"★ PERFECT {target}! Stack bet-ups: {', '.join(bet_cards)} for max damage!")
+
+    # ── CARD MANIPULATION ──
+    if gap_to_target > 0 and gap_to_target <= 11:
+        if "Perfect Draw" in hand_set:
+            needed = target - u_total
+            if needed in remaining:
+                recs.append(f"'Perfect Draw' gets you exactly {target} (draws {needed}).")
+            else:
+                recs.append(f"'Perfect Draw' — the {needed} you need isn't in deck! Consider saving it.")
+
+    if "Exchange" in hand_set and opp_behavior != "stay":
+        # Exchange is powerful when opponent has a high visible card
+        opp_last = max(o_visible_total, 0)  # rough proxy
+        if gap_to_target > 0:
+            recs.append("'Exchange' can steal opponent's high card and give them your low one.")
+
+    # ── DEFENSE ──
+    if player_hp <= 3:
+        shield_cards = [c for c in trump_hand if c.startswith("Shield") and "Assault" not in c]
+        if shield_cards:
+            recs.append(f"LOW HP ({player_hp}) — hold {', '.join(shield_cards)} for damage reduction.")
+
+    if "Escape" in hand_set and player_hp <= 2:
+        recs.append("★ CRITICAL HP: 'Escape' voids the round if you lose. Play it as insurance!")
+
+    # ── TARGET CHANGERS ──
+    if u_total >= 18 and u_total <= 21 and "Go for 17" in hand_set:
+        recs.append("'Go for 17' — if opponent is close to 21, this can make THEM bust!")
+
+    # ── GENERAL ──
+    if not recs:
+        recs.append("No urgent plays. Hold trumps for counter-play or bet stacking.")
+
+    return recs
+
+
+def apply_trump_effect(
+    trump_name: str,
+    u_hand: list,
+    o_vis: list,
+    remaining: list,
+    dead_cards: list,
+    target: int,
+) -> dict:
+    """
+    Apply a trump card's mechanical effect to the game state.
+    Returns dict with updated state and a description of what happened.
+    """
+    result = {
+        "u_hand": list(u_hand),
+        "o_vis": list(o_vis),
+        "remaining": list(remaining),
+        "dead_cards": list(dead_cards),
+        "target": target,
+        "msg": "",
+    }
+
+    if trump_name == "Return":
+        if not result["u_hand"] or len(result["u_hand"]) < 2:
+            result["msg"] = "Can't Return — need at least 2 cards in hand."
+            return result
+        returned = result["u_hand"].pop()
+        result["remaining"].append(returned)
+        result["remaining"].sort()
+        result["msg"] = f"Returned card {returned} to the deck. Your hand: {result['u_hand']}, total: {sum(result['u_hand'])}"
+
+    elif trump_name == "Remove":
+        if not result["o_vis"]:
+            result["msg"] = "Can't Remove — no visible opponent cards."
+            return result
+        removed = result["o_vis"].pop()
+        result["dead_cards"].append(removed)
+        result["dead_cards"] = sorted(set(result["dead_cards"]))
+        result["msg"] = f"Removed opponent's card {removed}. Opponent visible: {result['o_vis']}, total: {sum(result['o_vis'])}"
+
+    elif trump_name == "Exchange":
+        if not result["u_hand"] or not result["o_vis"]:
+            result["msg"] = "Can't Exchange — both sides need at least one card."
+            return result
+        your_card = result["u_hand"].pop()
+        opp_card = result["o_vis"].pop()
+        result["u_hand"].append(opp_card)
+        result["o_vis"].append(your_card)
+        result["msg"] = (
+            f"Exchanged: gave your {your_card}, took their {opp_card}. "
+            f"Your hand: {result['u_hand']} (total {sum(result['u_hand'])}), "
+            f"Opponent: {result['o_vis']} (total {sum(result['o_vis'])})"
+        )
+
+    elif trump_name == "Perfect Draw":
+        needed = target - sum(result["u_hand"])
+        if needed in result["remaining"]:
+            result["u_hand"].append(needed)
+            result["remaining"].remove(needed)
+            result["msg"] = f"Perfect Draw! Drew {needed} → total {sum(result['u_hand'])} = {target}!"
+        else:
+            # Draws the closest card to what's needed
+            if result["remaining"]:
+                best = min(result["remaining"], key=lambda c: abs(c - needed))
+                result["u_hand"].append(best)
+                result["remaining"].remove(best)
+                result["msg"] = f"Perfect Draw: needed {needed} but drew {best}. Total: {sum(result['u_hand'])}"
+            else:
+                result["msg"] = "No cards left to draw!"
+
+    elif trump_name in ("Go for 17", "Go for 24", "Go for 27"):
+        new_target = int(trump_name.split()[-1])
+        result["target"] = new_target
+        result["msg"] = f"Target changed to {new_target}!"
+
+    elif trump_name == "Love Your Enemy":
+        if result["remaining"]:
+            # Opponent draws a random card — we'll ask what they drew
+            result["msg"] = "FORCE_DRAW"  # Signal to caller to ask for drawn card
+        else:
+            result["msg"] = "No cards left for opponent to draw!"
+
+    elif trump_name == "Destroy":
+        result["msg"] = "Destroyed opponent's last trump card. (No card state change needed.)"
+
+    elif trump_name in ("Destroy+", "Destroy++"):
+        result["msg"] = "Destroyed ALL opponent trump cards on the table."
+
+    else:
+        result["msg"] = f"'{trump_name}' played. (Effect is trump-only, no card state change.)"
+
+    return result
 
 # ============================================================
 # DISPLAY HELPERS
@@ -653,16 +989,16 @@ def opponent_total_distribution(o_visible_total: int, remaining, stay_val: int, 
     behavior = behavior.lower().strip()
     deck = tuple(sorted(set(remaining)))
 
-    if behavior == "stay" or o_visible_total > target:
-        return {o_visible_total: 1.0}
-
-    if behavior == "stay_hidden":
-        # Opponent has stopped drawing, but they likely have one face-down card.
-        # Model their final as visible_total + one unknown card from the remaining deck.
+    if behavior == "stay":
+        # Opponent stopped drawing. They have a hidden card we can't see.
+        # Their total = visible total + one unknown card from the remaining deck.
         if not deck:
             return {o_visible_total: 1.0}
         p = 1.0 / len(deck)
         return {o_visible_total + c: p for c in deck}
+
+    if o_visible_total > target:
+        return {o_visible_total: 1.0}
 
     if behavior == "hit_once":
         if not deck:
@@ -914,7 +1250,7 @@ def generate_advice(
     behavior_key = (opp_behavior or "auto").strip().lower()
 
     behavior_label = {
-        "stay": "Opponent stopped drawing",
+        "stay": "Opponent stopped drawing (hidden card modeled across remaining deck)",
         "auto": f"Opponent AI draws until {stay_val}+",
         "hit_to_threshold": f"Opponent AI draws until {stay_val}+",
     }.get(behavior_key, f"Opponent AI draws until {stay_val}+")
@@ -944,7 +1280,9 @@ def generate_advice(
     )
     bust_pct = 100.0 - safe_pct
     advice_lines.append(f"MODEL: {behavior_label}.")
-    if behavior_key != "stay":
+    if behavior_key == "stay":
+        advice_lines.append("(Opponent stopped — hidden card modeled across all remaining cards.)")
+    else:
         advice_lines.append("(Opponent hasn't stayed — odds are estimates. Select '2' when they stop drawing.)")
     advice_lines.append(
         "If YOU STAY now -> "
@@ -1263,7 +1601,7 @@ def record_round_result(round_num: int, player_hp: int, opp_hp: int):
 # ============================================================
 # SINGLE ROUND ANALYSIS
 # ============================================================
-def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21, dead_cards: list = None, challenges_completed: set = None, available_trumps: set = None) -> list:
+def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21, dead_cards: list = None, challenges_completed: set = None, available_trumps: set = None, trump_hand: list = None) -> list:
     """Run the solver for one round of 21 (read-only, no HP changes).
     Returns updated dead_cards list for persistence across rounds."""
     if dead_cards is None:
@@ -1332,42 +1670,15 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
 
         # What did the opponent do?
         print("\n What did the opponent do? (Enter = nothing yet / still playing)")
-        print("  2. Opponent stayed (done drawing)")
+        print("  2. Opponent stayed (done drawing, hidden card still unknown)")
         print("  3. I forced a draw (Love Your Enemy / similar)")
         beh_input = input(" > ").strip()
         if beh_input == "2":
-            # Opponent stopped drawing. In many situations you *can't* know their true total
-            # because they may have a face-down (hidden) card.
-            #
-            # If the game *reveals* their final total (no hidden uncertainty), you can enter it.
-            # Otherwise, just press Enter and we'll model the hidden card as unknown.
-            print(" Do you know their FINAL total (only if the game reveals it)?")
-            print(" (Enter = unknown / hidden card not revealed)")
-            opp_total_raw = input(" > ").strip()
-            if opp_total_raw:
-                opp_behavior = "stay"
-                new_total = int(opp_total_raw)
-                hidden_sum = new_total - o_total
-                if 1 <= hidden_sum <= 11 and hidden_sum in remaining:
-                    # Single hidden card, auto-remove from deck
-                    remaining.remove(hidden_sum)
-                    accounted = sorted(set(accounted + [hidden_sum]))
-                    print(f" → Hidden card: {hidden_sum} (removed from deck)")
-                elif hidden_sum > 11:
-                    # Multiple hidden cards — ask
-                    print(f" Hidden cards sum to {hidden_sum}. Enter card values (space-separated):")
-                    hidden_raw = input(" > ").strip()
-                    if hidden_raw:
-                        for hc in [int(x) for x in hidden_raw.split()]:
-                            if hc in remaining:
-                                remaining.remove(hc)
-                            if hc not in accounted:
-                                accounted = sorted(set(accounted + [hc]))
-                o_total = new_total
-                print(f" → Opponent locked in at {o_total}")
-            else:
-                opp_behavior = "stay_hidden"
-                print(f" → Using visible total only: {o_total} (hidden card unknown)")
+            opp_behavior = "stay"
+            # They stopped drawing but hidden card is unknown
+            print(f" → Opponent stopped drawing. Visible total: {o_total}")
+            print(f"   Hidden card is one of: {sorted(remaining)}")
+            print(f"   Possible totals: {sorted(o_total + c for c in remaining)}")
         elif beh_input == "3":
             forced_raw = input(" What card did they draw? ").strip()
             if forced_raw:
@@ -1391,7 +1702,7 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         safe_pct, bust_pct, perfect_draws = calculate_probabilities(remaining, u_total, target)
         safe_count = len([c for c in remaining if u_total + c <= target])
 
-        opp_label = "OPPONENT FINAL" if opp_behavior == "stay" else ("OPPONENT VISIBLE (HIDDEN UNKNOWN)" if opp_behavior == "stay_hidden" else "OPPONENT VISIBLE")
+        opp_label = "OPPONENT STAYED (visible)" if opp_behavior == "stay" else "OPPONENT VISIBLE"
         print(f"\n YOUR TOTAL: {u_total} (cards: {u_hand})")
         print(f" {opp_label}: {o_total} (cards: {o_vis})")
         print(f" TARGET: {target}")
@@ -1424,6 +1735,27 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         tip = intel.get("tip", "")
         if tip:
             print(f"\n OPPONENT TIP:\n {tip}")
+
+        # Trump card play recommendations
+        if trump_hand:
+            stay_val = int(intel.get("stay_val", 17))
+            if target != 21:
+                stay_val += (target - 21)
+                stay_val = max(1, stay_val)
+            trump_recs = recommend_trump_play(
+                trump_hand, u_total, o_total, remaining, target, stay_val,
+                intel, player_hp, opp_hp, opp_behavior
+            )
+            if trump_recs:
+                print("\n ┌─ TRUMP CARD ADVICE ─────────────────────────────┐")
+                for rec in trump_recs:
+                    # Wrap long lines
+                    while len(rec) > 53:
+                        print(f" │ {rec[:53]:<53s}│")
+                        rec = rec[53:]
+                    print(f" │ {rec:<53s}│")
+                print(" └─────────────────────────────────────────────────┘")
+
         print("\n" + "=" * 60)
 
         return dead
@@ -1446,9 +1778,15 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int, challenges_comp
     round_num = 0
     round_history = []
     current_target = 21  # Persists across rounds; toggle with 'G'
+    trump_hand = []  # Player's held trump cards — persists across rounds
 
     print_header(f"FIGHT: vs. {intel['name']}")
     display_opponent_info(intel)
+
+    # Initial trump hand setup
+    print("\n Do you want to enter your starting trump cards? (y/n)")
+    if input(" > ").strip().lower() == "y":
+        trump_hand = edit_trump_hand(trump_hand)
 
     while player_hp > 0 and opp_hp > 0:
         round_num += 1
@@ -1459,8 +1797,11 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int, challenges_comp
 
         while True:
             target_label = f" [Target: {current_target}]" if current_target != 21 else ""
+            trump_count = len(trump_hand)
             print(f"\n ─── Round {round_num} Menu ───{target_label}")
             print(" A. Analyze hand (get advice)")
+            print(f" P. Play a trump card ({trump_count} in hand)")
+            print(f" W. Edit trump hand ({trump_count} cards)")
             print(" D. Done — record round result")
             print(f" G. Change target (currently: {current_target})")
             dead_label = f" ({sorted(dead_cards)})" if dead_cards else " (none)"
@@ -1474,7 +1815,132 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int, challenges_comp
             action = input("\n Action: ").strip().upper()
 
             if action == "A":
-                dead_cards = analyze_round(intel, player_hp, player_max, opp_hp, opp_max, current_target, dead_cards, challenges_completed, available_trumps)
+                dead_cards = analyze_round(intel, player_hp, player_max, opp_hp, opp_max, current_target, dead_cards, challenges_completed, available_trumps, trump_hand)
+
+            elif action == "P":
+                if not trump_hand:
+                    print(" No trump cards in hand. Use W to add them.")
+                    continue
+                display_trump_hand(trump_hand)
+                print("\n Which card to play? (number, or Enter to cancel)")
+                p_input = input(" > ").strip()
+                if not p_input:
+                    continue
+                try:
+                    idx = int(p_input) - 1
+                    if 0 <= idx < len(trump_hand):
+                        played = trump_hand[idx]
+                        print(f"\n Playing: {played}")
+                        print(f" Effect: {TRUMPS.get(played, {}).get('desc', '?')}")
+
+                        # Handle target changers
+                        if played in ("Go for 17", "Go for 24", "Go for 27"):
+                            new_target = int(played.split()[-1])
+                            current_target = new_target
+                            trump_hand.pop(idx)
+                            print(f" ★ Target changed to {current_target}!")
+
+                        # Handle Return (needs current hand state — ask for card)
+                        elif played == "Return":
+                            print(" Which card are you returning? (card value)")
+                            ret_input = input(" > ").strip()
+                            if ret_input:
+                                try:
+                                    ret_card = int(ret_input)
+                                    if 1 <= ret_card <= 11:
+                                        print(f" ★ Returned {ret_card} to deck.")
+                                        trump_hand.pop(idx)
+                                    else:
+                                        print(" Invalid card value.")
+                                except ValueError:
+                                    print(" Invalid input.")
+                            else:
+                                print(" Cancelled.")
+
+                        # Handle Remove
+                        elif played == "Remove":
+                            print(" Which opponent card was removed? (card value)")
+                            rem_input = input(" > ").strip()
+                            if rem_input:
+                                try:
+                                    rem_card = int(rem_input)
+                                    if 1 <= rem_card <= 11:
+                                        dead_cards = sorted(set(dead_cards + [rem_card]))
+                                        print(f" ★ Removed opponent's {rem_card}. Added to dead cards.")
+                                        trump_hand.pop(idx)
+                                    else:
+                                        print(" Invalid card value.")
+                                except ValueError:
+                                    print(" Invalid input.")
+                            else:
+                                print(" Cancelled.")
+
+                        # Handle Exchange
+                        elif played == "Exchange":
+                            print(" What card did you give? (your card value)")
+                            give_input = input(" > ").strip()
+                            print(" What card did you take? (opponent's card value)")
+                            take_input = input(" > ").strip()
+                            if give_input and take_input:
+                                try:
+                                    gave = int(give_input)
+                                    took = int(take_input)
+                                    print(f" ★ Exchanged: gave {gave}, took {took}.")
+                                    trump_hand.pop(idx)
+                                except ValueError:
+                                    print(" Invalid input.")
+                            else:
+                                print(" Cancelled.")
+
+                        # Handle Love Your Enemy
+                        elif played == "Love Your Enemy":
+                            print(" What card did the opponent draw?")
+                            lye_input = input(" > ").strip()
+                            if lye_input:
+                                try:
+                                    drawn = int(lye_input)
+                                    if 1 <= drawn <= 11:
+                                        print(f" ★ Forced opponent to draw {drawn}.")
+                                        trump_hand.pop(idx)
+                                    else:
+                                        print(" Invalid card value.")
+                                except ValueError:
+                                    print(" Invalid input.")
+                            else:
+                                print(" Cancelled.")
+
+                        # Handle Perfect Draw / Ultimate Draw
+                        elif played in ("Perfect Draw", "Perfect Draw+", "Ultimate Draw"):
+                            print(" What card did you draw?")
+                            pd_input = input(" > ").strip()
+                            if pd_input:
+                                try:
+                                    drawn = int(pd_input)
+                                    if 1 <= drawn <= 11:
+                                        print(f" ★ Drew {drawn} via {played}.")
+                                        trump_hand.pop(idx)
+                                    else:
+                                        print(" Invalid card value.")
+                                except ValueError:
+                                    print(" Invalid input.")
+                            else:
+                                print(" Cancelled.")
+
+                        else:
+                            # Generic trump — just remove from hand
+                            trump_hand.pop(idx)
+                            print(f" ★ {played} played.")
+                    else:
+                        print(" Invalid number.")
+                except ValueError:
+                    print(" Invalid input.")
+
+            elif action == "W":
+                trump_hand = edit_trump_hand(trump_hand)
+                # After opponent's turn, ask if hand changed
+                print("\n Did the opponent play any trumps that affected your hand? (y/n)")
+                if input(" > ").strip().lower() == "y":
+                    print(" Update your hand above using + and -.")
 
             elif action == "G":
                 print("\n Set target: 17 / 21 / 24 / 27")
@@ -1941,7 +2407,7 @@ def main() -> None:
         elif choice == "C":
             run_challenge_lab()
         elif choice == "U":
-            challenges_completed, available_trumps = setup_challenge_progress()
+            challenges_completed, available_trumps = setup_challenge_progress(force_prompt=True)
             input(" Press Enter to continue...")
         elif choice in ("1", "2", "3"):
             run_mode(choice, challenges_completed, available_trumps)
