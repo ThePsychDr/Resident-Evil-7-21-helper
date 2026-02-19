@@ -1,7 +1,8 @@
-# BETA/WIP CAN STILL MAKE MISTAKES
-
-
 # Resident Evil 7: 21 — Card Game Solver
+
+# BETA/ WIP STILL PLEASE REPORT ANY ISSUES/ SUGGESTIONS
+#can make mistakes
+
 
 A terminal-based companion tool for the **21** card game from the *Resident Evil 7: Biohazard — Banned Footage Vol. 2* DLC. Tracks cards, computes odds, models opponent AI, and gives strategic advice in real time as you play.
 
@@ -23,9 +24,10 @@ The 21 minigame is a high-stakes blackjack variant where you draw from a shared 
 - **Tracking the deck** — Shows which of the 11 cards are still available vs. already played
 - **Computing draw odds** — Exact probability of safe draws, busts, and perfect hits
 - **Modeling opponent AI** — Simulates what the opponent will do based on their stay threshold, with built-in uncertainty when they haven't confirmed staying
-- **Comparing STAY vs. HIT vs. FORCE DRAW** — Full probability breakdown of win/tie/loss for all three options, including Love Your Enemy bust chance
+- **Comparing STAY vs. HIT vs. FORCE DRAW vs. BUST** — Full probability breakdown for all four options, including intentional bust-to-win for challenge completion
 - **Opponent-specific warnings** — Alerts for dangerous trump cards like Curse, Dead Silence, Black Magic, Go for 17, Mind Shift+, and more
 - **HP-aware advice** — Adjusts risk tolerance based on your remaining health
+- **Challenge & unlock tracking** — Remembers which challenges you've completed and which trump cards you've unlocked, with contextual reminders during play
 
 ## Trump Card Database
 
@@ -58,7 +60,13 @@ Since the order is random, the tool asks you to identify each opponent by their 
 
 ## How to Use It During a Game
 
-### 1. Select your mode from the main menu
+### 1. Challenge progress (on startup)
+
+When you first launch, the solver asks which challenges you've already completed. This determines which trump cards you have access to — the solver will remind you to use unlocked cards like Perfect Draw+, Ultimate Draw, or Go for 27 when they'd help.
+
+Press **U** from the main menu at any time to update your challenge progress.
+
+### 2. Select your mode from the main menu
 
 ```
  1. Normal 21 (vs. Lucas — tutorial)
@@ -68,7 +76,7 @@ Since the order is random, the tool asks you to identify each opponent by their 
  C. Challenge Lab (priority unlock planner)
 ```
 
-### 2. Fight loop
+### 3. Fight loop
 
 Each fight runs a loop of rounds. Within each round, the menu offers:
 
@@ -84,7 +92,7 @@ Each fight runs a loop of rounds. Within each round, the menu offers:
 | **S** | HP status bars |
 | **Q** | Quit fight |
 
-### 3. Analyzing a hand
+### 4. Analyzing a hand
 
 When you press **A**, you'll enter:
 
@@ -100,8 +108,10 @@ The solver then shows:
 
 - **Deck tracker** — Color-coded grid of which cards (1–11) are in or out
 - **Draw table** — Every possible card you could draw and the resulting total
-- **STAY vs. HIT vs. FORCE DRAW** — Full win/tie/loss breakdown for all three options, including how likely Love Your Enemy busts the opponent
+- **STAY vs. HIT vs. FORCE DRAW vs. BUST** — Full win/tie/loss breakdown for all options, including intentional bust-to-win odds
 - **Action recommendation** — Picks the best option with reasoning
+- **Unlocked trump hints** — When you're losing and have cards like Perfect Draw+ or Ultimate Draw unlocked, the solver reminds you
+- **Bust challenge nudge** — When the bust-win challenge isn't completed yet and busting has decent odds, highlights the opportunity
 - **Uncertainty note** — When opponent hasn't confirmed staying, reminds you that odds are estimates
 - **Opponent-specific warnings** — Curse danger, Dead Silence risk, Go for 17 alerts, Mind Shift+ warnings, and more
 
@@ -127,10 +137,12 @@ The solver then shows:
  If YOU STAY now  -> Win 91.3% | Tie 4.3% | Lose 4.3%.
  If YOU HIT now   -> Win 60.2% | Tie 5.1% | Lose 34.7% (Bust draw chance: 28.6%).
  If you FORCE A DRAW (Love Your Enemy) -> Win 55.8% | Tie 6.0% | Lose 38.2% (busts opponent: 29%).
+ If you BUST ON PURPOSE -> Best card: 9 (total 25) → Win 12.5%. [Completes bust-win challenge!]
+ UNLOCKED: You have Perfect Draw+ — guaranteed best card from the deck.
  ACTION: STAY — best win chance at 91.3% (+31.1% over next best).
 ```
 
-### 4. Recording a round result
+### 5. Recording a round result
 
 When you press **D**, just two inputs:
 
@@ -150,6 +162,28 @@ The solver models the opponent's behavior as a probability distribution. Two mod
 
 - **Confirmed stayed** (option 2) — Opponent's total is known exactly. You enter the number shown on screen. The solver removes hidden cards from the deck and gives you exact odds. No guessing.
 - **Still playing** (default) — The solver estimates what the opponent will do based on their stay threshold, but bakes in uncertainty. Opponents near the target may gamble and draw again even past their threshold. The further they are from the target, the more likely they'll keep going. **These odds are estimates — always confirm when they stop drawing.**
+
+## Challenge & Unlock Tracking
+
+On startup, the solver asks which challenges you've already completed. This unlocks trump card reminders during play:
+
+| Challenge | Reward |
+|-----------|--------|
+| Beat Normal 21 | Unlocks Survival mode |
+| Beat Survival | Unlocks Survival+, **Perfect Draw+** |
+| Beat Survival+ | Achievement |
+| Win while bust | Starting Trump +1 |
+| Use 15+ trumps in a round | **Trump Switch+** |
+| Beat Survival with no damage | **Ultimate Draw** |
+| Beat Survival+ with no damage | Grand Reward |
+| Hit 21 three times in a row | **Go for 27** |
+| Defeat opponent milestones | **Shield+**, **Two Up+**, **Go for 24** |
+
+Bolded rewards are trump cards that the solver will remind you about during play. For example, if you've unlocked Perfect Draw+ and you're losing a hand, the solver will say "UNLOCKED: You have Perfect Draw+." If you're bust at 23 and you have Go for 27 unlocked, it'll tell you to switch targets.
+
+The bust-to-win challenge is also integrated into normal play — the solver shows "INTENTIONAL BUST" as a 4th option alongside STAY/HIT/FORCE DRAW, with a nudge when you haven't completed it yet and the odds are decent.
+
+Press **U** from the main menu to update your progress at any time.
 
 ## Challenge Lab
 
@@ -182,4 +216,6 @@ Single file — `re7_helper.py`. No config files, no saves, no dependencies. Jus
 - **Watch for Go for 17** — Barbed Wire and Molded Hoffman use it. Your 20 becomes a bust.
 - **Confirm when the opponent stays.** The solver's "auto" model is a guess with built-in uncertainty. Entering their actual total (option 2) gives you exact odds and removes their hidden card from the deck.
 - **Dead cards reset each round.** The deck is fresh every round — Destroy only removes a card for that round.
+- **Go for the bust-win challenge early.** The solver shows you when busting on purpose has decent win odds. Completing it gives you an extra starting trump card every round.
+- **Set your challenge progress on startup.** The solver uses this to remind you about unlocked trump cards you might forget about during intense fights.
 - **The solver is a guide, not gospel.** It models the opponent as a probability distribution, but the actual game AI can behave unpredictably, especially in Survival+.
