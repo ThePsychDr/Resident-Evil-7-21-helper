@@ -4,8 +4,13 @@ TODO:
 >Make sure the weighing is taking the remaining cards in deck into account
 > test recommendations in early game vs late game esp taking your current health/ trumps into account.
 (adjust if new enemy behavior is obvserved)
+- change Beat Survival without taking damage challenge in challenge lab to work with logic not just what to do 
 
--add suggestion to restart run if chances of a winning run/game drops to ~20% or less within the first 4 opponents (try to implement locked challenges into this logic)
+-add suggestion to restart run if chances of a winning run/game drops to ~20% or less within the first 4 opponents in 21 + (try to implement locked challenges into this logic; Do not implement complete survival+ withought being tortured once challenge into this logic)
+-prioritize defeating mr big head if he shows up (Until beat twice so Harvest is unlocked)
+
+-figure out if Win a round using at least 15 trump cards is possible in survival or only survival+
+
 
 
 Example (Normal 21) // What to change marked throughout (also apply these changes to 21+ if logic makes sense in both modes)
@@ -28,7 +33,7 @@ Example (Normal 21) // What to change marked throughout (also apply these change
  │ Stays at: 16+
  └─ Sack head with tally marks. Basic AI, no special trumps.
 
-//He played trump cards as seen in the log. There should be a trump section and special trump section in the target description accurate to 21/ 21+ depending on which is being played) it was 4 tally hoffman (Continually reset always got 4 tally first. Did to test if different ones show up)
+//He played trump cards as seen in the log. There should be a trump section and special trump section in the target description accurate to 21/ 21+ depending on which is being played) it was 4 tally hoffman (Continually resetting always got 4 tally first. I tested if different ones show up)
 
  INTEL:
  Easiest opponent. No special trump cards.
