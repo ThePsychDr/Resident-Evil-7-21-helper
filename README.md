@@ -1,4 +1,4 @@
-# BETA/ WIP
+# BETA/WIP CAN STILL MAKE MISTAKES
 
 
 # Resident Evil 7: 21 — Card Game Solver
@@ -21,11 +21,15 @@ python3 re7_helper.py
 The 21 minigame is a high-stakes blackjack variant where you draw from a shared deck of cards numbered 1–11 (no duplicates). Losing means torture. This solver helps you make optimal decisions by:
 
 - **Tracking the deck** — Shows which of the 11 cards are still available vs. already played
-- **Computing draw odds** — Exact probability of safe draws, busts, and perfect 21s
-- **Modeling opponent AI** — Simulates what the opponent will do based on their stay threshold and adjusts when "Go for 24" shifts the target
-- **Comparing STAY vs. HIT** — Full probability breakdown of win/tie/loss for both options
-- **Opponent-specific warnings** — Alerts for dangerous trump cards like Curse, Dead Silence, Black Magic, and Twenty-One Up based on who you're fighting
+- **Computing draw odds** — Exact probability of safe draws, busts, and perfect hits
+- **Modeling opponent AI** — Simulates what the opponent will do based on their stay threshold, with built-in uncertainty when they haven't confirmed staying
+- **Comparing STAY vs. HIT vs. FORCE DRAW** — Full probability breakdown of win/tie/loss for all three options, including Love Your Enemy bust chance
+- **Opponent-specific warnings** — Alerts for dangerous trump cards like Curse, Dead Silence, Black Magic, Go for 17, Mind Shift+, and more
 - **HP-aware advice** — Adjusts risk tolerance based on your remaining health
+
+## Trump Card Database
+
+All **37 trump cards** are catalogued across 8 categories: Bet modifiers (One Up through Twenty-One Up, Desire/Desire+), Defense (Shield, Shield+, Shield Assault/+), Card manipulation (Return, Remove, Exchange, Perfect Draw/+, Ultimate Draw, Love Your Enemy, Conjure), Target changers (Go for 17/24/27), Counter (Destroy/+/++), Trump draw (Trump Switch/+, Harvest, Happiness), Attack (Mind Shift/+, Curse, Black Magic, Dead Silence), and Special (Escape, Oblivion, Desperation). Press **T** during a fight to view the full reference.
 
 ## Supported Game Modes
 
@@ -37,13 +41,20 @@ The 21 minigame is a high-stakes blackjack variant where you draw from a shared 
 
 ### Survival+ Opponent Structure
 
-Opponents 1–4 and 6–9 are drawn randomly from a pool of variant types. Two fights are always fixed:
+Opponents 1–4 and 6–9 are drawn randomly from a pool of variant types (each with sub-variants based on marking count). Two fights are always fixed:
 
-- **Fight #5** — Molded Hoffman (mid-boss). Uses Curse, Black Magic, and Conjure.
-- **Fight #10** — Undead Hoffman (final boss). Uses Dead Silence, Oblivion, and tons of Perfect Draws.
+- **Fight #5** — Molded Hoffman (mid-boss). Uses Curse, Black Magic, Conjure, Two Up, Destroy+, Go for 17.
+- **Fight #10** — Undead Hoffman (final boss). Uses Ultimate Draw, Two Up+, Perfect Draw+, Dead Silence, Oblivion.
 - **Mr. Big Head** — Rare random encounter with the Escape trump card.
 
-Since the order is random, the tool asks you to identify each opponent by the markings on their sack (tally marks, bloody handprints, barbed wire, or cartoon mask).
+Opponent variants by sack markings:
+
+- **Tally marks** (vertical cuts, 2 or 3): One Up, Two Up, Happiness, Return, Desire, Mind Shift
+- **Bloody handprints** (2 or 4 hands): Desire/Desire+, Mind Shift/Mind Shift+, Happiness. 4-hand variant is dangerous — Mind Shift+ takes ALL your trumps.
+- **Barbed wire** (horizontal lines, 3 or 4): Shield, Shield Assault/+, Go for 17, Two Up
+- **Cartoon mask** (Mr. Big Head): Escape only
+
+Since the order is random, the tool asks you to identify each opponent by their markings.
 
 ## How to Use It During a Game
 
@@ -64,9 +75,10 @@ Each fight runs a loop of rounds. Within each round, the menu offers:
 | Key | Action |
 |-----|--------|
 | **A** | **Analyze hand** — Enter your cards, opponent's visible cards, and dead cards. The solver computes everything. |
-| **D** | **Done** — Record the round result (win/loss/tie/void) and update HP. |
-| **G** | **Toggle "Go for 24"** — Flips the target between 21 and 24. Persists across rounds so you don't have to re-enter it. |
-| **T** | Trump card reference |
+| **D** | **Done** — Record the round result (win/loss/tie/void) and damage dealt. |
+| **G** | **Change target** — Set to 17, 21, 24, or 27 based on active "Go for X" trump. |
+| **X** | **Dead cards** — View, add, or clear dead cards for this round. Resets each round (fresh deck). |
+| **T** | Trump card reference (all 37 cards) |
 | **I** | Opponent intel (trumps, AI type, tips) |
 | **H** | Round history |
 | **S** | HP status bars |
@@ -78,16 +90,20 @@ When you press **A**, you'll enter:
 
 1. Your card values (e.g., `10 6`)
 2. Opponent's visible cards (e.g., `8`)
-3. Dead/removed cards if any
-4. Opponent's draw behavior (already stayed, normal AI, or forced hit)
+3. Dead/removed cards — remembered within the round, resets next round
+4. What did the opponent do?
+   - **Enter** = nothing yet / still playing (default)
+   - **2** = opponent stayed → asks for their total (shown on screen), auto-removes hidden card from deck
+   - **3** = you forced a draw → asks what card they drew, adds it to their total
 
 The solver then shows:
 
 - **Deck tracker** — Color-coded grid of which cards (1–11) are in or out
 - **Draw table** — Every possible card you could draw and the resulting total
-- **STAY vs. HIT probabilities** — Full win/tie/loss breakdown for both choices
-- **Action recommendation** — HIT, STAY, or USE TRUMP with reasoning
-- **Opponent-specific warnings** — Curse danger, Dead Silence risk, instant-kill alerts, etc.
+- **STAY vs. HIT vs. FORCE DRAW** — Full win/tie/loss breakdown for all three options, including how likely Love Your Enemy busts the opponent
+- **Action recommendation** — Picks the best option with reasoning
+- **Uncertainty note** — When opponent hasn't confirmed staying, reminds you that odds are estimates
+- **Opponent-specific warnings** — Curse danger, Dead Silence risk, Go for 17 alerts, Mind Shift+ warnings, and more
 
 ### Example Output
 
@@ -106,20 +122,34 @@ The solver then shows:
   Card  9 → total 25 ✖ BUST
   Card 11 → total 27 ✖ BUST
 
- MODEL: Opponent follows AI stay threshold (17+).
- If YOU STAY now -> Win 25.0% | Tie 8.3% | Lose 66.7%.
- If YOU HIT now  -> Win 60.2% | Tie 5.1% | Lose 34.7%.
- ACTION: HIT — model gives +35.2% win chance over staying.
+ MODEL: Opponent AI draws until 17+.
+ (Opponent hasn't stayed — odds are estimates. Select '2' when they stop drawing.)
+ If YOU STAY now  -> Win 91.3% | Tie 4.3% | Lose 4.3%.
+ If YOU HIT now   -> Win 60.2% | Tie 5.1% | Lose 34.7% (Bust draw chance: 28.6%).
+ If you FORCE A DRAW (Love Your Enemy) -> Win 55.8% | Tie 6.0% | Lose 38.2% (busts opponent: 29%).
+ ACTION: STAY — best win chance at 91.3% (+31.1% over next best).
 ```
 
-## "Go for 24" — How It Works
+### 4. Recording a round result
 
-"Go for 24" is a trump card that changes the round target from 21 to 24. It stays on the table until removed. The solver handles this in two ways:
+When you press **D**, just two inputs:
 
-1. **Your odds update** — Bust threshold shifts to 24, so cards that would bust you at 21 become safe draws.
-2. **Opponent AI adjusts** — The opponent's stay threshold increases by the difference (e.g., an opponent who normally stays at 17 will stay at 20 when the target is 24). This prevents the solver from assuming the opponent will stand on a losing hand like 18 when the real target is 24.
+1. **Win / Loss / Tie / Void / Cancel** (1–5)
+2. **How much damage was dealt?** (the bet number shown on screen, defaults to 1)
 
-Toggle it with **G** in the fight menu. It persists until you toggle it off.
+## "Go for X" — Target Changing
+
+"Go for 17", "Go for 24", and "Go for 27" are trump cards that change the round target. Press **G** in the fight menu to set the current target (17 / 21 / 24 / 27). The solver handles this in two ways:
+
+1. **Your odds update** — Bust threshold shifts to the new target. At target 24, cards that would bust you at 21 become safe draws. At target 17, cards above 17 bust you.
+2. **Opponent AI adjusts** — The opponent's stay threshold shifts by the same amount (e.g., an opponent who normally stays at 17 will stay at 20 when target is 24, or at 13 when target is 17).
+
+## Opponent AI Modeling
+
+The solver models the opponent's behavior as a probability distribution. Two modes:
+
+- **Confirmed stayed** (option 2) — Opponent's total is known exactly. You enter the number shown on screen. The solver removes hidden cards from the deck and gives you exact odds. No guessing.
+- **Still playing** (default) — The solver estimates what the opponent will do based on their stay threshold, but bakes in uncertainty. Opponents near the target may gamble and draw again even past their threshold. The further they are from the target, the more likely they'll keep going. **These odds are estimates — always confirm when they stop drawing.**
 
 ## Challenge Lab
 
@@ -134,11 +164,11 @@ Press **C** from the main menu to access specialized tools for DLC challenges:
 Every opponent variant is catalogued with:
 
 - **AI type** and stay threshold
-- **Unique trump cards** and what they actually do
+- **Unique trump cards** and what they actually do (corrected from wiki sources)
 - **Counter-strategies** for each dangerous trump
-- **Commonly played** standard trumps
+- **Sub-variant info** (e.g., 2-hand vs. 4-hand Bloody Handprints)
 
-The data is sourced from the [RE Wiki](https://residentevil.fandom.com/wiki/21), [RE Wiki — Hoffman](https://residentevil.fandom.com/wiki/Hoffman), community guides, and in-game testing.
+The data is sourced from the [RE Wiki](https://residentevil.fandom.com/wiki/21), [RE Wiki — Hoffman](https://residentevil.fandom.com/wiki/Hoffman), community guides, and video walkthroughs.
 
 ## File Structure
 
@@ -147,6 +177,9 @@ Single file — `re7_helper.py`. No config files, no saves, no dependencies. Jus
 ## Tips
 
 - **Card count every round.** The deck is only 11 cards with no duplicates. Knowing what's left is the single biggest advantage you have.
-- **Save Destroy cards** for the most dangerous opponent trumps (Dead Silence, Black Magic, Curse, Escape).
-- **Don't hoard trumps** against Bloody Handprints Hoffman — his Desire card punishes you for holding them.
+- **Save Destroy cards** for the most dangerous opponent trumps (Dead Silence, Black Magic, Curse, Escape, Shield Assault+).
+- **Don't hoard trumps** against Bloody Handprints Hoffman — Desire/Desire+ punishes you for holding them.
+- **Watch for Go for 17** — Barbed Wire and Molded Hoffman use it. Your 20 becomes a bust.
+- **Confirm when the opponent stays.** The solver's "auto" model is a guess with built-in uncertainty. Entering their actual total (option 2) gives you exact odds and removes their hidden card from the deck.
+- **Dead cards reset each round.** The deck is fresh every round — Destroy only removes a card for that round.
 - **The solver is a guide, not gospel.** It models the opponent as a probability distribution, but the actual game AI can behave unpredictably, especially in Survival+.
