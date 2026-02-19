@@ -219,4 +219,4 @@ Single file — `re7_helper.py`. No config files, no saves, no dependencies. Jus
 - **Dead cards reset each round.** The deck is fresh every round — Destroy only removes a card for that round.
 - **Go for the bust-win challenge early.** The solver shows you when busting on purpose has decent win odds. Completing it gives you an extra starting trump card every round.
 - **Set your challenge progress on startup.** The solver uses this to remind you about unlocked trump cards you might forget about during intense fights.
-- **The solver is a guide, not gospel.** It models the opponent as a probability distribution, but the actual game AI can behave unpredictably, especially in Survival+.
+- **The solver is a guide.** It models the opponent as a probability distribution, but the actual game AI can behave unpredictably, especially in Survival+.
