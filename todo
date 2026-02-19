@@ -8,7 +8,7 @@ TODO:
 -add suggestion to restart run if chances of a winning run/game drops to ~20% or less within the first 4 opponents (try to implement locked challenges into this logic)
 
 
-Example (Normal 21) // What to change marked throughout
+Example (Normal 21) // What to change marked throughout (also apply these changes to 21+ if logic makes sense in both modes)
 
 
 ============================================================
