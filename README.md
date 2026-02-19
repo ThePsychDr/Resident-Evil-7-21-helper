@@ -1,11 +1,9 @@
 # Resident Evil 7: 21 — Card Game Solver
 
-# BETA/ WIP STILL PLEASE REPORT ANY ISSUES/ SUGGESTIONS
-#can make mistakes 
-##base 21 (tutorial) doesnt work properly but you really shouldnt need this to beat that##
-
-
 A terminal-based companion tool for the **21** card game from the *Resident Evil 7: Biohazard — Banned Footage Vol. 2* DLC. Tracks cards, computes odds, models opponent AI, and gives strategic advice in real time as you play.
+
+BETA/WIP STILL MAKES MISTAKES
+please report any issues you encounter!
 
 ## Requirements
 
@@ -26,9 +24,12 @@ The 21 minigame is a high-stakes blackjack variant where you draw from a shared 
 - **Computing draw odds** — Exact probability of safe draws, busts, and perfect hits
 - **Modeling opponent AI** — Simulates what the opponent will do based on their stay threshold, with built-in uncertainty when they haven't confirmed staying
 - **Comparing STAY vs. HIT vs. FORCE DRAW vs. BUST** — Full probability breakdown for all four options, including intentional bust-to-win for challenge completion
+- **Trump hand tracking** — Enter your held trump cards once, the solver remembers them across rounds, recommends which to play based on game state and enemy AI
+- **Trump card mechanics** — Play Return/Remove/Exchange/Perfect Draw through the P menu and the solver handles the card movements
 - **Opponent-specific warnings** — Alerts for dangerous trump cards like Curse, Dead Silence, Black Magic, Go for 17, Mind Shift+, and more
 - **HP-aware advice** — Adjusts risk tolerance based on your remaining health
 - **Challenge & unlock tracking** — Remembers which challenges you've completed and which trump cards you've unlocked, with contextual reminders during play
+- **Save/load** — Challenge progress auto-saves to `~/.re7_21_progress.json` so you don't re-enter it every session
 
 ## Trump Card Database
 
@@ -83,7 +84,9 @@ Each fight runs a loop of rounds. Within each round, the menu offers:
 
 | Key | Action |
 |-----|--------|
-| **A** | **Analyze hand** — Enter your cards, opponent's visible cards, and dead cards. The solver computes everything. |
+| **A** | **Analyze hand** — Enter your cards, opponent's visible cards, and dead cards. Gets advice + trump recommendations. |
+| **P** | **Play a trump card** — Select from your hand. Handles Return/Remove/Exchange/target changes automatically. |
+| **W** | **Edit trump hand** — Add or remove trump cards from your tracked hand. |
 | **D** | **Done** — Record the round result (win/loss/tie/void) and damage dealt. |
 | **G** | **Change target** — Set to 17, 21, 24, or 27 based on active "Go for X" trump. |
 | **X** | **Dead cards** — View, add, or clear dead cards for this round. Resets each round (fresh deck). |
@@ -102,7 +105,7 @@ When you press **A**, you'll enter:
 3. Dead/removed cards — remembered within the round, resets next round
 4. What did the opponent do?
    - **Enter** = nothing yet / still playing (default)
-   - **2** = opponent stayed → asks for their total (shown on screen), auto-removes hidden card from deck
+   - **2** = opponent stayed (done drawing) → hidden card is unknown, modeled as probability across remaining deck
    - **3** = you forced a draw → asks what card they drew, adds it to their total
 
 The solver then shows:
@@ -161,8 +164,23 @@ When you press **D**, just two inputs:
 
 The solver models the opponent's behavior as a probability distribution. Two modes:
 
-- **Confirmed stayed** (option 2) — Opponent's total is known exactly. You enter the number shown on screen. The solver removes hidden cards from the deck and gives you exact odds. No guessing.
-- **Still playing** (default) — The solver estimates what the opponent will do based on their stay threshold, but bakes in uncertainty. Opponents near the target may gamble and draw again even past their threshold. The further they are from the target, the more likely they'll keep going. **These odds are estimates — always confirm when they stop drawing.**
+- **Opponent stayed** (option 2) — They stopped drawing but their hidden card is still face-down. The solver models every possible hidden card from the remaining deck as equally likely. For example, if 5 cards remain, each is a 20% chance of being their hidden card. Once both players stay, the round is over — just record the result with D.
+- **Still playing** (default) — The solver estimates what the opponent will do based on their stay threshold, but bakes in uncertainty. Opponents near the target may gamble and draw again even past their threshold. **These odds are estimates — select '2' when they stop drawing for better accuracy.**
+
+## Trump Hand Tracking
+
+At the start of each fight, you can enter your held trump cards. The solver then:
+
+- **Remembers your hand across rounds** within a fight (trump cards carry over between rounds in the game)
+- **Recommends which trumps to play** based on the current game state during analysis (shows as "TRUMP CARD ADVICE" box)
+- **Handles card mechanics** when you play them through the P menu — Return sends a card back to deck, Remove adds opponent's card to dead cards, Exchange swaps values, Go for X changes target automatically
+- **Asks about changes** after editing — in case the opponent played trumps that affected your hand (Curse, Mind Shift, etc.)
+
+The recommendation engine considers: whether you're busted (prioritizes Return/Go for X), enemy dangerous trumps (saves Destroy for Dead Silence/Black Magic/Curse), offensive opportunities (Love Your Enemy when bust odds are high), damage stacking (bet-ups on perfect hands), and defensive needs (Shield at low HP, Escape at critical HP).
+
+## Save / Load
+
+Challenge progress auto-saves to `~/.re7_21_progress.json` when you set it up. On next launch, it loads automatically — no need to re-enter which challenges you've completed or which trump cards you've unlocked. Press **U** from the main menu to update your progress (forces a re-prompt and saves).
 
 ## Challenge & Unlock Tracking
 
@@ -215,8 +233,8 @@ Single file — `re7_helper.py`. No config files, no saves, no dependencies. Jus
 - **Save Destroy cards** for the most dangerous opponent trumps (Dead Silence, Black Magic, Curse, Escape, Shield Assault+).
 - **Don't hoard trumps** against Bloody Handprints Hoffman — Desire/Desire+ punishes you for holding them.
 - **Watch for Go for 17** — Barbed Wire and Molded Hoffman use it. Your 20 becomes a bust.
-- **Confirm when the opponent stays.** The solver's "auto" model is a guess with built-in uncertainty. Entering their actual total (option 2) gives you exact odds and removes their hidden card from the deck.
+- **Mark when the opponent stays (option 2).** This switches from guessing their behavior to modeling their hidden card. Use option 4 when the round ends and cards are revealed for exact numbers.
 - **Dead cards reset each round.** The deck is fresh every round — Destroy only removes a card for that round.
 - **Go for the bust-win challenge early.** The solver shows you when busting on purpose has decent win odds. Completing it gives you an extra starting trump card every round.
 - **Set your challenge progress on startup.** The solver uses this to remind you about unlocked trump cards you might forget about during intense fights.
-- **The solver is a guide.** It models the opponent as a probability distribution, but the actual game AI can behave unpredictably, especially in Survival+.
+- **The solver is a guide, not gospel.** It models the opponent as a probability distribution, but the actual game AI can behave unpredictably, especially in Survival+.
