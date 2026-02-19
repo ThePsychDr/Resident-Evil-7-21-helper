@@ -379,30 +379,97 @@ TRUMPS = {
 }
 
 # ============================================================
-# CHALLENGE DATA (priority objectives + source links)
+# CHALLENGE / UNLOCK TRACKING
 # ============================================================
 CHALLENGE_GOALS = {
+    "beat_normal": {
+        "name": "Beat Normal 21 (story mode)",
+        "reward": "Unlocks Survival mode",
+        "unlocks_trumps": [],
+    },
+    "beat_survival": {
+        "name": "Beat Survival mode",
+        "reward": "Unlocks Survival+ mode, Perfect Draw+",
+        "unlocks_trumps": ["Perfect Draw+"],
+    },
+    "beat_survival_plus": {
+        "name": "Beat Survival+ mode",
+        "reward": "Achievement: You Gotta Know When To Hold 'Em",
+        "unlocks_trumps": [],
+    },
     "bust_win": {
-        "name": "Defeat an opponent despite being bust",
+        "name": "Win a round while bust",
         "reward": "Starting Trump Card +1",
-        "priority": "PRIORITY",
+        "unlocks_trumps": [],
     },
     "fifteen_trumps": {
-        "name": "Win a round having used at least 15 trump cards",
+        "name": "Use 15+ trump cards in a single round",
         "reward": "Trump Switch+",
-        "priority": "HIGH",
+        "unlocks_trumps": ["Trump Switch+"],
     },
     "no_damage_survival": {
-        "name": "Complete Survival without being tortured once",
+        "name": "Beat Survival without taking damage",
         "reward": "Ultimate Draw",
-        "priority": "HIGH",
+        "unlocks_trumps": ["Ultimate Draw"],
     },
     "no_damage_survival_plus": {
-        "name": "Complete Survival+ without being tortured once",
+        "name": "Beat Survival+ without taking damage",
         "reward": "Grand Reward",
-        "priority": "HIGH",
+        "unlocks_trumps": [],
+    },
+    "three_21s": {
+        "name": "Reach exactly 21 three times in a row",
+        "reward": "Go for 27",
+        "unlocks_trumps": ["Go for 27"],
+    },
+    "opponents_defeated": {
+        "name": "Defeat multiple opponents (cumulative)",
+        "reward": "Shield+, Two Up+, Go for 24 (at milestones)",
+        "unlocks_trumps": ["Shield+", "Two Up+", "Go for 24"],
     },
 }
+
+
+def setup_challenge_progress():
+    """Ask which challenges are completed at session start. Returns set of completed keys."""
+    completed = set()
+    print_header("CHALLENGE PROGRESS")
+    print(" Which challenges have you already completed?")
+    print(" (This determines which trump cards you have access to)\n")
+
+    challenges = list(CHALLENGE_GOALS.items())
+    for i, (key, goal) in enumerate(challenges, 1):
+        print(f" {i:>2}. {goal['name']}")
+        print(f"      → {goal['reward']}")
+
+    print(f"\n Enter numbers for COMPLETED challenges (e.g., '1 2 5'), or 'all', or Enter for none:")
+    raw = input(" > ").strip().lower()
+
+    if raw == "all":
+        completed = set(CHALLENGE_GOALS.keys())
+    elif raw:
+        try:
+            indices = [int(x) for x in raw.split()]
+            for idx in indices:
+                if 1 <= idx <= len(challenges):
+                    completed.add(challenges[idx - 1][0])
+        except ValueError:
+            print(" Couldn't parse input, starting with no challenges completed.")
+
+    # Derive available trump cards from completed challenges
+    available_trumps = set()
+    for key in completed:
+        goal = CHALLENGE_GOALS.get(key, {})
+        available_trumps.update(goal.get("unlocks_trumps", []))
+
+    if completed:
+        print(f"\n Completed: {len(completed)} challenges")
+        if available_trumps:
+            print(f" Unlocked trumps: {', '.join(sorted(available_trumps))}")
+    else:
+        print("\n No challenges completed yet.")
+
+    return completed, available_trumps
 
 CHALLENGE_SOURCES = [
     ("RE Wiki - 21 rewards list", "https://residentevil.fandom.com/wiki/21"),
@@ -704,6 +771,40 @@ def estimate_opponent_total(o_visible_total: int, stay_val: int) -> int:
     return stay_val
 
 
+def evaluate_bust_inline(u_total: int, o_visible_total: int, remaining, stay_val: int, target: int, behavior: str = "auto"):
+    """
+    Lightweight bust-to-win evaluation for inline strategy advice.
+    Returns best bust draw card and its win probability, or None if no bust cards.
+    Uses the same opponent distribution model as the main solver.
+    """
+    bust_cards = [c for c in remaining if u_total + c > target]
+    if not bust_cards:
+        return None
+
+    best_card = None
+    best_win = 0.0
+
+    for draw_card in bust_cards:
+        bust_total = u_total + draw_card
+        deck_after = [c for c in remaining if c != draw_card]
+
+        # Model opponent's final total distribution
+        opp_dist = opponent_total_distribution(o_visible_total, deck_after, stay_val, target, behavior)
+
+        # Use bust_outcome logic: both bust → closest to target wins
+        wins = 0.0
+        for opp_total, prob in opp_dist.items():
+            result = bust_outcome(bust_total, opp_total, target)
+            if result == "WIN":
+                wins += prob
+
+        if wins > best_win:
+            best_win = wins
+            best_card = draw_card
+
+    return {"best_card": best_card, "bust_total": u_total + best_card if best_card else 0, "win_pct": best_win}
+
+
 def generate_advice(
     u_total: int,
     o_visible_total: int,
@@ -717,6 +818,8 @@ def generate_advice(
     opp_hp: int,
     opp_max: int,
     opp_behavior: str = "auto",
+    challenges_completed: set = None,
+    available_trumps: set = None,
 ):
     """Generate strategic advice factoring in HP state + opponent trumps."""
     advice_lines = []
@@ -821,6 +924,10 @@ def generate_advice(
 
     if u_total > target:
         advice_lines.append(f"✖ BUSTED ({u_total} > {target})! Use 'Return' or 'Exchange' immediately!")
+        if available_trumps and "Go for 27" in available_trumps and u_total <= 27 and target < 27:
+            advice_lines.append(
+                f"UNLOCKED: 'Go for 27' saves you — your {u_total} isn't bust at target 27! Press G to switch."
+            )
         return priority_warnings, advice_lines
 
     # Outcome model: compare staying now vs hitting now using selected opponent behavior.
@@ -872,14 +979,48 @@ def generate_advice(
             f"(busts opponent: {opp_bust_from_force:.0f}%)."
         )
 
+    # Bust-to-win analysis
+    bust_result = None
+    if challenges_completed is None:
+        challenges_completed = set()
+    if available_trumps is None:
+        available_trumps = set()
+    bust_challenge_done = "bust_win" in challenges_completed
+    bust_cards = [c for c in remaining if u_total + c > target]
+
+    if bust_cards and behavior_key != "stay":
+        bust_result = evaluate_bust_inline(u_total, o_visible_total, remaining, stay_val, target, behavior_key)
+        if bust_result and bust_result["win_pct"] > 0:
+            bust_label = "INTENTIONAL BUST"
+            if not bust_challenge_done:
+                bust_label += " ★ challenge"
+            advice_lines.append(
+                f"If you BUST ON PURPOSE -> "
+                f"Best card: {bust_result['best_card']} (total {bust_result['bust_total']}) → "
+                f"Win {bust_result['win_pct'] * 100:.1f}%."
+                f"{' [Completes bust-win challenge!]' if not bust_challenge_done else ''}"
+            )
+
+    # Unlocked trump card reminders
+    if u_total < estimated_opp and u_total < target:
+        if "Perfect Draw+" in available_trumps:
+            advice_lines.append("UNLOCKED: You have Perfect Draw+ — guaranteed best card from the deck.")
+        if "Ultimate Draw" in available_trumps:
+            advice_lines.append("UNLOCKED: You have Ultimate Draw — draws the best possible card.")
+
     # ── Action recommendation ──
-    # Find the best option among STAY, HIT, and FORCE DRAW
+    # Find the best option among STAY, HIT, FORCE DRAW, and INTENTIONAL BUST
     options = {
         "STAY": stay_probs["win"],
         "HIT": hit_probs["win"],
     }
     if force_probs is not None:
         options["FORCE A DRAW (Love Your Enemy)"] = force_probs["win"]
+    if bust_result and bust_result["win_pct"] > 0:
+        bust_label = "INTENTIONAL BUST"
+        if not bust_challenge_done:
+            bust_label += " ★ challenge"
+        options[bust_label] = bust_result["win_pct"]
 
     best_option = max(options, key=options.get)
     best_win = options[best_option]
@@ -932,6 +1073,15 @@ def generate_advice(
             )
         else:
             advice_lines.append(f"ACTION: STAY — too risky ({safe_pct:.0f}% safe). Hope he busts or {u_total} holds.")
+
+    # Bust challenge nudge (when not yet completed and bust has decent odds)
+    if bust_result and not bust_challenge_done and bust_result["win_pct"] >= 0.15:
+        if "BUST" not in advice_lines[-1]:
+            advice_lines.append(
+                f"💡 BUST CHALLENGE: Drawing {bust_result['best_card']} (→{bust_result['bust_total']}) "
+                f"has {bust_result['win_pct'] * 100:.0f}% win chance. "
+                f"Completing this unlocks Starting Trump +1!"
+            )
 
     return priority_warnings, advice_lines
 
@@ -1105,7 +1255,7 @@ def record_round_result(round_num: int, player_hp: int, opp_hp: int):
 # ============================================================
 # SINGLE ROUND ANALYSIS
 # ============================================================
-def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21, dead_cards: list = None) -> list:
+def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21, dead_cards: list = None, challenges_completed: set = None, available_trumps: set = None) -> list:
     """Run the solver for one round of 21 (read-only, no HP changes).
     Returns updated dead_cards list for persistence across rounds."""
     if dead_cards is None:
@@ -1248,7 +1398,8 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         print_header("STRATEGY ADVICE")
         warnings, advice = generate_advice(
             u_total, o_total, intel, remaining, target, safe_pct, perfect_draws,
-            player_hp, player_max, opp_hp, opp_max, opp_behavior
+            player_hp, player_max, opp_hp, opp_max, opp_behavior,
+            challenges_completed, available_trumps
         )
         for w in warnings:
             print(f"\n \033[91m{w}\033[0m")
@@ -1270,7 +1421,7 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
 # ============================================================
 # FIGHT LOOP — Multiple rounds vs. one opponent until death
 # ============================================================
-def fight_opponent(intel: dict, player_hp: int, player_max: int) -> int:
+def fight_opponent(intel: dict, player_hp: int, player_max: int, challenges_completed: set = None, available_trumps: set = None) -> int:
     """
     Fight one opponent across multiple rounds until one side reaches 0 HP.
     Returns player's remaining HP when the fight ends.
@@ -1308,7 +1459,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int) -> int:
             action = input("\n Action: ").strip().upper()
 
             if action == "A":
-                dead_cards = analyze_round(intel, player_hp, player_max, opp_hp, opp_max, current_target, dead_cards)
+                dead_cards = analyze_round(intel, player_hp, player_max, opp_hp, opp_max, current_target, dead_cards, challenges_completed, available_trumps)
 
             elif action == "G":
                 print("\n Set target: 17 / 21 / 24 / 27")
@@ -1437,7 +1588,7 @@ def select_survival_plus_opponent(fight_num: int) -> dict:
             print(" Enter a number.")
 
 
-def run_mode(mode_key: str) -> None:
+def run_mode(mode_key: str, challenges_completed: set = None, available_trumps: set = None) -> None:
     """Run a full game mode — progress through opponents sequentially."""
     mode = GAME_MODES[mode_key]
 
@@ -1482,7 +1633,7 @@ def run_mode(mode_key: str) -> None:
                 print(" Returning to menu.")
                 return
 
-        player_hp = fight_opponent(opp, player_hp, player_max)
+        player_hp = fight_opponent(opp, player_hp, player_max, challenges_completed, available_trumps)
 
         if player_hp <= 0:
             print_header("GAME OVER")
@@ -1502,7 +1653,7 @@ def run_mode(mode_key: str) -> None:
             print(" TROPHY: Survival+ complete!")
 
 
-def run_free_play() -> None:
+def run_free_play(challenges_completed: set = None, available_trumps: set = None) -> None:
     """Pick any opponent for practice."""
     print_header("FREE PLAY — SELECT OPPONENT")
 
@@ -1529,7 +1680,7 @@ def run_free_play() -> None:
             hp_input = input(" > ").strip()
             player_hp = int(hp_input) if hp_input else 10
             player_max = player_hp
-            fight_opponent(opp, player_hp, player_max)
+            fight_opponent(opp, player_hp, player_max, challenges_completed, available_trumps)
         else:
             print(" Invalid selection.")
     except ValueError:
@@ -1749,6 +1900,8 @@ def run_challenge_lab() -> None:
 # MAIN MENU
 # ============================================================
 def main() -> None:
+    challenges_completed, available_trumps = setup_challenge_progress()
+
     while True:
         print_header("RESIDENT EVIL 7: 21 — CARD GAME SOLVER")
         print("\n SELECT MODE:\n")
@@ -1759,6 +1912,7 @@ def main() -> None:
         print(" C. Challenge Lab (priority unlock planner)")
         print()
         print(" R. Trump Card Reference")
+        print(f" U. Update challenge progress ({len(challenges_completed)} completed)")
         print(" Q. Quit")
 
         choice = input("\n Select: ").strip().upper()
@@ -1771,11 +1925,14 @@ def main() -> None:
             input(" Press Enter to continue...")
         elif choice == "C":
             run_challenge_lab()
+        elif choice == "U":
+            challenges_completed, available_trumps = setup_challenge_progress()
+            input(" Press Enter to continue...")
         elif choice in ("1", "2", "3"):
-            run_mode(choice)
+            run_mode(choice, challenges_completed, available_trumps)
             input("\n Press Enter to return to menu...")
         elif choice == "4":
-            run_free_play()
+            run_free_play(challenges_completed, available_trumps)
             input("\n Press Enter to return to menu...")
         else:
             print(" Invalid selection.")
