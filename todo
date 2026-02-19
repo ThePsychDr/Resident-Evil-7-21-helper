@@ -28,7 +28,7 @@ Example (Normal 21) // What to change marked throughout
  │ Stays at: 16+
  └─ Sack head with tally marks. Basic AI, no special trumps.
 
-//He played trump cards as seen in the log. it was 4 tally hoffman
+//He played trump cards as seen in the log. There should be a trump section and special trump section in the target description accurate to 21/ 21+ depending on which is being played) it was 4 tally hoffman (Continually reset always got 4 tally first. Did to test if different ones show up)
 
  INTEL:
  Easiest opponent. No special trump cards.
@@ -229,6 +229,8 @@ Change your card input to always remember your face down card (unless a trump is
  Easiest opponent. No special trump cards.
 Play normally and conserve HP.
 Don't waste strong trumps — save them for later fights.
+
+--opponent tip also doesnt have to be repeated after every action. Just print once when fights begin and then consider the tips for the weight/ challenge system throughout the round.
 
  ┌─ TRUMP CARD ADVICE ─────────────────────────────┐
  │ HIGH-VALUE CARDS: Perfect Draw+ [cost:90] — save for │
