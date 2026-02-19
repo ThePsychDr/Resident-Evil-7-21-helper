@@ -294,87 +294,102 @@ BOSS_SURVIVAL_PLUS_FINAL = {
 # TRUMP CARD DATABASE
 # ============================================================
 TRUMPS = {
-    # ── Bet Modifiers ──
-    "One Up": {"cat": "Bet", "desc": "Increases the bet (damage) by 1."},
-    "Two Up": {"cat": "Bet", "desc": "Increases the bet (damage) by 2."},
-    "Two Up+": {"cat": "Bet", "desc": "Increases the bet (damage) by 4."},
-    "Three Up": {"cat": "Bet", "desc": "Increases the bet (damage) by 3."},
-    "Twenty-One Up": {"cat": "Bet", "desc": "Sets bet to 21 (instant-kill territory). Boss-only."},
-    "Desire": {"cat": "Bet", "desc": "Enemy's bet increased by half their trump card count."},
-    "Desire+": {"cat": "Bet", "desc": "Enemy's bet increased by their full trump card count."},
+    # ── Bet Up (Sword icon) — increases OPPONENT's bet while on table ──
+    "One Up": {"cat": "Bet", "desc": "Enemy's bet +1 while on table. Draw 1 trump card."},
+    "One Up+": {"cat": "Bet", "desc": "Enemy's bet +1 while on table. Remove enemy's last face-up card."},
+    "Two Up": {"cat": "Bet", "desc": "Enemy's bet +2 while on table."},
+    "Two Up+": {"cat": "Bet", "desc": "Enemy's bet +2 while on table. Remove enemy's last face-up card."},
+    "Three Up": {"cat": "Bet", "desc": "Enemy's bet +3 while on table."},
+    "Twenty-One Up": {"cat": "Bet", "desc": "Your result must be 21. Enemy's bet +21 while on table. Boss-only."},
+    "Desire": {"cat": "Bet", "desc": "YOUR bet increased by half YOUR held trump card count while on table."},
+    "Desire+": {"cat": "Bet", "desc": "YOUR bet increased by YOUR full held trump card count while on table."},
 
-    # ── Defense ──
-    "Shield": {"cat": "Defense", "desc": "Reduces damage taken this round by 1."},
-    "Shield+": {"cat": "Defense", "desc": "Reduces damage taken this round by 2."},
+    # ── Bet Down (Shield icon) — lowers YOUR bet while on table ──
+    "Shield": {"cat": "Defense", "desc": "Your bet -1 while on table."},
+    "Shield+": {"cat": "Defense", "desc": "Your bet -2 while on table."},
     "Shield Assault": {
         "cat": "Defense",
-        "desc": "Removes 3 of YOUR Shield cards on the table. Enemy's bet +3.",
+        "desc": "Remove 3 of YOUR Shield cards on table. Enemy's bet +3 while on table.",
     },
     "Shield Assault+": {
         "cat": "Defense",
-        "desc": "Removes 2 of YOUR Shield cards on the table. Enemy's bet +5.",
+        "desc": "Remove 2 of YOUR Shield cards on table. Enemy's bet +5 while on table.",
     },
 
-    # ── Card Manipulation ──
-    "Return": {"cat": "Cards", "desc": "Returns your last drawn card to the deck."},
-    "Remove": {"cat": "Cards", "desc": "Removes opponent's last face-up card from the table."},
-    "Exchange": {"cat": "Cards", "desc": "Swaps your and opponent's last face-up card."},
-    "Perfect Draw": {"cat": "Cards", "desc": "Draws the exact card needed for target (e.g. 21)."},
-    "Perfect Draw+": {"cat": "Cards", "desc": "Enhanced Perfect Draw. Draws the best possible card."},
-    "Ultimate Draw": {"cat": "Cards", "desc": "Draws the best possible card from the deck."},
-    "Love Your Enemy": {"cat": "Cards", "desc": "Forces opponent to draw a card (can cause bust)."},
-    "Conjure": {"cat": "Cards", "desc": "Draw 3 trump cards. Your bet +1 while on the table."},
+    # ── Draw Card (Card+Arrow icon) — draw specific numbered cards ──
+    "2 Card": {"cat": "Cards", "desc": "Draw the 2 card from deck (if available)."},
+    "3 Card": {"cat": "Cards", "desc": "Draw the 3 card from deck (if available)."},
+    "4 Card": {"cat": "Cards", "desc": "Draw the 4 card from deck (if available)."},
+    "5 Card": {"cat": "Cards", "desc": "Draw the 5 card from deck (if available)."},
+    "6 Card": {"cat": "Cards", "desc": "Draw the 6 card from deck (if available)."},
+    "7 Card": {"cat": "Cards", "desc": "Draw the 7 card from deck (if available)."},
+    "2 Card+": {"cat": "Cards", "desc": "Draw the 2 card (if available). Draw 1 trump card."},
+    "3 Card+": {"cat": "Cards", "desc": "Draw the 3 card (if available). Draw 1 trump card."},
+    "4 Card+": {"cat": "Cards", "desc": "Draw the 4 card (if available). Draw 1 trump card."},
+    "5 Card+": {"cat": "Cards", "desc": "Draw the 5 card (if available). Draw 1 trump card."},
+    "6 Card+": {"cat": "Cards", "desc": "Draw the 6 card (if available). Draw 1 trump card."},
+    "7 Card+": {"cat": "Cards", "desc": "Draw the 7 card (if available). Draw 1 trump card."},
+    "Perfect Draw": {"cat": "Cards", "desc": "Draw the nearest-to-target card. Cannot make you go over."},
+    "Perfect Draw+": {"cat": "Cards", "desc": "Draw the nearest-to-target card. Enemy's bet +5 while on table."},
+    "Ultimate Draw": {"cat": "Cards", "desc": "Draw the nearest-to-target card. Draw 2 trump cards."},
+
+    # ── Remove Card (Card+Arrow+Deck icon) ──
+    "Return": {"cat": "Cards", "desc": "Remove your last face-up card (returned to deck). Can't take your last hidden card."},
+    "Remove": {"cat": "Cards", "desc": "Remove enemy's last face-up card. Can't take their last hidden card."},
+    "Exchange": {"cat": "Cards", "desc": "Swap your and opponent's last face-up card. Can't take hidden cards."},
+    "Love Your Enemy": {"cat": "Cards", "desc": "Force opponent to draw the next card from the deck."},
+    "Conjure": {"cat": "Cards", "desc": "Draw 3 trump cards. Your bet +1 while on table. Boss-only."},
 
     # ── Target Changers ──
     "Go for 17": {
         "cat": "Target",
-        "desc": "Changes target to 17. Replaces any other 'Go For' card on the table.",
+        "desc": "Target becomes 17 while on table. Replaces other 'Go For' cards.",
     },
     "Go for 24": {
         "cat": "Target",
-        "desc": "Changes target to 24. Replaces any other 'Go For' card on the table.",
+        "desc": "Target becomes 24 while on table. Replaces other 'Go For' cards.",
     },
     "Go for 27": {
         "cat": "Target",
-        "desc": "Changes target to 27. Replaces any other 'Go For' card on the table.",
+        "desc": "Target becomes 27 while on table. Replaces other 'Go For' cards.",
     },
 
-    # ── Counter / Destroy ──
-    "Destroy": {"cat": "Counter", "desc": "Removes opponent's last trump card on the table."},
-    "Destroy+": {"cat": "Counter", "desc": "Removes ALL opponent trump cards on the table."},
+    # ── Counter / Destroy (Explosion icon) ──
+    "Destroy": {"cat": "Counter", "desc": "Remove enemy's last trump card on the table."},
+    "Destroy+": {"cat": "Counter", "desc": "Remove ALL enemy trump cards on the table."},
     "Destroy++": {
         "cat": "Counter",
-        "desc": "Removes ALL opponent trump cards. Opponent cannot use trumps while on table.",
+        "desc": "Remove ALL enemy trump cards. Enemy can't use trumps while on table.",
     },
 
-    # ── Trump Draw / Switch ──
+    # ── Trump Draw / Switch (Multiple cards icon) ──
     "Trump Switch": {"cat": "Switch", "desc": "Remove a random trump from your hand. Draw 3 trumps."},
     "Trump Switch+": {"cat": "Switch", "desc": "Remove a random trump from your hand. Draw 4 trumps."},
-    "Harvest": {"cat": "Switch", "desc": "Draw 1 trump card per trump you use while on the table."},
+    "Harvest": {"cat": "Switch", "desc": "Draw 1 trump card per trump you play while on table."},
     "Happiness": {"cat": "Switch", "desc": "Both players draw 1 trump card."},
 
-    # ── Attack / Disruption ──
+    # ── Attack / Disruption (enemy-used) ──
     "Mind Shift": {
         "cat": "Attack",
-        "desc": "Opponent loses 2 trumps in a single turn, or half their trumps at end of round.",
+        "desc": "Opponent loses half their trumps at end of round. Removed if they play 2 trumps in a round.",
     },
     "Mind Shift+": {
         "cat": "Attack",
-        "desc": "Opponent loses 3 trumps in a single turn, or ALL their trumps at end of round.",
+        "desc": "Opponent loses ALL trumps at end of round. Removed if they play 3 trumps in a round.",
     },
-    "Curse": {"cat": "Attack", "desc": "Discards a random trump from you. Opponent draws the HIGHEST remaining card."},
+    "Curse": {"cat": "Attack", "desc": "Discard a random trump from opponent. Opponent draws the HIGHEST card in deck."},
     "Black Magic": {
         "cat": "Attack",
-        "desc": "Removes half your trumps. Raises your bet by 10. Opponent draws nearest-to-target card.",
+        "desc": "Remove half opponent's trumps. Opponent's bet +10. Draws nearest-to-target card.",
     },
-    "Dead Silence": {"cat": "Attack", "desc": "Opponent cannot draw cards (even via trump effects) while on the table."},
+    "Dead Silence": {"cat": "Attack", "desc": "Opponent cannot draw cards (even via trump effects) while on table."},
 
     # ── Special ──
-    "Escape": {"cat": "Special", "desc": "You don't take damage even if you lose, while this card is on the table."},
-    "Oblivion": {"cat": "Special", "desc": "Resets the round. No damage to either side."},
+    "Escape": {"cat": "Special", "desc": "You don't take damage if you lose while on table. Match resets if used."},
+    "Oblivion": {"cat": "Special", "desc": "Cancels this round. Begins a new round. No damage to either side."},
     "Desperation": {
         "cat": "Special",
-        "desc": "Story-only. Sets both bets to 100. Prevents opponent from drawing cards.",
+        "desc": "Story-only. Both bets become 100. Opponent can't draw cards.",
     },
 }
 
@@ -531,8 +546,10 @@ def load_progress():
 # ============================================================
 # Player-obtainable trump cards (exclude enemy-only cards)
 PLAYER_TRUMPS = [
-    "One Up", "Two Up", "Two Up+", "Three Up",
+    "One Up", "One Up+", "Two Up", "Two Up+", "Three Up",
     "Shield", "Shield+",
+    "2 Card", "3 Card", "4 Card", "5 Card", "6 Card", "7 Card",
+    "2 Card+", "3 Card+", "4 Card+", "5 Card+", "6 Card+", "7 Card+",
     "Return", "Remove", "Exchange",
     "Perfect Draw", "Perfect Draw+", "Ultimate Draw",
     "Love Your Enemy",
