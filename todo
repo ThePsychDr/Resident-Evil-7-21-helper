@@ -232,6 +232,7 @@ Play normally and conserve HP.
 Don't waste strong trumps — save them for later fights.
 
 (TODO) opponent tip also doesnt have to be repeated after every action. Just print once when fights begin and then consider the tips for the weight/ challenge system throughout the round.
+only display trump advice when necessary( prevent a loss/ complete a challenge / better odds in late game (with current opponent ai taken into account)
 
  ┌─ TRUMP CARD ADVICE ─────────────────────────────┐
  │ HIGH-VALUE CARDS: Perfect Draw+ [cost:90] — save for │
