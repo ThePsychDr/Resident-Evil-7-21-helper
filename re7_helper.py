@@ -1008,8 +1008,11 @@ def record_round_result(round_num: int, player_hp: int, opp_hp: int):
 # ============================================================
 # SINGLE ROUND ANALYSIS
 # ============================================================
-def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21) -> None:
-    """Run the solver for one round of 21 (read-only, no HP changes)."""
+def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21, dead_cards: list = None) -> list:
+    """Run the solver for one round of 21 (read-only, no HP changes).
+    Returns updated dead_cards list for persistence across rounds."""
+    if dead_cards is None:
+        dead_cards = []
     display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
 
     print(f"\n Current target: {target}")
@@ -1024,31 +1027,40 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         u_input = input(" > ").strip()
         if not u_input:
             print(" No cards entered.")
-            return
+            return dead_cards
         u_hand = list(map(int, u_input.split()))
         for c in u_hand:
             if c < 1 or c > 11:
                 print(f" ERROR: Card {c} invalid (1–11).")
-                return
+                return dead_cards
 
         print(" Enter OPPONENT'S visible card(s) (space-separated):")
         o_input = input(" > ").strip()
         if not o_input:
             print(" No opponent cards entered.")
-            return
+            return dead_cards
         o_vis = list(map(int, o_input.split()))
         for c in o_vis:
             if c < 1 or c > 11:
                 print(f" ERROR: Card {c} invalid (1–11).")
-                return
+                return dead_cards
 
-        print(" Enter DEAD/REMOVED cards (or Enter for none):")
+        if dead_cards:
+            print(f" Remembered dead cards: {sorted(dead_cards)}")
+            print(" Enter ADDITIONAL dead/removed cards (or Enter to keep as-is):")
+        else:
+            print(" Enter DEAD/REMOVED cards (or Enter for none):")
         d_input = input(" > ").strip()
-        dead = list(map(int, d_input.split())) if d_input else []
+        new_dead = list(map(int, d_input.split())) if d_input else []
+        for c in new_dead:
+            if c < 1 or c > 11:
+                print(f" ERROR: Card {c} invalid (1–11).")
+                return dead_cards
+        dead = sorted(set(dead_cards + new_dead))
         for c in dead:
             if c < 1 or c > 11:
                 print(f" ERROR: Card {c} invalid (1–11).")
-                return
+                return dead_cards
 
         # Duplicate check (deck has one of each)
         all_cards = u_hand + o_vis + dead
@@ -1064,15 +1076,14 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         o_total = sum(o_vis)
 
         # What did the opponent do?
-        print("\n What did the opponent do?")
-        print("  1. Opponent hit (drew a card, still playing)  [Enter]")
+        print("\n What did the opponent do? (Enter = nothing yet / still playing)")
         print("  2. Opponent stayed (done drawing)")
         print("  3. I forced a draw (Love Your Enemy / similar)")
         beh_input = input(" > ").strip()
         if beh_input == "2":
             opp_behavior = "stay"
-            print(" What is their total? (visible cards + any hidden)")
-            opp_total_raw = input(" Opponent total: ").strip()
+            print(" What's their total? (shown on screen)")
+            opp_total_raw = input(" > ").strip()
             if opp_total_raw:
                 new_total = int(opp_total_raw)
                 hidden_sum = new_total - o_total
@@ -1152,8 +1163,11 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
             print(f"\n OPPONENT TIP:\n {tip}")
         print("\n" + "=" * 60)
 
+        return dead
+
     except ValueError:
         print(" ERROR: Enter valid numbers only.")
+        return dead_cards
 
 
 # ============================================================
@@ -1169,6 +1183,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int) -> int:
     round_num = 0
     round_history = []
     current_target = 21  # Persists across rounds; toggle with 'G'
+    dead_cards = []       # Cards removed by Destroy etc.; persists across rounds
 
     print_header(f"FIGHT: vs. {intel['name']}")
     display_opponent_info(intel)
@@ -1185,6 +1200,8 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int) -> int:
             print(" A. Analyze hand (get advice)")
             print(" D. Done — record round result")
             print(f" G. Toggle 'Go for 24' (currently: {'ON → target 24' if current_target == 24 else 'OFF → target 21'})")
+            dead_label = f" ({sorted(dead_cards)})" if dead_cards else " (none)"
+            print(f" X. Dead cards{dead_label}")
             print(" T. Trump card reference")
             print(" I. Opponent intel")
             print(" H. Round history")
@@ -1194,11 +1211,36 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int) -> int:
             action = input("\n Action: ").strip().upper()
 
             if action == "A":
-                analyze_round(intel, player_hp, player_max, opp_hp, opp_max, current_target)
+                dead_cards = analyze_round(intel, player_hp, player_max, opp_hp, opp_max, current_target, dead_cards)
 
             elif action == "G":
                 current_target = 24 if current_target == 21 else 21
                 print(f" ★ Target set to {current_target}!")
+
+            elif action == "X":
+                if dead_cards:
+                    print(f"\n Dead cards: {sorted(dead_cards)}")
+                    print(" Options: Enter = keep, 'c' = clear all, or enter cards to add")
+                    x_input = input(" > ").strip().lower()
+                    if x_input == "c":
+                        dead_cards = []
+                        print(" Dead cards cleared.")
+                    elif x_input:
+                        try:
+                            new_cards = [int(x) for x in x_input.split()]
+                            dead_cards = sorted(set(dead_cards + [c for c in new_cards if 1 <= c <= 11]))
+                            print(f" Dead cards: {dead_cards}")
+                        except ValueError:
+                            print(" Invalid input.")
+                else:
+                    print("\n No dead cards yet. Enter cards to add (or Enter to skip):")
+                    x_input = input(" > ").strip()
+                    if x_input:
+                        try:
+                            dead_cards = sorted(set(int(x) for x in x_input.split() if 1 <= int(x) <= 11))
+                            print(f" Dead cards: {dead_cards}")
+                        except ValueError:
+                            print(" Invalid input.")
 
             elif action == "D":
                 player_hp, opp_hp, entry = record_round_result(round_num, player_hp, opp_hp)
