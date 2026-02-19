@@ -1,7 +1,8 @@
 # Resident Evil 7: 21 — Card Game Solver
 
 # BETA/ WIP STILL PLEASE REPORT ANY ISSUES/ SUGGESTIONS
-##can make mistakes
+#can make mistakes 
+##base 21 (tutorial) doesnt work properly but you really shouldnt need this to beat that##
 
 
 A terminal-based companion tool for the **21** card game from the *Resident Evil 7: Biohazard — Banned Footage Vol. 2* DLC. Tracks cards, computes odds, models opponent AI, and gives strategic advice in real time as you play.
