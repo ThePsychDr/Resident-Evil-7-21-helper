@@ -7,9 +7,8 @@ Instead of    print(f" P. Play a trump card ({trump_count} in hand)")
 
 
 -Change challenge mode/ suggestions based on above logic (remove Defeat an opponent despite being bust. option from menu) Just give instructions when at a high probability in survival/ survival+ if the challenge isnt already completed.
--- Trump unlocks that require different play styles:
+-- Important Trump unlocks that require different play styles (main focus until unlocked):
 Defeat an opponent despite being bust.	Starting Trump Card +1
-Complete "Survival" without being tortured once.	Ultimate Draw
-Complete "Survival+" without being tortured once.	Grand Reward
+
 
 -add a notice that 21 base tutorial against lucas logic is currently not working properly
