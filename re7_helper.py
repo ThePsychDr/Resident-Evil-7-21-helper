@@ -79,15 +79,16 @@ OPPONENTS_NORMAL = [
     {
         "name": "Lucas",
         "mode": "Normal 21",
-        "desc": "Tutorial opponent. Plays standard 21 with basic trumps.",
+        "desc": "Tutorial opponent. 3-round story mode (fingers → shock → saw).",
         "ai": "BASIC",
-        "trumps": ["One Up", "Two Up", "Shield"],
+        "trumps": ["One-Up", "Two-Up", "Shield"],
         "stay_val": 17,
         "hp": 10,
         "tip": (
-            "Lucas plays conservatively. He'll stay around 17+.\n"
-            "Use this match to learn trump card timing.\n"
-            "Save strong trumps when possible — play solid fundamentals."
+            "⚠ NOTE: Normal 21 (Lucas story mode) logic is not fully accurate.\n"
+            "Lucas cheats in the final saw round (Perfect Draw + Desperation).\n"
+            "Counter: Save 'Love Your Enemy' for the last round — it forces him to bust.\n"
+            "The solver is optimized for Survival and Survival+ modes."
         ),
     },
 ]
@@ -177,52 +178,114 @@ OPPONENTS_SURVIVAL_PLUS = [
     {
         "name": "Tally Mark Hoffman",
         "mode": "Survival+",
-        "desc": "Sack head with tally marks (vertical cuts). Variants with 2 or 3 marks.",
+        "desc": "Sack head with vertical cut marks.",
         "ai": "BASIC+",
-        "trumps": ["One Up", "Two Up", "Two Up+", "Happiness", "Return", "Desire", "Mind Shift"],
         "stay_val": 17,
         "hp": 10,
+        "variants": {
+            "2 cuts": {
+                "trumps": ["Happiness", "Return", "Desire", "Mind Shift"],
+                "tip": (
+                    "2-CUT VARIANT (less dangerous):\n"
+                    "Trumps: Happiness, Return, Desire, Mind Shift\n"
+                    "'Desire' raises YOUR bet by half your trump count.\n"
+                    "'Mind Shift' — you lose half trumps unless you play 2 this round.\n"
+                    "STRATEGY: Don't hoard trumps. Play 2 per round to block Mind Shift."
+                ),
+            },
+            "3 cuts": {
+                "trumps": ["One-Up", "Two-Up", "Desire", "Happiness"],
+                "tip": (
+                    "3-CUT VARIANT:\n"
+                    "Trumps: One-Up, Two-Up, Desire, Happiness\n"
+                    "Has bet-raising cards (One-Up, Two-Up) — can stack damage.\n"
+                    "'Desire' raises YOUR bet by half your trump count.\n"
+                    "STRATEGY: Don't hoard trumps. Destroy his bet-ups if stacking."
+                ),
+            },
+        },
+        # Fallback if no variant selected (union of all)
+        "trumps": ["One-Up", "Two-Up", "Happiness", "Return", "Desire", "Mind Shift"],
         "tip": (
-            "Different variants based on mark count:\n"
-            " 2 marks: Happiness, Return, Desire, Mind Shift\n"
-            " 3 marks: One Up, Two Up, Desire, Happiness\n"
-            "STRATEGY: Don't hoard trumps — Desire punishes it.\n"
-            "Play two trumps per round to block Mind Shift."
+            "Variants based on cut count (select variant at fight start):\n"
+            " 2 cuts: Happiness, Return, Desire, Mind Shift\n"
+            " 3 cuts: One-Up, Two-Up, Desire, Happiness\n"
+            "STRATEGY: Don't hoard trumps — Desire punishes it."
         ),
     },
     {
         "name": "Bloody Handprints Hoffman",
         "mode": "Survival+",
-        "desc": "Sack head with handprints. Variants with 2 or 4 hands.",
+        "desc": "Sack head with bloody handprints.",
         "ai": "TRUMP STEALER",
-        "trumps": ["Desire", "Desire+", "Mind Shift", "Mind Shift+", "Happiness"],
         "stay_val": 16,
         "hp": 10,
+        "variants": {
+            "2 hands": {
+                "trumps": ["Happiness", "Return", "Desire", "Mind Shift"],
+                "tip": (
+                    "2-HAND VARIANT:\n"
+                    "Trumps: Happiness, Return, Desire, Mind Shift\n"
+                    "Same loadout as 2-cut Tally Mark.\n"
+                    "'Mind Shift' — play 2 trumps to remove it.\n"
+                    "STRATEGY: Spend trumps, don't hoard."
+                ),
+            },
+            "4 hands": {
+                "trumps": ["Happiness", "Desire+", "Mind Shift+"],
+                "tip": (
+                    "4-HAND VARIANT (DANGEROUS):\n"
+                    "Trumps: Happiness, Desire+, Mind Shift+\n"
+                    "'Desire+' raises YOUR bet by your FULL trump count!\n"
+                    "'Mind Shift+' — you lose ALL trumps unless you play 3 this round!\n"
+                    "STRATEGY: Spend trumps AGGRESSIVELY. Never hold more than 3-4.\n"
+                    "This is one of the most punishing non-boss opponents."
+                ),
+            },
+        },
+        "trumps": ["Desire", "Desire+", "Mind Shift", "Mind Shift+", "Happiness", "Return"],
         "tip": (
-            "Different variants based on hand count:\n"
+            "Variants based on handprint count (select variant at fight start):\n"
             " 2 hands: Happiness, Return, Desire, Mind Shift\n"
             " 4 hands: Happiness, Desire+, Mind Shift+ (DANGEROUS)\n"
-            "4-hand variant: Mind Shift+ takes ALL your trumps!\n"
-            "Desire+ uses your FULL trump count for bet increase.\n"
             "STRATEGY: Spend trumps aggressively, never hoard."
         ),
     },
     {
         "name": "Barbed Wire Hoffman",
         "mode": "Survival+",
-        "desc": "Sack head with horizontal barbed wire marks. 3 or 4 lines.",
+        "desc": "Sack head with horizontal barbed wire marks.",
         "ai": "SHIELD SPAMMER",
-        "trumps": ["Shield", "Shield Assault", "Shield Assault+", "Go for 17", "Two Up"],
         "stay_val": 14,
         "hp": 10,
+        "variants": {
+            "3 wires": {
+                "trumps": ["Shield", "Go for 17", "Shield Assault"],
+                "tip": (
+                    "3-WIRE VARIANT:\n"
+                    "Trumps: Shield, Go for 17, Shield Assault\n"
+                    "'Shield Assault' — removes 3 of HIS shields, YOUR bet +3.\n"
+                    "'Go for 17' — changes target! Your 18+ becomes a bust!\n"
+                    "COUNTER: Destroy Shield Assault. Watch for target change."
+                ),
+            },
+            "4 wires": {
+                "trumps": ["Shield", "Shield Assault", "Go for 17", "Two-Up"],
+                "tip": (
+                    "4-WIRE VARIANT:\n"
+                    "Trumps: Shield, Shield Assault, Go for 17, Two-Up\n"
+                    "Has Two-Up on top of Shield Assault — more aggressive.\n"
+                    "'Go for 17' — changes target! Your 18+ becomes a bust!\n"
+                    "COUNTER: Destroy Shield Assault. Stack bet-ups to overwhelm shields."
+                ),
+            },
+        },
+        "trumps": ["Shield", "Shield Assault", "Shield Assault+", "Go for 17", "Two-Up"],
         "tip": (
-            "Different variants based on wire count:\n"
+            "Variants based on wire count (select variant at fight start):\n"
             " 3 wires: Shield, Go for 17, Shield Assault\n"
-            " 4 wires: Shield, Shield Assault, Go for 17, Two Up\n"
-            "'Shield Assault' removes 3 Shields → your bet +3.\n"
-            "'Shield Assault+' removes 2 Shields → your bet +5.\n"
-            "Watch for 'Go for 17' — changes the whole game!\n"
-            "COUNTER: 'Destroy' Shield Assault+. Stack bet-ups."
+            " 4 wires: Shield, Shield Assault, Go for 17, Two-Up\n"
+            "COUNTER: Destroy Shield Assault. Stack bet-ups."
         ),
     },
     {
@@ -250,19 +313,33 @@ BOSS_SURVIVAL_PLUS_MID = {
     "mode": "Survival+",
     "desc": "Head covered in black mold/fungus. ALWAYS opponent #5.",
     "ai": "DECK MANIPULATOR",
-    "trumps": ["Curse", "Black Magic", "Conjure", "Two Up", "Destroy+", "Go for 17"],
+    "trumps": ["Curse", "Black Magic", "Conjure", "Two-Up", "Destroy+", "Go for 17"],
     "stay_val": 17,
     "hp": 10,
+    "trump_behavior": {
+        "Curse": {"freq": "high", "when": "any", "repeats": True,
+                  "note": "Discards your trump + forces highest card. Use Return after to undo."},
+        "Black Magic": {"freq": "medium", "when": "mid_round", "repeats": False,
+                        "note": "YOUR bet +10 = instant death. MUST Destroy immediately. Max twice per fight."},
+        "Conjure": {"freq": "high", "when": "early", "repeats": True,
+                    "note": "Draws 3 trumps, his bet +1. The +1 bet is a slight advantage for you."},
+        "Destroy+": {"freq": "medium", "when": "reactive", "repeats": True,
+                     "note": "Removes all your table trumps. Don't stack too many bet-ups at once."},
+        "Go for 17": {"freq": "low", "when": "any", "repeats": True,
+                      "note": "Changes target to 17. Your 18+ becomes a bust!"},
+    },
     "tip": (
         "!! MID-BOSS — ALWAYS FIGHT #5 !!\n"
         "'Curse' discards one of your trumps AND forces you to draw\n"
         "the HIGHEST remaining card.\n"
-        "'Black Magic' discards half your trumps, raises bet by 10\n"
+        "'Black Magic' discards half your trumps, raises YOUR bet by 10\n"
         "(instant death if you lose!), AND he draws the best card.\n"
+        "  Black Magic can only be used MAX TWICE per fight.\n"
         "'Conjure' lets him draw 3 trumps (his bet +1 — slight advantage for you).\n"
         "He also has 'Destroy+' and 'Go for 17'!\n"
         "STRATEGY: Save 'Destroy' for Black Magic (highest priority!).\n"
         "Use 'Return'/'Exchange' to fix forced bad draws.\n"
+        "Don't stack all bet-ups at once — his Destroy+ wipes them.\n"
         "Card-count obsessively — know what Curse will force."
     ),
 }
@@ -272,21 +349,37 @@ BOSS_SURVIVAL_PLUS_FINAL = {
     "mode": "Survival+",
     "desc": "Knives and scissors embedded in head. ALWAYS opponent #10.",
     "ai": "GAME BREAKER",
-    "trumps": ["Ultimate Draw", "Two Up+", "Perfect Draw+", "Dead Silence", "Oblivion"],
+    "trumps": ["Ultimate Draw", "Two-Up+", "Perfect Draw+", "Dead Silence", "Oblivion", "Remove"],
     "stay_val": 18,
     "hp": 10,
+    "trump_behavior": {
+        "Dead Silence": {"freq": "very_high", "when": "early", "repeats": True,
+                         "note": "Uses most often. Will replay after Destroy. Priority Destroy target."},
+        "Perfect Draw+": {"freq": "high", "when": "any", "repeats": True,
+                          "note": "Almost always gets 21. Exchange can bust him if his drawn card > yours."},
+        "Ultimate Draw": {"freq": "high", "when": "any", "repeats": True,
+                          "note": "Gets best card + 2 trumps. Very dangerous."},
+        "Oblivion": {"freq": "medium", "when": "losing", "repeats": True,
+                     "note": "Cancels the round when he's losing. Cannot be countered. Just restart."},
+        "Two-Up+": {"freq": "medium", "when": "winning", "repeats": True,
+                    "note": "Returns your last card AND raises bet. Use when he thinks he'll win."},
+        "Remove": {"freq": "medium", "when": "any", "repeats": True,
+                   "note": "Takes your last face-up card. Common disruption."},
+    },
     "tip": (
         "!! FINAL BOSS — MOST DANGEROUS OPPONENT !!\n"
         "'Ultimate Draw' and 'Perfect Draw+' — almost always gets perfect cards.\n"
         "'Dead Silence' prevents you from drawing ANY cards (even via trumps).\n"
-        "'Oblivion' cancels the entire round — wastes your good hands.\n"
-        "'Two Up+' raises bet by 4 — huge damage if you lose.\n"
+        "  He uses Dead Silence REPEATEDLY — save multiple Destroys!\n"
+        "'Oblivion' cancels the entire round — wastes your good hands. CANNOT be countered.\n"
+        "'Two-Up+' returns your last card AND raises bet by 2.\n"
         "He also uses 'Remove' to take your face-up cards!\n"
         "STRATEGY:\n"
-        " 1) Save 'Destroy' for Dead Silence (highest priority).\n"
-        " 2) Save 'Destroy+' or 'Destroy++' for turn-around plays.\n"
-        " 3) Stack shields — he hits HARD with Two Up+.\n"
-        " 4) Be patient — Oblivion wastes rounds but doesn't hurt you."
+        " 1) Save 'Destroy' for Dead Silence (highest priority). He WILL replay it.\n"
+        " 2) If Dead Silence is up and you can't Destroy: use Exchange to try busting him.\n"
+        " 3) Stack shields — he hits HARD.\n"
+        " 4) Be patient — Oblivion wastes rounds but doesn't hurt you.\n"
+        " 5) This fight is luck-heavy. Stay calm, play conservatively."
     ),
 }
 
@@ -294,103 +387,84 @@ BOSS_SURVIVAL_PLUS_FINAL = {
 # TRUMP CARD DATABASE
 # ============================================================
 TRUMPS = {
-    # ── Bet Up (Sword icon) — increases OPPONENT's bet while on table ──
-    "One Up": {"cat": "Bet", "desc": "Enemy's bet +1 while on table. Draw 1 trump card."},
-    "One Up+": {"cat": "Bet", "desc": "Enemy's bet +1 while on table. Remove enemy's last face-up card."},
-    "Two Up": {"cat": "Bet", "desc": "Enemy's bet +2 while on table."},
-    "Two Up+": {"cat": "Bet", "desc": "Enemy's bet +2 while on table. Remove enemy's last face-up card."},
-    "Three Up": {"cat": "Bet", "desc": "Enemy's bet +3 while on table."},
-    "Twenty-One Up": {"cat": "Bet", "desc": "Your result must be 21. Enemy's bet +21 while on table. Boss-only."},
-    "Desire": {"cat": "Bet", "desc": "YOUR bet increased by half YOUR held trump card count while on table."},
-    "Desire+": {"cat": "Bet", "desc": "YOUR bet increased by YOUR full held trump card count while on table."},
+    # ── Bet Up — increases OPPONENT's bet while on table ──
+    "One-Up": {"cat": "Bet", "desc": "Opponent's bet +1 while on table. Also, draw 1 trump card."},
+    "Two-Up": {"cat": "Bet", "desc": "Opponent's bet +2 while on table. Also, draw 1 trump card."},
+    "Two-Up+": {"cat": "Bet", "desc": "Return opponent's last face-up card to deck. Opponent's bet +2 while on table."},
 
-    # ── Bet Down (Shield icon) — lowers YOUR bet while on table ──
+    # ── Draw Number Card — draw a specific numbered card ──
+    "2 Card": {"cat": "Cards", "desc": "Draw the 2 card. If not in deck, nothing happens."},
+    "3 Card": {"cat": "Cards", "desc": "Draw the 3 card. If not in deck, nothing happens."},
+    "4 Card": {"cat": "Cards", "desc": "Draw the 4 card. If not in deck, nothing happens."},
+    "5 Card": {"cat": "Cards", "desc": "Draw the 5 card. If not in deck, nothing happens."},
+    "6 Card": {"cat": "Cards", "desc": "Draw the 6 card. If not in deck, nothing happens."},
+    "7 Card": {"cat": "Cards", "desc": "Draw the 7 card. If not in deck, nothing happens."},
+
+    # ── Remove/Return/Swap ──
+    "Remove": {"cat": "Cards", "desc": "Return opponent's last face-up card to the deck."},
+    "Return": {"cat": "Cards", "desc": "Return your last face-up card to the deck."},
+    "Exchange": {"cat": "Cards", "desc": "Swap the last face-up cards drawn by you and opponent. Face-down cards can't be swapped."},
+
+    # ── Trump Management ──
+    "Trump Switch": {"cat": "Switch", "desc": "Discard 2 of your trumps at random, draw 3 trumps. Works even with <2 trumps."},
+    "Trump Switch+": {"cat": "Switch", "desc": "Discard 1 of your trumps at random, draw 4 trumps. Works even with 0 other trumps."},
+
+    # ── Defense — reduces YOUR bet while on table ──
     "Shield": {"cat": "Defense", "desc": "Your bet -1 while on table."},
     "Shield+": {"cat": "Defense", "desc": "Your bet -2 while on table."},
-    "Shield Assault": {
-        "cat": "Defense",
-        "desc": "Remove 3 of YOUR Shield cards on table. Enemy's bet +3 while on table.",
-    },
-    "Shield Assault+": {
-        "cat": "Defense",
-        "desc": "Remove 2 of YOUR Shield cards on table. Enemy's bet +5 while on table.",
-    },
 
-    # ── Draw Card (Card+Arrow icon) — draw specific numbered cards ──
-    "2 Card": {"cat": "Cards", "desc": "Draw the 2 card from deck (if available)."},
-    "3 Card": {"cat": "Cards", "desc": "Draw the 3 card from deck (if available)."},
-    "4 Card": {"cat": "Cards", "desc": "Draw the 4 card from deck (if available)."},
-    "5 Card": {"cat": "Cards", "desc": "Draw the 5 card from deck (if available)."},
-    "6 Card": {"cat": "Cards", "desc": "Draw the 6 card from deck (if available)."},
-    "7 Card": {"cat": "Cards", "desc": "Draw the 7 card from deck (if available)."},
-    "2 Card+": {"cat": "Cards", "desc": "Draw the 2 card (if available). Draw 1 trump card."},
-    "3 Card+": {"cat": "Cards", "desc": "Draw the 3 card (if available). Draw 1 trump card."},
-    "4 Card+": {"cat": "Cards", "desc": "Draw the 4 card (if available). Draw 1 trump card."},
-    "5 Card+": {"cat": "Cards", "desc": "Draw the 5 card (if available). Draw 1 trump card."},
-    "6 Card+": {"cat": "Cards", "desc": "Draw the 6 card (if available). Draw 1 trump card."},
-    "7 Card+": {"cat": "Cards", "desc": "Draw the 7 card (if available). Draw 1 trump card."},
-    "Perfect Draw": {"cat": "Cards", "desc": "Draw the nearest-to-target card. Cannot make you go over."},
-    "Perfect Draw+": {"cat": "Cards", "desc": "Draw the nearest-to-target card. Enemy's bet +5 while on table."},
-    "Ultimate Draw": {"cat": "Cards", "desc": "Draw the nearest-to-target card. Draw 2 trump cards."},
+    # ── Counter / Destroy ──
+    "Destroy": {"cat": "Counter", "desc": "Remove opponent's last trump card from the table."},
+    "Destroy+": {"cat": "Counter", "desc": "Remove ALL opponent's trump cards from the table."},
+    "Destroy++": {"cat": "Counter", "desc": "Remove ALL opponent's trumps. Opponent can't use trumps while on table."},
 
-    # ── Remove Card (Card+Arrow+Deck icon) ──
-    "Return": {"cat": "Cards", "desc": "Remove your last face-up card (returned to deck). Can't take your last hidden card."},
-    "Remove": {"cat": "Cards", "desc": "Remove enemy's last face-up card. Can't take their last hidden card."},
-    "Exchange": {"cat": "Cards", "desc": "Swap your and opponent's last face-up card. Can't take hidden cards."},
-    "Love Your Enemy": {"cat": "Cards", "desc": "Force opponent to draw the next card from the deck."},
-    "Conjure": {"cat": "Cards", "desc": "Draw 3 trump cards. Your bet +1 while on table. Boss-only."},
+    # ── Best Card Draw ──
+    "Perfect Draw": {"cat": "Cards", "desc": "Draw the best possible card from the deck."},
+    "Perfect Draw+": {"cat": "Cards", "desc": "Draw the best possible card. Opponent's bet +5 while on table."},
+    "Ultimate Draw": {"cat": "Cards", "desc": "Draw the best possible card. Also, draw 2 trump cards."},
 
     # ── Target Changers ──
-    "Go for 17": {
-        "cat": "Target",
-        "desc": "Target becomes 17 while on table. Replaces other 'Go For' cards.",
-    },
-    "Go for 24": {
-        "cat": "Target",
-        "desc": "Target becomes 24 while on table. Replaces other 'Go For' cards.",
-    },
-    "Go for 27": {
-        "cat": "Target",
-        "desc": "Target becomes 27 while on table. Replaces other 'Go For' cards.",
-    },
+    "Go for 17": {"cat": "Target", "desc": "Closest to 17 wins while on table. Replaces other 'Go For' cards."},
+    "Go for 24": {"cat": "Target", "desc": "Closest to 24 wins while on table. Replaces other 'Go For' cards."},
+    "Go for 27": {"cat": "Target", "desc": "Closest to 27 wins while on table. Replaces other 'Go For' cards."},
 
-    # ── Counter / Destroy (Explosion icon) ──
-    "Destroy": {"cat": "Counter", "desc": "Remove enemy's last trump card on the table."},
-    "Destroy+": {"cat": "Counter", "desc": "Remove ALL enemy trump cards on the table."},
-    "Destroy++": {
-        "cat": "Counter",
-        "desc": "Remove ALL enemy trump cards. Enemy can't use trumps while on table.",
-    },
+    # ── Trump Draw ──
+    "Harvest": {"cat": "Switch", "desc": "Draw a trump card after every trump you use while on table."},
+    "Love Your Enemy": {"cat": "Cards", "desc": "Opponent draws the best possible card for THEM from the deck."},
 
-    # ── Trump Draw / Switch (Multiple cards icon) ──
-    "Trump Switch": {"cat": "Switch", "desc": "Remove a random trump from your hand. Draw 3 trumps."},
-    "Trump Switch+": {"cat": "Switch", "desc": "Remove a random trump from your hand. Draw 4 trumps."},
-    "Harvest": {"cat": "Switch", "desc": "Draw 1 trump card per trump you play while on table."},
-    "Happiness": {"cat": "Switch", "desc": "Both players draw 1 trump card."},
-
-    # ── Attack / Disruption (enemy-used) ──
+    # ── Enemy-exclusive trump cards ──
+    "Happiness": {"cat": "Switch", "desc": "Both players draw 1 trump card. (Enemy-used)"},
+    "Desire": {"cat": "Attack", "desc": "YOUR bet increased by half YOUR held trump count while on table. (Enemy-used)"},
+    "Desire+": {"cat": "Attack", "desc": "YOUR bet increased by YOUR full held trump count while on table. (Enemy-used)"},
     "Mind Shift": {
         "cat": "Attack",
-        "desc": "Opponent loses half their trumps at end of round. Removed if they play 2 trumps in a round.",
+        "desc": "You lose half your trumps at end of round. Removed if you play 2 trumps in a round. (Enemy-used)",
     },
     "Mind Shift+": {
         "cat": "Attack",
-        "desc": "Opponent loses ALL trumps at end of round. Removed if they play 3 trumps in a round.",
+        "desc": "You lose ALL trumps at end of round. Removed if you play 3 trumps in a round. (Enemy-used)",
     },
-    "Curse": {"cat": "Attack", "desc": "Discard a random trump from opponent. Opponent draws the HIGHEST card in deck."},
+    "Shield Assault": {
+        "cat": "Attack",
+        "desc": "Enemy removes 3 of HIS Shields. YOUR bet +3 while on table. (Enemy-used)",
+    },
+    "Shield Assault+": {
+        "cat": "Attack",
+        "desc": "Enemy removes 2 of HIS Shields. YOUR bet +5 while on table. (Enemy-used)",
+    },
+    "Curse": {"cat": "Attack", "desc": "Discard one of your trumps at random. You draw the highest card in deck. (Enemy-used)"},
     "Black Magic": {
         "cat": "Attack",
-        "desc": "Remove half opponent's trumps. Opponent's bet +10. Draws nearest-to-target card.",
+        "desc": "Remove half your trumps. Your bet +10. Enemy draws best possible card. (Enemy-used)",
     },
-    "Dead Silence": {"cat": "Attack", "desc": "Opponent cannot draw cards (even via trump effects) while on table."},
+    "Conjure": {"cat": "Attack", "desc": "Enemy draws 3 trumps. Enemy's bet +1 while on table. (Enemy-used)"},
+    "Dead Silence": {"cat": "Attack", "desc": "You cannot draw cards (even via trump effects) while on table. (Enemy-used)"},
+    "Twenty-One Up": {"cat": "Attack", "desc": "Enemy must hit exactly 21. YOUR bet +21 while on table. (Boss-only)"},
 
     # ── Special ──
     "Escape": {"cat": "Special", "desc": "You don't take damage if you lose while on table. Match resets if used."},
     "Oblivion": {"cat": "Special", "desc": "Cancels this round. Begins a new round. No damage to either side."},
-    "Desperation": {
-        "cat": "Special",
-        "desc": "Story-only. Both bets become 100. Opponent can't draw cards.",
-    },
+    "Desperation": {"cat": "Special", "desc": "Story-only. Both bets become 100. Opponent can't draw cards."},
 }
 
 # ============================================================
@@ -440,7 +514,7 @@ CHALLENGE_GOALS = {
     "opponents_defeated": {
         "name": "Defeat multiple opponents (cumulative)",
         "reward": "Shield+, Two Up+, Go for 24 (at milestones)",
-        "unlocks_trumps": ["Shield+", "Two Up+", "Go for 24"],
+        "unlocks_trumps": ["Shield+", "Two-Up+", "Go for 24"],
     },
 }
 
@@ -544,19 +618,20 @@ def load_progress():
 # ============================================================
 # PLAYER TRUMP HAND TRACKING
 # ============================================================
-# Player-obtainable trump cards (exclude enemy-only cards)
+# Player-obtainable trump cards (cards the player can actually hold/draw)
+# Excludes enemy-only cards: Escape, Oblivion, Go for 17, Happiness,
+# Desire/+, Mind Shift/+, Shield Assault/+, Curse, Black Magic,
+# Conjure, Dead Silence, Twenty-One Up, Desperation
 PLAYER_TRUMPS = [
-    "One Up", "One Up+", "Two Up", "Two Up+", "Three Up",
+    "One-Up", "Two-Up", "Two-Up+",
     "Shield", "Shield+",
     "2 Card", "3 Card", "4 Card", "5 Card", "6 Card", "7 Card",
-    "2 Card+", "3 Card+", "4 Card+", "5 Card+", "6 Card+", "7 Card+",
     "Return", "Remove", "Exchange",
     "Perfect Draw", "Perfect Draw+", "Ultimate Draw",
     "Love Your Enemy",
-    "Go for 17", "Go for 24", "Go for 27",
+    "Go for 24", "Go for 27",
     "Destroy", "Destroy+", "Destroy++",
-    "Trump Switch", "Trump Switch+", "Harvest", "Happiness",
-    "Escape", "Oblivion",
+    "Trump Switch", "Trump Switch+", "Harvest",
 ]
 
 
@@ -644,8 +719,10 @@ def recommend_trump_play(
     opp_behavior: str = "auto",
 ) -> list:
     """
-    Recommend which trump cards to play based on game state.
-    Returns list of recommendation strings.
+    Smart trump card auto-suggestion engine.
+    Considers: game state, enemy AI patterns, conservative survival strategy,
+    upcoming harder opponents, and challenge completion.
+    Returns list of recommendation strings with priority markers.
     """
     if not trump_hand:
         return []
@@ -653,87 +730,167 @@ def recommend_trump_play(
     recs = []
     hand_set = set(trump_hand)
     enemy_trumps = set(intel.get("trumps", []))
+    trump_behavior = intel.get("trump_behavior", {})
     gap_to_target = target - u_total if u_total < target else 0
-    opp_gap = target - o_visible_total if o_visible_total < target else 0
     busted = u_total > target
+    opp_name = intel.get("name", "")
+    is_boss = "Boss" in opp_name or "Undead" in opp_name or "Molded" in opp_name
 
-    # ── EMERGENCY: You're busted ──
+    # Count destroy cards for resource management
+    destroys_held = sum(1 for c in trump_hand if c.startswith("Destroy"))
+
+    # ══════════════════════════════════════════════════════
+    # PRIORITY 1: EMERGENCY — You're busted
+    # ══════════════════════════════════════════════════════
     if busted:
         if "Return" in hand_set:
-            recs.append("★ PLAY 'Return' — send back your last card to un-bust!")
+            recs.append("★★ PLAY 'Return' NOW — send back your last card to un-bust!")
         if "Go for 27" in hand_set and u_total <= 27:
-            recs.append(f"★ PLAY 'Go for 27' — your {u_total} is under 27, saves you from bust!")
+            recs.append(f"★★ PLAY 'Go for 27' — your {u_total} is safe under 27!")
         if "Go for 24" in hand_set and u_total <= 24 and target == 21:
-            recs.append(f"★ PLAY 'Go for 24' — your {u_total} is under 24!")
+            recs.append(f"★★ PLAY 'Go for 24' — your {u_total} is safe under 24!")
         if "Exchange" in hand_set:
-            recs.append("Consider 'Exchange' — swap your last card with opponent's (might save you).")
-        if busted and not recs:
-            recs.append("No trump cards can save you from bust. Try to minimize damage with Shield.")
+            recs.append("★ Consider 'Exchange' — swap your bust card with opponent's.")
+        if not recs:
+            shield_cards = [c for c in trump_hand if c.startswith("Shield") and "Assault" not in c]
+            if shield_cards:
+                recs.append(f"You're bust — play {', '.join(shield_cards)} to reduce damage taken.")
         return recs
 
-    # ── COUNTER: Enemy dangerous trumps ──
-    if "Dead Silence" in enemy_trumps and u_total < 17:
-        if "Destroy" in hand_set or "Destroy+" in hand_set or "Destroy++" in hand_set:
-            recs.append("★ SAVE Destroy for 'Dead Silence' — highest priority counter!")
+    # ══════════════════════════════════════════════════════
+    # PRIORITY 2: REACTIVE — Counter enemy trump threats
+    # Based on what this specific enemy actually plays
+    # ══════════════════════════════════════════════════════
 
+    # Dead Silence (Undead Hoffman) — highest priority Destroy target
+    if "Dead Silence" in enemy_trumps:
+        ds_info = trump_behavior.get("Dead Silence", {})
+        if ds_info.get("freq") in ("very_high", "high"):
+            if destroys_held >= 2:
+                recs.append(f"★ SAVE {destroys_held} Destroys for Dead Silence — he uses it REPEATEDLY!")
+            elif destroys_held == 1:
+                recs.append("★ SAVE your Destroy for Dead Silence — top priority!")
+                recs.append("  If Dead Silence is active: use Exchange to try busting him instead.")
+            else:
+                recs.append("⚠ No Destroy cards! If Dead Silence hits, use Exchange to bust him.")
+        else:
+            if destroys_held > 0:
+                recs.append("SAVE Destroy for Dead Silence if he plays it.")
+
+    # Black Magic (Molded Hoffman) — YOUR bet +10 = instant death
     if "Black Magic" in enemy_trumps:
-        if "Destroy" in hand_set or "Destroy+" in hand_set:
-            recs.append("★ SAVE Destroy for 'Black Magic' — it raises your bet to 10 (instant death)!")
+        bm_info = trump_behavior.get("Black Magic", {})
+        if destroys_held > 0 and "Dead Silence" not in enemy_trumps:
+            recs.append("★ SAVE Destroy for Black Magic — YOUR bet +10 = instant death if you lose!")
+        elif destroys_held > 0:
+            recs.append("  Also save a Destroy for Black Magic (bet +10 = death).")
 
-    if "Escape" in enemy_trumps:
-        if "Destroy" in hand_set or "Destroy+" in hand_set:
-            recs.append("SAVE Destroy for 'Escape' — otherwise your wins are voided!")
-
+    # Curse (Molded Hoffman) — forces highest card
     if "Curse" in enemy_trumps and remaining:
         highest = max(remaining)
         if u_total + highest > target:
-            if "Destroy" in hand_set:
-                recs.append(f"SAVE Destroy for 'Curse' — it forces you to draw {highest} (bust to {u_total + highest})!")
             if "Return" in hand_set:
-                recs.append("Or use 'Return' AFTER Curse to send back the forced card.")
+                recs.append(f"If Cursed: use 'Return' to send back the forced {highest} (would bust to {u_total + highest}).")
+            if "Exchange" in hand_set:
+                recs.append("Or 'Exchange' after Curse to give the bad card to opponent.")
 
-    # ── OFFENSIVE: You're losing ──
-    if u_total < o_visible_total and opp_behavior != "stay":
-        if "Love Your Enemy" in hand_set and o_visible_total >= target - 5:
-            bust_cards = [c for c in remaining if o_visible_total + c > target]
-            if len(bust_cards) > len(remaining) / 2:
-                recs.append(f"★ PLAY 'Love Your Enemy' — {len(bust_cards)}/{len(remaining)} cards bust the opponent!")
+    # Escape (Mr. Big Head) — destroys win progress
+    if "Escape" in enemy_trumps:
+        if destroys_held > 0:
+            recs.append("★ SAVE Destroy for 'Escape' — otherwise your wins are voided! He replays it.")
 
+    # Mind Shift / Mind Shift+ — play 2 (or 3) trumps to remove it
+    if "Mind Shift+" in enemy_trumps:
+        recs.append("⚠ Mind Shift+ threat: play 3 trumps this round to remove it, or lose ALL trumps.")
+    elif "Mind Shift" in enemy_trumps:
+        recs.append("⚠ Mind Shift threat: play 2 trumps this round to remove it, or lose half.")
+
+    # Destroy+ (Molded Hoffman) — don't stack too many bet-ups
+    if "Destroy+" in enemy_trumps:
+        bet_ups_in_hand = [c for c in trump_hand if c.startswith("One-Up") or c.startswith("Two-Up")]
+        if len(bet_ups_in_hand) > 1:
+            recs.append("Don't stack all bet-ups at once — enemy has Destroy+ to wipe them.")
+
+    # Oblivion (Undead Hoffman) — can't counter, just accept
+    if "Oblivion" in enemy_trumps:
+        ob_info = trump_behavior.get("Oblivion", {})
+        if ob_info.get("when") == "losing":
+            recs.append("Oblivion: if you're winning, he may cancel the round. Can't counter — stay patient.")
+
+    # Desire / Desire+ — penalizes hoarding trumps
+    if "Desire" in enemy_trumps or "Desire+" in enemy_trumps:
+        d_type = "Desire+" if "Desire+" in enemy_trumps else "Desire"
+        count_modifier = "FULL" if "Desire+" in enemy_trumps else "half"
+        recs.append(f"⚠ {d_type}: your bet scales with your {count_modifier} trump count. Use trumps aggressively!")
+
+    # ══════════════════════════════════════════════════════
+    # PRIORITY 3: PROACTIVE — Offensive plays
+    # ══════════════════════════════════════════════════════
+
+    # Perfect hand — stack damage
     if u_total == target:
-        # Perfect hand — stack damage
-        bet_cards = [c for c in trump_hand if c in ("One Up", "Two Up", "Two Up+", "Three Up")]
+        bet_cards = [c for c in trump_hand if c in ("One-Up", "Two-Up", "Two-Up+")]
         if bet_cards:
             recs.append(f"★ PERFECT {target}! Stack bet-ups: {', '.join(bet_cards)} for max damage!")
 
-    # ── CARD MANIPULATION ──
-    if gap_to_target > 0 and gap_to_target <= 11:
-        if "Perfect Draw" in hand_set:
-            needed = target - u_total
-            if needed in remaining:
-                recs.append(f"'Perfect Draw' gets you exactly {target} (draws {needed}).")
-            else:
-                recs.append(f"'Perfect Draw' — the {needed} you need isn't in deck! Consider saving it.")
+    # Love Your Enemy — force opponent to draw (best card for them, but can bust)
+    if "Love Your Enemy" in hand_set and opp_behavior != "stay":
+        if o_visible_total >= target - 3:
+            bust_cards = [c for c in remaining if o_visible_total + c > target]
+            if bust_cards:
+                recs.append(f"'Love Your Enemy' — gives opponent best card, but {len(bust_cards)}/{len(remaining)} cards bust them!")
 
-    if "Exchange" in hand_set and opp_behavior != "stay":
-        # Exchange is powerful when opponent has a high visible card
-        opp_last = max(o_visible_total, 0)  # rough proxy
-        if gap_to_target > 0:
-            recs.append("'Exchange' can steal opponent's high card and give them your low one.")
+    # Perfect Draw when you need exactly the right card
+    if gap_to_target > 0:
+        if "Perfect Draw" in hand_set or "Perfect Draw+" in hand_set or "Ultimate Draw" in hand_set:
+            draw_card = next((c for c in ["Ultimate Draw", "Perfect Draw+", "Perfect Draw"] if c in hand_set), None)
+            if draw_card:
+                recs.append(f"'{ draw_card}' — draws best card for you (need {gap_to_target} to reach {target}).")
 
-    # ── DEFENSE ──
+    # Numbered card draws
+    for card_name in ["2 Card", "3 Card", "4 Card", "5 Card", "6 Card", "7 Card"]:
+        if card_name in hand_set:
+            needed = int(card_name[0])
+            if u_total + needed == target and needed in remaining:
+                recs.append(f"★ '{card_name}' gives you exactly {target}! (if {needed} is still in deck)")
+            elif u_total + needed <= target and needed in remaining:
+                recs.append(f"'{card_name}' is safe ({u_total}+{needed}={u_total+needed}).")
+
+    # Two-Up+ — removes opponent's card AND raises bet
+    if "Two-Up+" in hand_set and opp_behavior != "stay":
+        recs.append("'Two-Up+' returns opponent's last card to deck AND raises their bet by 2.")
+
+    # Exchange when opponent has a high visible card and you have a low one
+    if "Exchange" in hand_set and opp_behavior != "stay" and gap_to_target > 0:
+        recs.append("'Exchange' can steal opponent's high card and give them your low one.")
+
+    # ══════════════════════════════════════════════════════
+    # PRIORITY 4: DEFENSIVE / CONSERVATIVE
+    # ══════════════════════════════════════════════════════
+
+    # Low HP — prioritize survival
     if player_hp <= 3:
         shield_cards = [c for c in trump_hand if c.startswith("Shield") and "Assault" not in c]
         if shield_cards:
-            recs.append(f"LOW HP ({player_hp}) — hold {', '.join(shield_cards)} for damage reduction.")
+            recs.append(f"LOW HP ({player_hp}) — play {', '.join(shield_cards)} to reduce damage.")
 
-    if "Escape" in hand_set and player_hp <= 2:
-        recs.append("★ CRITICAL HP: 'Escape' voids the round if you lose. Play it as insurance!")
+    # Save trumps for harder opponents (conservative strategy)
+    if not is_boss and destroys_held >= 3:
+        recs.append("TIP: Save extra Destroys — bosses need them more (Molded: Black Magic, Undead: Dead Silence).")
 
-    # ── TARGET CHANGERS ──
-    if u_total >= 18 and u_total <= 21 and "Go for 17" in hand_set:
-        recs.append("'Go for 17' — if opponent is close to 21, this can make THEM bust!")
+    # Harvest in play? Use trumps freely for value
+    if "Harvest" in hand_set:
+        recs.append("★ Play 'Harvest' first! Every trump you play afterward draws a replacement.")
 
-    # ── GENERAL ──
+    # Trump Switch for value
+    if "Trump Switch+" in hand_set and len(trump_hand) <= 3:
+        recs.append("'Trump Switch+' — discard 1, draw 4. Good value when hand is small.")
+    elif "Trump Switch" in hand_set and len(trump_hand) <= 2:
+        recs.append("'Trump Switch' — discard 2, draw 3. Net +1 when hand is small.")
+
+    # ══════════════════════════════════════════════════════
+    # FALLBACK
+    # ══════════════════════════════════════════════════════
     if not recs:
         recs.append("No urgent plays. Hold trumps for counter-play or bet stacking.")
 
@@ -1798,6 +1955,35 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int, challenges_comp
     trump_hand = []  # Player's held trump cards — persists across rounds
 
     print_header(f"FIGHT: vs. {intel['name']}")
+
+    # Variant selection — if opponent has sub-variants, let player pick
+    variants = intel.get("variants", {})
+    if variants:
+        print(f"\n Which variant of {intel['name']}?")
+        print(" (Look at the sack on their head to identify)\n")
+        variant_keys = list(variants.keys())
+        for i, key in enumerate(variant_keys, 1):
+            v = variants[key]
+            trumps_str = ", ".join(v["trumps"]) if v["trumps"] else "None"
+            print(f"  {i}. {key} — Trumps: {trumps_str}")
+        print(f"  {len(variant_keys) + 1}. Not sure (use combined loadout)")
+
+        v_input = input("\n > ").strip()
+        try:
+            v_idx = int(v_input) - 1
+            if 0 <= v_idx < len(variant_keys):
+                chosen = variants[variant_keys[v_idx]]
+                intel = dict(intel)  # Copy so we don't mutate original
+                intel["trumps"] = chosen["trumps"]
+                intel["tip"] = chosen["tip"]
+                intel["name"] = f"{intel['name']} ({variant_keys[v_idx]})"
+                print(f"\n ★ Set to: {variant_keys[v_idx]}")
+                print(f"   Trumps: {', '.join(chosen['trumps'])}")
+            else:
+                print(f" Using combined loadout (all possible trumps).")
+        except (ValueError, IndexError):
+            print(f" Using combined loadout (all possible trumps).")
+
     display_opponent_info(intel)
 
     # Initial trump hand setup
@@ -2015,7 +2201,15 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int, challenges_comp
                     print(f" Rounds survived: {round_num}")
                     break
 
-                # Round recorded and neither died → next round
+                # Round recorded and neither died → ask about trump changes
+                enemy_trump_effects = [t for t in intel.get("trumps", [])
+                                       if t in ("Curse", "Mind Shift", "Mind Shift+", "Desire", "Desire+", "Happiness")]
+                if enemy_trump_effects or trump_hand:
+                    print(f"\n Did your trump hand change this round? (opponent trumps, draws, etc.)")
+                    print(f"  Current hand: {trump_hand if trump_hand else '(empty)'}")
+                    print(f"  Y = edit hand, Enter = no changes")
+                    if input(" > ").strip().lower() == "y":
+                        trump_hand = edit_trump_hand(trump_hand)
                 break
 
             elif action == "T":
@@ -2369,23 +2563,21 @@ def run_challenge_lab() -> None:
     """Focused tools for high-value challenge clears."""
     while True:
         print_header("CHALLENGE LAB")
-        print("\n 1. Bust-Win Planner [PRIORITY]")
-        print(" 2. 15-Trump Planner")
-        print(" 3. No-Damage Blueprint")
-        print(" 4. Internet Sources")
+        print("\n Bust-Win challenge is now integrated into normal play advice.")
+        print(" When you have a good chance to win while bust, the solver will tell you.\n")
+        print(" 1. 15-Trump Planner")
+        print(" 2. No-Damage Blueprint")
+        print(" 3. Internet Sources")
         print(" Q. Back")
 
         choice = input("\n Select: ").strip().upper()
         if choice == "1":
-            run_bust_win_planner()
-            input("\n Press Enter to continue...")
-        elif choice == "2":
             run_fifteen_trump_planner()
             input("\n Press Enter to continue...")
-        elif choice == "3":
+        elif choice == "2":
             show_no_damage_blueprint()
             input("\n Press Enter to continue...")
-        elif choice == "4":
+        elif choice == "3":
             display_challenge_sources()
             input("\n Press Enter to continue...")
         elif choice == "Q":
@@ -2403,7 +2595,7 @@ def main() -> None:
     while True:
         print_header("RESIDENT EVIL 7: 21 — CARD GAME SOLVER")
         print("\n SELECT MODE:\n")
-        print(" 1. Normal 21 (vs. Lucas — tutorial)")
+        print(" 1. Normal 21 (vs. Lucas — tutorial) ⚠ limited accuracy")
         print(" 2. Survival 21 (5-opponent gauntlet)")
         print(" 3. Survival+ 21 (10-opponent hard gauntlet)")
         print(" 4. Free Play (pick any opponent)")
