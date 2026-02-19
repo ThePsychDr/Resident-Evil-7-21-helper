@@ -4,7 +4,7 @@ TODO:
 ^maybe can be modled if certain ai only plays certain trumps
 Instead of    print(f" P. Play a trump card ({trump_count} in hand)")
  Auto suggest a trump card if necesary (play conservative to save from big damage and to survive later rounds/ harder opponents. Take into account what trumps the opponent likes to play and when. )
-
+- figure out if Undead Hoffman (Final Boss) can play his special trumps multiple times in a round
 
 -Change challenge mode/ suggestions based on above logic (remove Defeat an opponent despite being bust. option from menu) Just give instructions when at a high probability in survival/ survival+ if the challenge isnt already completed.
 -- Important Trump unlocks that require different play styles (main focus until unlocked):
