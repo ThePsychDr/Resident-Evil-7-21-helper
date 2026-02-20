@@ -100,6 +100,7 @@ OPPONENTS_SURVIVAL = [
         "desc": "Sack head with tally marks. Basic AI, no special trumps.",
         "ai": "BASIC",
         "trumps": [],
+        "standard_trumps": ["One-Up", "Shield"],
         "stay_val": 16,
         "hp": 5,
         "tip": (
@@ -114,6 +115,7 @@ OPPONENTS_SURVIVAL = [
         "desc": "Sack head covered in bloody handprints.",
         "ai": "TRUMP STEALER",
         "trumps": ["Happiness", "Desire", "Mind Shift"],
+        "standard_trumps": ["One-Up", "Shield"],
         "stay_val": 16,
         "hp": 5,
         "tip": (
@@ -131,6 +133,7 @@ OPPONENTS_SURVIVAL = [
         "desc": "Sack head with barbed wire marks.",
         "ai": "SHIELD SPAMMER",
         "trumps": ["Shield Assault"],
+        "standard_trumps": ["Shield", "One-Up"],
         "stay_val": 16,
         "hp": 5,
         "tip": (
@@ -146,6 +149,7 @@ OPPONENTS_SURVIVAL = [
         "desc": "Upgraded tally mark variant. Smarter AI, more trump cards.",
         "ai": "BASIC+",
         "trumps": [],
+        "standard_trumps": ["One-Up", "Two-Up", "Shield"],
         "stay_val": 17,
         "hp": 5,
         "tip": (
@@ -160,6 +164,7 @@ OPPONENTS_SURVIVAL = [
         "desc": "Head covered in black mold. Final boss of Survival.",
         "ai": "DECK MANIPULATOR",
         "trumps": ["Curse", "Conjure"],
+        "standard_trumps": ["One-Up", "Two-Up", "Shield"],
         "stay_val": 17,
         "hp": 5,
         "tip": (
@@ -1098,11 +1103,22 @@ def display_trumps_reference() -> None:
 
 
 def display_opponent_info(intel: dict) -> None:
-    """Print detailed opponent info."""
+    """Print detailed opponent info with standard and special trump sections."""
     print(f"\n ┌─ TARGET: {intel['name']}")
     print(f" │ Mode: {intel.get('mode','?')}")
     print(f" │ AI Type: {intel.get('ai','?')}")
-    print(f" │ Trumps: {', '.join(intel.get('trumps', []))}")
+
+    # Standard trumps (common cards any opponent might use)
+    std_trumps = intel.get("standard_trumps", [])
+    special_trumps = intel.get("trumps", [])
+
+    if std_trumps:
+        print(f" │ Standard Trumps: {', '.join(std_trumps)}")
+    if special_trumps:
+        print(f" │ \033[93mSpecial Trumps: {', '.join(special_trumps)}\033[0m")
+    elif not std_trumps:
+        print(f" │ Trumps: (none observed)")
+
     print(f" │ Stays at: {intel.get('stay_val','?')}+")
     print(f" └─ {intel.get('desc','')}")
     tip = intel.get("tip", "")
@@ -1543,7 +1559,7 @@ def generate_advice(
             f"(busts opponent: {opp_bust_from_force:.0f}%)."
         )
 
-    # Bust-to-win analysis — only show if bust-win challenge is incomplete
+    # Bust-to-win analysis — gated by multiple conditions
     bust_result = None
     if challenges_completed is None:
         challenges_completed = set()
@@ -1552,19 +1568,30 @@ def generate_advice(
     bust_challenge_done = "bust_win" in challenges_completed
     bust_cards = [c for c in remaining if u_total + c > target]
 
-    # Only compute and show bust option if challenge is incomplete
-    if bust_cards and behavior_key != "stay" and not bust_challenge_done:
+    # Gate bust suggestion: only show when it makes sense
+    # - Challenge not yet completed
+    # - Bust cards exist and opponent hasn't stayed
+    # - Player HP > 2 (too risky otherwise — you WILL take damage if you bust-lose)
+    # - Stay win% isn't already dominant (>65% means just play normally)
+    show_bust = (
+        bust_cards
+        and behavior_key != "stay"
+        and not bust_challenge_done
+        and player_hp > 2
+        and stay_probs["win"] < 0.65  # Don't throw away a comfortable win
+    )
+
+    if show_bust:
         bust_result = evaluate_bust_inline(u_total, o_visible_total, remaining, stay_val, target, behavior_key)
-        if bust_result and bust_result["win_pct"] > 0:
-            bust_label = "INTENTIONAL BUST"
-            if not bust_challenge_done:
-                bust_label += " ★ challenge"
+        if bust_result and bust_result["win_pct"] >= 0.15:  # Only show if decent odds
             advice_lines.append(
                 f"If you BUST ON PURPOSE -> "
                 f"Best card: {bust_result['best_card']} (total {bust_result['bust_total']}) → "
                 f"Win {bust_result['win_pct'] * 100:.1f}%."
-                f"{' [Completes bust-win challenge!]' if not bust_challenge_done else ''}"
+                f" [Completes bust-win challenge!]"
             )
+        elif bust_result and bust_result["win_pct"] < 0.15:
+            bust_result = None  # Too low — don't include in options
 
     # Unlocked trump card reminders
     if u_total < estimated_opp and u_total < target:
@@ -1581,11 +1608,8 @@ def generate_advice(
     }
     if force_probs is not None:
         options["FORCE A DRAW (Love Your Enemy)"] = force_probs["win"]
-    if bust_result and bust_result["win_pct"] > 0:
-        bust_label = "INTENTIONAL BUST"
-        if not bust_challenge_done:
-            bust_label += " ★ challenge"
-        options[bust_label] = bust_result["win_pct"]
+    if bust_result and bust_result["win_pct"] >= 0.15:
+        options["INTENTIONAL BUST ★ challenge"] = bust_result["win_pct"]
 
     best_option = max(options, key=options.get)
     best_win = options[best_option]
@@ -2646,10 +2670,24 @@ def run_mode(mode_key: str, challenges_completed: set = None, available_trumps: 
     else:
         total_opponents = len(OPPONENTS_NORMAL)
 
+    # ── NO-DAMAGE TRACKING ──
+    # Automatically tracks whether you've taken ANY damage this run.
+    # Only relevant for Survival (unlocks Ultimate Draw) — S+ is cosmetic.
+    if challenges_completed is None:
+        challenges_completed = set()
+    no_damage_relevant = (
+        mode_key == "2"
+        and "no_damage_survival" not in challenges_completed
+    )
+    no_damage = True  # Flips to False on first damage
+
     print_header(f"{mode['name']}")
     print(f"\n {mode['rules']}")
     print(f"\n Starting HP: {player_hp}")
     print(f" Opponents: {total_opponents}")
+    if no_damage_relevant:
+        print(f" \033[92m★ NO-DAMAGE CHALLENGE ACTIVE — tracking automatically.\033[0m")
+        print(f"   Take zero damage to unlock Ultimate Draw!")
     input("\n Press Enter to begin...")
 
     for idx in range(total_opponents):
@@ -2677,6 +2715,7 @@ def run_mode(mode_key: str, challenges_completed: set = None, available_trumps: 
                 print(" Returning to menu.")
                 return
 
+        hp_before_fight = player_hp
         player_hp = fight_opponent(opp, player_hp, player_max, challenges_completed, available_trumps,
                                    mode_key=mode_key, fight_num=fight_num)
 
@@ -2685,6 +2724,20 @@ def run_mode(mode_key: str, challenges_completed: set = None, available_trumps: 
             print(f" Defeated by {opp['name']}.")
             print(f" Opponents beaten: {idx}/{total_opponents}")
             return
+
+        # ── NO-DAMAGE CHECK ──
+        damage_this_fight = hp_before_fight - player_hp
+        if no_damage_relevant and no_damage and damage_this_fight > 0:
+            no_damage = False
+            print(f"\n \033[91m✖ NO-DAMAGE CHALLENGE FAILED — took {damage_this_fight} damage vs {opp['name']}.\033[0m")
+            remaining_fights = total_opponents - fight_num
+            if remaining_fights > 0:
+                print(f"   {remaining_fights} fights remaining. Ultimate Draw requires zero damage.")
+                print(f"   \033[93mRestart run for a fresh no-damage attempt? (y/n)\033[0m")
+                if input("   > ").strip().lower() == "y":
+                    print(" Restarting run...")
+                    return
+                print("   Continuing run (no-damage challenge voided).")
 
         # ── RUN RESTART SUGGESTION ──
         # If HP is critically low in the first half, the run is likely doomed.
@@ -2712,6 +2765,10 @@ def run_mode(mode_key: str, challenges_completed: set = None, available_trumps: 
         print_header(f"★ {mode['name']} COMPLETE! ★")
         print(f" All {total_opponents} opponents defeated!")
         print(f" Remaining HP: {player_hp}/{player_max}")
+
+        if no_damage_relevant and no_damage:
+            print(f"\n \033[92m★★★ NO-DAMAGE RUN COMPLETE! ★★★\033[0m")
+            print(f" \033[92m Unlocked: Ultimate Draw!\033[0m")
 
         if mode_key == "2":
             print(" UNLOCKED: Survival+ mode!")
@@ -2858,69 +2915,144 @@ def run_fifteen_trump_planner() -> None:
     """Plan a 15-trump win round for Trump Switch+ unlock."""
     print_header("CHALLENGE: WIN ROUND USING 15 TRUMPS")
     print(" Goal reward: Trump Switch+")
-    print(" Constraint: at most 5 permanent trumps active at once.\n")
+    print(" Constraint: max 5 permanent trumps active on table at once.\n")
+
+    print(" ─── SURVIVAL vs SURVIVAL+ ───\n")
+    print(" SURVIVAL (21):")
+    print("   Opponents have 5 HP → fights last 3-5 rounds.")
+    print("   Fewer trump draws per round, limited cycling.")
+    print("   \033[93mVERY DIFFICULT — possible only with Harvest + Trump Switch.\033[0m")
+    print("   You need a long round against Molded Hoffman (boss).")
+    print()
+    print(" SURVIVAL+ (21+):")
+    print("   Opponents have 10 HP → fights last 5-10 rounds.")
+    print("   More time to accumulate and cycle trumps.")
+    print("   \033[92mRECOMMENDED — best chance against Barbed Wire or boss fights.\033[0m")
+    print("   With Harvest active, every trump you play draws a replacement.")
+    print()
+    print(" ─── REQUIRED SETUP ───\n")
+    print(" MUST HAVE:")
+    print("   ★ Harvest (play first — every trump after draws a replacement)")
+    print("   ★ Trump Switch or Trump Switch+ (cycle: discard old, draw new)")
+    print()
+    print(" IDEAL COMBO:")
+    print("   1. Play Harvest (use 1, now drawing replacements)")
+    print("   2. Play cheap trumps: Shield, One-Up, numbered cards (use 2-5)")
+    print("   3. Trump Switch+ → discard 1, draw 4 (use 6, gain 4 cards)")
+    print("   4. Play all 4 new cards (use 7-10)")
+    print("   5. Trump Switch → discard 2, draw 3 (use 11, gain 3)")
+    print("   6. Play remaining (use 12-15)")
+    print("   7. Win the round!")
+    print()
+    print(" KEY: Non-permanent trumps (numbered cards, Return, Exchange)")
+    print(" don't take table slots. Permanent trumps (Shield, One-Up, etc.)")
+    print(" take 1 of 5 slots. Prioritize non-permanent plays.\n")
 
     try:
-        used = int(input(" Trumps used this round so far: ").strip() or "0")
-        active_perm = int(input(" Permanent trumps currently active (0-5): ").strip() or "0")
-        non_perm_hand = int(input(" Non-permanent trumps in hand (estimate): ").strip() or "0")
-        perm_hand = int(input(" Permanent trumps in hand (estimate): ").strip() or "0")
+        print(" ─── LIVE TRACKER ───")
+        used = int(input("\n Trumps used this round so far: ").strip() or "0")
+        active_perm = int(input(" Permanent trumps on table (0-5): ").strip() or "0")
+        non_perm_hand = int(input(" Non-permanent trumps in hand: ").strip() or "0")
+        perm_hand = int(input(" Permanent trumps in hand: ").strip() or "0")
+        has_harvest = input(" Is Harvest active? (y/n): ").strip().lower() == "y"
+        has_switch = input(" Have Trump Switch/Switch+? (y/n): ").strip().lower() == "y"
 
         active_perm = max(0, min(5, active_perm))
         need = max(0, 15 - used)
         slots_left = max(0, 5 - active_perm)
         immediate_capacity = non_perm_hand + min(perm_hand, slots_left)
 
-        print(f"\n Need {need} more trump uses to reach 15.")
-        print(f" Permanent slots left: {slots_left}/5")
-        print(f" Immediate usable estimate: {immediate_capacity}")
+        print(f"\n ── STATUS ──")
+        print(f" Used: {used}/15 | Need: {need} more")
+        print(f" Permanent slots: {5 - slots_left}/5 used ({slots_left} left)")
+        print(f" Playable right now: {immediate_capacity}")
+        if has_harvest:
+            print(" Harvest: ACTIVE ★ (each play draws a replacement)")
+        if has_switch:
+            print(" Trump Switch available: can cycle for +1-3 net cards")
 
         if need == 0:
-            print(" Requirement met. Secure the round win now.")
+            print(f"\n \033[92m★ Requirement MET! Win the round now!\033[0m")
             return
 
-        if immediate_capacity < need:
-            print(
-                "\n You likely need additional cycling (Trump Switch/Trump Switch+) or extra draw generation."
-            )
+        projected = immediate_capacity
+        if has_harvest:
+            projected += min(immediate_capacity, 3)  # Harvest replacements
+        if has_switch:
+            projected += 3  # Net gain from switch
+
+        if projected >= need:
+            print(f"\n \033[92m✓ You can likely reach 15 this round (projected: ~{used + projected}).\033[0m")
         else:
-            print("\n You likely have enough cards to hit 15 this round.")
+            shortfall = need - projected
+            print(f"\n \033[93m⚠ Short by ~{shortfall}. Need more cycling or trump draws.\033[0m")
+            if not has_harvest:
+                print("   → Play Harvest first if you have it!")
+            if not has_switch:
+                print("   → Trump Switch would help cycle cards.")
 
         print(
-            "\n Recommended sequence:\n"
-            " 1) Spend non-permanent effects first.\n"
-            " 2) Fill permanent slots only when necessary.\n"
-            " 3) Once count reaches 15, convert to a safe winning board."
+            "\n Sequence:\n"
+            " 1) Non-permanent effects first (don't waste table slots).\n"
+            " 2) Fill permanent slots only when needed.\n"
+            " 3) Use Trump Switch to cycle when hand is low.\n"
+            " 4) Once at 15, secure the round win."
         )
 
     except ValueError:
-        print(" Invalid numeric input.")
+        print(" Invalid input.")
 
 
 def show_no_damage_blueprint() -> None:
-    """Display strategy for no-damage Survival and Survival+ runs."""
-    print_header("NO-DAMAGE BLUEPRINT")
-    print(" Objectives:")
-    print(f" - {CHALLENGE_GOALS['no_damage_survival']['name']}")
-    print(f" - {CHALLENGE_GOALS['no_damage_survival_plus']['name']}\n")
-    print(
-        " Core policy:\n"
-        " - Card count every round (1-11, one each).\n"
-        " - Play for win or draw; if losing is forced, shield to avoid damage.\n"
-        " - Save Destroy/Destroy+ for lethal enemy trumps.\n"
-        " - Avoid unnecessary bet inflation until kill turns."
-    )
-    print(
-        "\n High-risk trump counters:\n"
-        " - Curse / Black Magic lines: keep Return/Exchange ready.\n"
-        " - Mind Shift variants: remove immediately when possible.\n"
-        " - Dead Silence / Twenty-One Up turns: hold counter cards before committing."
-    )
-    print(
-        "\n Run discipline:\n"
-        " - For strict no-damage attempts, reset on first unavoidable damage.\n"
-        " - Keep at least one emergency answer card for late opponents."
-    )
+    """Strategy guide for no-damage Survival runs. Live tracking is built into run_mode."""
+    print_header("NO-DAMAGE SURVIVAL — STRATEGY GUIDE")
+    print(f" Objective: {CHALLENGE_GOALS['no_damage_survival']['name']}")
+    print(f" Reward: {CHALLENGE_GOALS['no_damage_survival']['reward']}")
+    print()
+    print(" \033[92m★ Live tracking is automatic when you play Survival mode.\033[0m")
+    print("   The solver detects damage and offers to restart immediately.")
+    print("   Survival+ no-damage is cosmetic only — not tracked.\n")
+
+    print(" KEY PRINCIPLES:")
+    print("  - Win 5 fights taking ZERO total damage.")
+    print("  - Save Shields for emergencies (reduce loss damage to 0).")
+    print("  - Save Destroy for Molded Hoffman's Curse (fight #5).")
+    print("  - If you take ANY damage, restart immediately.\n")
+
+    print(" ─── PER-FIGHT STRATEGY ───")
+    print()
+    print(" Fight 1 (Tally Mark): Easy. Stay at 17+. Don't use valuable trumps.")
+    print("   → If you lose R1 with bet=1, Shield negates it. Otherwise restart.")
+    print()
+    print(" Fight 2 (Bloody Handprints): Desire + Mind Shift.")
+    print("   → Dump cheap trumps (play 2/round to block Mind Shift).")
+    print("   → Don't hoard — Desire punishes it.")
+    print()
+    print(" Fight 3 (Barbed Wire): Shield spam + Shield Assault.")
+    print("   → Destroy Shield Assault immediately.")
+    print("   → Watch for Go for 17 target change.")
+    print()
+    print(" Fight 4 (Tally Mark Upgraded): Slightly harder basic.")
+    print("   → Clean play. Save trumps for boss.")
+    print()
+    print(" Fight 5 (Molded Hoffman BOSS): Curse + Conjure.")
+    print("   → MUST have Destroy ready for Curse.")
+    print("   → Return/Exchange to fix forced bad draws.")
+    print("   → Card-count obsessively.\n")
+
+    print(" ─── RESTART DECISION TREE ───")
+    print()
+    print(" RESTART IMMEDIATELY IF:")
+    print("   ✖ You take ANY damage (challenge void)")
+    print("   ✖ All Destroy cards gone before fight #5")
+    print()
+    print(" CONSIDER RESTARTING IF:")
+    print("   ⚠ Used Shield early (none left for emergencies)")
+    print("   ⚠ Used Destroy on non-Curse target (need it for fight #5)")
+    print()
+    print(" KEEP GOING IF:")
+    print("   ✓ Full HP through fight #3")
+    print("   ✓ Have 1+ Destroy and 1+ Shield entering fight #5")
 
 
 def display_challenge_sources() -> None:
