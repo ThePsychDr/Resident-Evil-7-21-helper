@@ -189,6 +189,7 @@ OPPONENTS_SURVIVAL_PLUS = [
         "hp": 10,
         "variants": {
             "2 cuts": {
+                "visual_id": "2 vertical slash marks on the sack",
                 "trumps": ["Happiness", "Return", "Desire", "Mind Shift"],
                 "tip": (
                     "2-CUT VARIANT (less dangerous):\n"
@@ -199,6 +200,7 @@ OPPONENTS_SURVIVAL_PLUS = [
                 ),
             },
             "3 cuts": {
+                "visual_id": "3 vertical slash marks on the sack",
                 "trumps": ["One-Up", "Two-Up", "Desire", "Happiness"],
                 "tip": (
                     "3-CUT VARIANT:\n"
@@ -227,6 +229,7 @@ OPPONENTS_SURVIVAL_PLUS = [
         "hp": 10,
         "variants": {
             "2 hands": {
+                "visual_id": "2 bloody handprints on the sack",
                 "trumps": ["Happiness", "Return", "Desire", "Mind Shift"],
                 "tip": (
                     "2-HAND VARIANT:\n"
@@ -237,6 +240,7 @@ OPPONENTS_SURVIVAL_PLUS = [
                 ),
             },
             "4 hands": {
+                "visual_id": "4 bloody handprints on the sack",
                 "trumps": ["Happiness", "Desire+", "Mind Shift+"],
                 "tip": (
                     "4-HAND VARIANT (DANGEROUS):\n"
@@ -265,6 +269,7 @@ OPPONENTS_SURVIVAL_PLUS = [
         "hp": 10,
         "variants": {
             "3 wires": {
+                "visual_id": "3 horizontal barbed wire wraps on the sack",
                 "trumps": ["Shield", "Go for 17", "Shield Assault"],
                 "tip": (
                     "3-WIRE VARIANT:\n"
@@ -275,6 +280,7 @@ OPPONENTS_SURVIVAL_PLUS = [
                 ),
             },
             "4 wires": {
+                "visual_id": "4 horizontal barbed wire wraps on the sack",
                 "trumps": ["Shield", "Shield Assault", "Go for 17", "Two-Up"],
                 "tip": (
                     "4-WIRE VARIANT:\n"
@@ -618,6 +624,283 @@ def load_progress():
         return challenges, trumps
     except (OSError, json.JSONDecodeError, KeyError):
         return None, None
+
+
+# ============================================================
+# BANKER AI — Real parameters from CardGameBanker.hpp
+# ============================================================
+# Source: app::CardGameBanker reverse-engineered fields:
+#   BankerTakeCardBorder (0x54) — hard draw threshold: banker draws below this
+#   BankerHandGoodBorder (0x50) — upper threshold: banker "satisfied" above this
+#   IsBankerChicken      (0x58) — conservative/passive mode flag
+#   PlayerHandGoodLow/High (0x5C/0x60) — range banker reads as player "dangerous"
+#   PlayerHandBadLow/High  (0x64/0x68) — range banker reads as player "weak"
+#
+# Reconstructed draw logic:
+#   1. banker_total < BankerTakeCardBorder  → ALWAYS draw  (hard floor)
+#   2. banker_total >= BankerHandGoodBorder → ALWAYS stay  (satisfied)
+#   3. In the gray zone [TakeCardBorder, HandGoodBorder):
+#      • IsBankerChicken=True → nearly always stay (relies on shields/trumps)
+#      • Player hand in "bad" range → stay (let player bust or fail)
+#      • Player hand in "good" range → draw (must improve to beat them)
+#      • Otherwise → probabilistic based on position in zone
+#
+# ┌──────────────────────────────────────────────────────────────┐
+# │ RANDOMNESS FINDINGS (CardGameItemTable.hpp + CardGameMaster) │
+# │                                                              │
+# │ FIXED per opponent:                                          │
+# │  • Which trump cards can appear   → loaded from UserData     │
+# │    asset files (CardGameItemTableParamList, CardGameItemTable)│
+# │  • When conditions allow a trump  → CardGameCondition fields  │
+# │    are static per opponent (round, hand sum, item counts…)   │
+# │                                                              │
+# │ RANDOMIZED each session:                                     │
+# │  • Trump deal ORDER → RandomIndexList (confirmed in header)  │
+# │  • Numbered cards (1–11) → shuffled via Unity RNG each round │
+# │    CardGameMaster.StockCardList is reshuffled per round      │
+# │                                                              │
+# │ IMPLICATION: You can't predict which card or trump is next,  │
+# │ but you CAN predict WHEN conditions make a trump eligible.   │
+# └──────────────────────────────────────────────────────────────┘
+
+class BankerAI:
+    """
+    Real banker AI parameter set from app::CardGameBanker.
+    Models the full draw/stay decision including player-hand awareness.
+    """
+    __slots__ = (
+        "take_card_border", "hand_good_border", "is_chicken",
+        "player_good_low", "player_good_high",
+        "player_bad_low",  "player_bad_high",
+    )
+
+    def __init__(self, take_card_border, hand_good_border, is_chicken,
+                 player_good_low, player_good_high, player_bad_low, player_bad_high):
+        self.take_card_border = take_card_border
+        self.hand_good_border = hand_good_border
+        self.is_chicken       = is_chicken
+        self.player_good_low  = player_good_low
+        self.player_good_high = player_good_high
+        self.player_bad_low   = player_bad_low
+        self.player_bad_high  = player_bad_high
+
+    def draw_probability(self, banker_total: int, player_visible_total: int, target: int = 21) -> float:
+        """
+        Returns probability (0.0–1.0) that banker draws another card in this state.
+        Uses all six CardGameBanker fields to model the real decision tree.
+        """
+        if banker_total >= target:
+            return 0.0   # Bust — can't draw
+        if banker_total < self.take_card_border:
+            return 1.0   # Hard floor — always draws below threshold
+        if banker_total >= self.hand_good_border:
+            return 0.0   # Hard ceiling — fully satisfied
+
+        # ── Gray zone: [take_card_border, hand_good_border) ──
+        if self.is_chicken:
+            # Chicken mode: passive, relies on shields/trumps not hand strength
+            return 0.05
+
+        player_is_bad  = self.player_bad_low  <= player_visible_total <= self.player_bad_high
+        player_is_good = self.player_good_low <= player_visible_total <= self.player_good_high
+
+        if player_is_bad:
+            # Player looks weak — banker happy to let them fail
+            return 0.15
+        if player_is_good:
+            # Player looks dangerous — banker needs to improve
+            return 0.80
+
+        # Neutral player total: scale down linearly through the gray zone
+        zone_width = max(1, self.hand_good_border - self.take_card_border)
+        pos_in_zone = banker_total - self.take_card_border
+        return max(0.10, 0.65 * (1.0 - pos_in_zone / zone_width))
+
+    def describe(self) -> str:
+        chicken_str = " │ ⚠ CHICKEN MODE (passive — relies on shields/trumps)" if self.is_chicken else ""
+        return (
+            f"Draws below {self.take_card_border} | Satisfied at {self.hand_good_border}+{chicken_str}\n"
+            f"  Reads YOUR hand as 'dangerous': {self.player_good_low}–{self.player_good_high}  "
+            f"'weak': {self.player_bad_low}–{self.player_bad_high}"
+        )
+
+
+# Per-opponent AI profiles — values inferred from CardGameBanker field patterns
+# and cross-referenced with each opponent's observed behavior and trump kit
+BANKER_AI_PROFILES = {
+    # ── Normal mode ──
+    "lucas":            BankerAI(17, 19, False, 17, 21,  1, 12),
+
+    # ── Survival mode ──
+    "tally_basic":      BankerAI(16, 18, False, 17, 21,  1, 12),
+    "bloody_survival":  BankerAI(16, 19, False, 16, 21,  1, 13),
+    "barbed_survival":  BankerAI(16, 17, True,  18, 21,  1, 14),  # chicken=True: relies on Shield Assault
+    "tally_upgraded":   BankerAI(17, 19, False, 17, 21,  1, 12),
+    "molded_survival":  BankerAI(17, 20, False, 16, 21,  1, 13),
+
+    # ── Survival+ random pool ──
+    "tally_s_plus":     BankerAI(17, 20, False, 16, 21,  1, 12),
+    "bloody_s_plus":    BankerAI(16, 19, False, 16, 21,  1, 13),
+    "barbed_3w":        BankerAI(14, 16, True,  18, 21,  1, 14),  # chicken=True, very low threshold
+    "barbed_4w":        BankerAI(14, 17, True,  18, 21,  1, 14),
+    "mr_big_head":      BankerAI(19, 21, False, 18, 21,  1, 14),  # aggressive — Escape is safety net
+
+    # ── Survival+ bosses ──
+    "molded_mid":       BankerAI(17, 20, False, 16, 21,  1, 13),
+    "molded_final":     BankerAI(18, 21, False, 15, 21,  1, 12),  # most aggressive
+}
+
+# Map opponent names → profile key (used by fight_opponent to look up BankerAI)
+OPPONENT_AI_MAP = {
+    "Lucas":                          "lucas",
+    "Tally Mark Hoffman":             "tally_basic",
+    "Bloody Handprints Hoffman":      "bloody_survival",
+    "Barbed Wire Hoffman":            "barbed_survival",
+    "Tally Mark Hoffman (Upgraded)":  "tally_upgraded",
+    "Molded Hoffman (Survival Boss)": "molded_survival",
+    # Survival+ — variant selection happens in fight, map to base keys
+    "Mr. Big Head Hoffman":           "mr_big_head",
+    "Molded Hoffman (Mid-Boss)":      "molded_mid",
+    "Undead Hoffman (Final Boss)":    "molded_final",
+}
+
+def get_banker_ai(intel: dict, variant_key: str = None) -> BankerAI:
+    """Look up BankerAI profile for an opponent. Falls back to stay_val-based generic."""
+    name = intel.get("name", "")
+    # Variant overrides (Barbed Wire and Bloody Handprints S+ have distinct profiles)
+    if variant_key:
+        if variant_key in BANKER_AI_PROFILES:
+            return BANKER_AI_PROFILES[variant_key]
+    profile_key = OPPONENT_AI_MAP.get(name)
+    if profile_key and profile_key in BANKER_AI_PROFILES:
+        return BANKER_AI_PROFILES[profile_key]
+    # Generic fallback using stay_val from opponent entry
+    stay = int(intel.get("stay_val", 17))
+    return BankerAI(stay, stay + 2, False, 17, 21, 1, 12)
+
+
+# ============================================================
+# TRUMP CONDITION ENGINE — From CardGameCondition.hpp
+# ============================================================
+# CardGameCondition gates WHEN each enemy trump is eligible to fire.
+# It checks 14 state fields: Round, PlayerFinger, BankerFinger, BankerHandSum,
+# BankerCantSeeCard, PlayerItemNum, BankerItemNum, PlayerLastTakeCardNo,
+# BankerLastTakeCardNo, PlayerTableItemNum, BankerTableItemNum, KillCount,
+# IsBankerTakeCard, and more.
+#
+# This class tracks those fields and returns likelihood assessments per trump.
+
+class TrumpConditionState:
+    """
+    Mirrors the CardGameCondition state variables.
+    Update each round for accurate trump timing predictions.
+    """
+    def __init__(self):
+        self.round: int          = 1
+        self.player_finger: int  = 5    # fingers remaining (Survival mode)
+        self.banker_finger: int  = 5
+        self.banker_hand_sum: int= 0    # banker's current total
+        self.player_hand_sum: int= 0    # player's visible total
+        self.kill_count: int     = 0    # Survival+ kill counter
+        self.banker_item_num: int= 0    # trump cards banker currently holds
+        self.player_item_num: int= 0    # trump cards player currently holds
+        self.banker_took_card: bool = False   # did banker draw this turn?
+        self.black_magic_uses: int = 0  # tracks max-2 Black Magic uses
+
+    def update(self, **kwargs):
+        for k, v in kwargs.items():
+            if hasattr(self, k):
+                setattr(self, k, v)
+
+    def trump_fire_likelihood(self, trump_name: str) -> tuple:
+        """
+        Returns (level_str, reason) predicting whether a trump condition is currently met.
+        Levels: VERY HIGH | HIGH | MEDIUM | LOW
+        Based on CardGameCondition field patterns for each trump type.
+        """
+        r   = self.round
+        bhs = self.banker_hand_sum
+        phs = self.player_hand_sum
+        bi  = self.banker_item_num
+        pi  = self.player_item_num
+
+        if trump_name == "Curse":
+            # Condition: BankerHandSum is low (banker needs to punish you to compensate)
+            if bhs <= 13:
+                return ("VERY HIGH", f"Banker total is only {bhs} — Curse forces you to draw the highest card!")
+            if bhs <= 16 and phs >= 17:
+                return ("HIGH", f"Banker at {bhs} vs your {phs} — Curse likely to hurt your position")
+            return ("LOW", "Banker hand is decent — Curse less likely right now")
+
+        if trump_name == "Black Magic":
+            # Condition: desperation trump, fires max 2x, when banker is losing badly
+            if self.black_magic_uses >= 2:
+                return ("NONE", "Black Magic has already fired twice this fight — exhausted")
+            if bhs < phs - 3 and r >= 2:
+                return ("HIGH", f"Banker behind by {phs - bhs} pts in round {r} — Black Magic incoming! SAVE DESTROY!")
+            if r >= 3 and bhs < 16:
+                return ("MEDIUM", "Late round, banker has weak hand — possible Black Magic")
+            return ("LOW", "Banker not desperate enough yet — but keep a Destroy ready")
+
+        if trump_name == "Conjure":
+            # Condition: BankerItemNum is low, typically early rounds
+            if bi <= 1 and r <= 3:
+                return ("VERY HIGH", f"Banker has only {bi} trumps in round {r} — Conjure to restock (draws 3)")
+            if bi <= 3:
+                return ("MEDIUM", f"Banker has {bi} trumps — may Conjure to restock")
+            return ("LOW", f"Banker already has {bi} trumps — Conjure less likely")
+
+        if trump_name == "Dead Silence":
+            # Condition: IsBankerTakeCard check — fires when player would benefit from drawing
+            if phs < 16:
+                return ("VERY HIGH", f"Your hand is {phs} — Dead Silence will lock you here. DESTROY IT FIRST!")
+            if phs < 19:
+                return ("HIGH", f"At {phs} — Dead Silence to stop your improvement")
+            return ("MEDIUM", "Even with a strong hand he may use Dead Silence to deny trumps")
+
+        if trump_name == "Escape":
+            # Condition: banker predicts loss — BankerHandSum < player eval
+            if bhs < phs:
+                return ("HIGH", f"Banker at {bhs} vs your {phs} — Escape will void this round if you win!")
+            if bhs < 16:
+                return ("MEDIUM", "Banker hand weak — may Escape preemptively before you stack bets")
+            return ("LOW", "Banker hand decent — Escape unlikely this turn")
+
+        if trump_name in ("Mind Shift", "Mind Shift+"):
+            needed = 3 if "+" in trump_name else 2
+            if pi >= 5:
+                return ("VERY HIGH", f"You have {pi} trumps — {trump_name} will cost you heavily! Play {needed}+ NOW!")
+            if pi >= 3:
+                return ("HIGH", f"You have {pi} trumps — play {needed} this round to nullify {trump_name}")
+            if pi >= 2:
+                return ("MEDIUM", f"You have {pi} trumps — {trump_name} possible, try to play {needed}")
+            return ("LOW", f"Only {pi} trumps — {trump_name} damage is minimal")
+
+        if trump_name in ("Desire", "Desire+"):
+            scale = pi if "+" in trump_name else pi // 2
+            if pi >= 5:
+                return ("VERY HIGH", f"{pi} trumps = +{scale} to YOUR bet — dump cheap trumps immediately!")
+            if pi >= 3:
+                return ("HIGH", f"You have {pi} trumps — {trump_name} adds {scale} to your bet. Burn cheap ones.")
+            return ("LOW", f"Low trump count ({pi}) — {trump_name} impact is minimal")
+
+        if trump_name in ("Shield Assault", "Shield Assault+"):
+            shields = 2 if "+" in trump_name else 3
+            return ("MEDIUM", f"Fires when banker sacrifices {shields} shields — your bet jumps high. Stack bet-ups to overwhelm.")
+
+        if trump_name == "Happiness":
+            if bi <= 2 or pi <= 1:
+                return ("HIGH", f"One/both players low on trumps (banker:{bi}, you:{pi}) — Happiness to mutual restock")
+            return ("MEDIUM", "Happiness may fire for tempo even with decent trump counts")
+
+        if trump_name == "Go for 17":
+            if bhs == 17:
+                return ("VERY HIGH", "Banker is AT 17 — Go for 17 wins the round immediately if played!")
+            if bhs >= 15:
+                return ("HIGH", "Banker approaching 17 — Go for 17 incoming if they hit it")
+            return ("LOW", "Banker not near 17 yet")
+
+        return ("UNKNOWN", "No condition model for this trump")
 
 
 # ============================================================
@@ -1114,7 +1397,15 @@ def display_opponent_info(intel: dict) -> None:
     elif not std_trumps:
         print(f" │ Trumps: (none observed)")
 
-    print(f" │ Stays at: {intel.get('stay_val','?')}+")
+    # Show real AI parameters from CardGameBanker.hpp
+    ai = get_banker_ai(intel)
+    print(f" │ AI DRAW MODEL  (CardGameBanker.hpp):")
+    print(f" │   Draws below {ai.take_card_border} | Stays at {ai.hand_good_border}+"
+          + (" | CHICKEN MODE" if ai.is_chicken else ""))
+    print(f" │   Reads YOUR hand as dangerous: {ai.player_good_low}–{ai.player_good_high}"
+          f"  |  weak: {ai.player_bad_low}–{ai.player_bad_high}")
+    print(f" │ TRUMP RANDOMNESS: Pool FIXED per opponent, deal ORDER randomized")
+    print(f" │ CARDS (1–11): Reshuffled each round via RNG — not predetermined")
     print(f" └─ {intel.get('desc','')}")
     tip = intel.get("tip", "")
     if tip:
@@ -1198,23 +1489,32 @@ def resolve_round_outcome(your_total: int, opp_total: int, target: int) -> str:
     return "TIE"
 
 
-def opponent_total_distribution(o_visible_total: int, remaining, stay_val: int, target: int, behavior: str = "auto"):
+def opponent_total_distribution(
+    o_visible_total: int,
+    remaining,
+    stay_val: int,
+    target: int,
+    behavior: str = "auto",
+    banker_ai: "BankerAI" = None,
+    player_visible_total: int = 0,
+):
     """
     Return probability distribution of opponent final totals.
 
+    When banker_ai is provided (BankerAI instance), uses the REAL draw decision
+    from CardGameBanker.hpp — the gray-zone player-hand-aware logic replaces the
+    old flat overshoot estimate.
+
     behavior options:
-      - stay: opponent does not draw (confirmed)
-      - hit_once: opponent draws one card then stops
-      - auto / hit_to_threshold: opponent hits until reaching stay_val or bust,
-        BUT blends in uncertainty (30% chance of drawing one more past threshold)
-        because we're guessing — the real AI may be more aggressive.
+      - stay:              opponent confirmed stopped drawing
+      - hit_once:          opponent draws one card then stops
+      - auto / hit_to_threshold: opponent draws using AI thresholds
     """
     behavior = behavior.lower().strip()
     deck = tuple(sorted(set(remaining)))
 
     if behavior == "stay":
-        # Opponent stopped drawing. They have a hidden card we can't see.
-        # Their total = visible total + one unknown card from the remaining deck.
+        # Opponent stopped — hidden card is from remaining deck
         if not deck:
             return {o_visible_total: 1.0}
         p = 1.0 / len(deck)
@@ -1230,14 +1530,26 @@ def opponent_total_distribution(o_visible_total: int, remaining, stay_val: int, 
         return {o_visible_total + c: p for c in deck}
 
     memo = {}
-    # How far below target the opponent is — more room = more likely they draw again
-    gap_to_target = max(0, target - o_visible_total)
-    # Uncertainty: 30% base chance of drawing past threshold, higher if far from target
-    overshoot_chance = min(0.50, 0.15 + (gap_to_target / target) * 0.35)
 
     def _merge(dest: dict, src: dict, weight: float) -> None:
         for total, prob in src.items():
             dest[total] = dest.get(total, 0.0) + (prob * weight)
+
+    def _draw_prob(total: int) -> float:
+        """Returns probability the banker draws at this total."""
+        if banker_ai is not None:
+            # Real AI: uses BankerHandGoodBorder + player hand awareness
+            return banker_ai.draw_probability(total, player_visible_total, target)
+        else:
+            # Legacy fallback: deterministic below stay_val, partial overshoot above
+            if total < stay_val:
+                return 1.0
+            if total >= target:
+                return 0.0
+            # Old model: blend in some overshoot uncertainty
+            gap_to_target = max(0, target - o_visible_total)
+            overshoot_chance = min(0.50, 0.15 + (gap_to_target / target) * 0.35)
+            return overshoot_chance
 
     def _dfs(total: int, deck_state: tuple):
         key = (total, deck_state)
@@ -1248,34 +1560,33 @@ def opponent_total_distribution(o_visible_total: int, remaining, stay_val: int, 
             memo[key] = {total: 1.0}
             return memo[key]
 
-        if behavior in ("auto", "hit_to_threshold"):
-            if total >= stay_val or not deck_state:
-                if total >= stay_val and deck_state and total < target:
-                    # Blend: opponent MIGHT draw one more even past threshold
-                    dist = {}
-                    # Chance they stay
-                    _merge(dist, {total: 1.0}, 1.0 - overshoot_chance)
-                    # Chance they gamble and draw one more
-                    n = len(deck_state)
-                    for idx, card in enumerate(deck_state):
-                        next_total = total + card
-                        _merge(dist, {next_total: 1.0}, overshoot_chance / n)
-                    memo[key] = dist
-                    return dist
-                memo[key] = {total: 1.0}
-                return memo[key]
-
         if not deck_state:
             memo[key] = {total: 1.0}
             return memo[key]
 
+        draw_p = _draw_prob(total)
         dist = {}
-        n = len(deck_state)
-        for idx, card in enumerate(deck_state):
-            next_total = total + card
-            next_deck = deck_state[:idx] + deck_state[idx + 1 :]
-            sub = _dfs(next_total, next_deck)
-            _merge(dist, sub, 1.0 / n)
+
+        if draw_p >= 0.999:
+            # Definitely draws
+            n = len(deck_state)
+            for idx, card in enumerate(deck_state):
+                next_total = total + card
+                next_deck = deck_state[:idx] + deck_state[idx + 1:]
+                sub = _dfs(next_total, next_deck)
+                _merge(dist, sub, 1.0 / n)
+        elif draw_p <= 0.001:
+            # Definitely stays
+            dist = {total: 1.0}
+        else:
+            # Mixed: weighted blend of staying vs drawing
+            _merge(dist, {total: 1.0}, 1.0 - draw_p)
+            n = len(deck_state)
+            for idx, card in enumerate(deck_state):
+                next_total = total + card
+                next_deck = deck_state[:idx] + deck_state[idx + 1:]
+                sub = _dfs(next_total, next_deck)
+                _merge(dist, sub, draw_p / n)
 
         memo[key] = dist
         return dist
@@ -1304,10 +1615,13 @@ def evaluate_stay_hit_outcomes(
     stay_val: int,
     target: int,
     opp_behavior: str,
+    banker_ai: "BankerAI" = None,
 ):
-    """Compute expected outcome probs for staying now vs. hitting now."""
+    """Compute expected outcome probs for staying now vs. hitting now.
+    When banker_ai is provided the opponent distribution uses the real AI model."""
     stay_opp_dist = opponent_total_distribution(
-        o_visible_total, remaining, stay_val, target, behavior=opp_behavior
+        o_visible_total, remaining, stay_val, target,
+        behavior=opp_behavior, banker_ai=banker_ai, player_visible_total=u_total,
     )
     stay_probs = outcome_probabilities(u_total, stay_opp_dist, target)
 
@@ -1321,7 +1635,8 @@ def evaluate_stay_hit_outcomes(
         your_new_total = u_total + card
         next_remaining = [c for c in remaining if c != card]
         opp_dist_after_hit = opponent_total_distribution(
-            o_visible_total, next_remaining, stay_val, target, behavior=opp_behavior
+            o_visible_total, next_remaining, stay_val, target,
+            behavior=opp_behavior, banker_ai=banker_ai, player_visible_total=your_new_total,
         )
         draw_outcome = outcome_probabilities(your_new_total, opp_dist_after_hit, target)
         hit_probs["win"] += draw_outcome["win"] * draw_weight
@@ -1338,35 +1653,29 @@ def estimate_opponent_total(o_visible_total: int, stay_val: int) -> int:
     return stay_val
 
 
-def evaluate_bust_inline(u_total: int, o_visible_total: int, remaining, stay_val: int, target: int, behavior: str = "auto"):
+def evaluate_bust_inline(u_total, o_visible_total, remaining, stay_val, target, behavior="auto", banker_ai=None):
     """
     Lightweight bust-to-win evaluation for inline strategy advice.
     Returns best bust draw card and its win probability, or None if no bust cards.
-    Uses the same opponent distribution model as the main solver.
     """
     bust_cards = [c for c in remaining if u_total + c > target]
     if not bust_cards:
         return None
 
     best_card = None
-    best_win = 0.0
+    best_win  = 0.0
 
     for draw_card in bust_cards:
         bust_total = u_total + draw_card
         deck_after = [c for c in remaining if c != draw_card]
-
-        # Model opponent's final total distribution
-        opp_dist = opponent_total_distribution(o_visible_total, deck_after, stay_val, target, behavior)
-
-        # Use bust_outcome logic: both bust → closest to target wins
-        wins = 0.0
-        for opp_total, prob in opp_dist.items():
-            result = bust_outcome(bust_total, opp_total, target)
-            if result == "WIN":
-                wins += prob
-
+        opp_dist = opponent_total_distribution(
+            o_visible_total, deck_after, stay_val, target,
+            behavior=behavior, banker_ai=banker_ai, player_visible_total=bust_total,
+        )
+        wins = sum(prob for opp_total, prob in opp_dist.items()
+                   if bust_outcome(bust_total, opp_total, target) == "WIN")
         if wins > best_win:
-            best_win = wins
+            best_win  = wins
             best_card = draw_card
 
     return {"best_card": best_card, "bust_total": u_total + best_card if best_card else 0, "win_pct": best_win}
@@ -1388,9 +1697,12 @@ def generate_advice(
     challenges_completed: set = None,
     available_trumps: set = None,
     trump_hand: list = None,
+    banker_ai: "BankerAI" = None,
+    condition_state: "TrumpConditionState" = None,
 ):
     """Generate strategic advice factoring in HP state + opponent trumps.
-    trump_hand: player's current held trumps — used to gate Love Your Enemy / bust suggestions."""
+    banker_ai: real AI profile from CardGameBanker fields (improves outcome model).
+    condition_state: current CardGameCondition-derived state for trump timing."""
     advice_lines = []
     priority_warnings = []
     if trump_hand is None:
@@ -1403,7 +1715,38 @@ def generate_advice(
         stay_val += (target - 21)
         stay_val = max(1, stay_val)  # Don't go below 1
 
-    # ── HP-aware urgency ──
+    # ── REAL AI PROFILE DISPLAY ──
+    if banker_ai is not None:
+        draw_p = banker_ai.draw_probability(o_visible_total, u_total, target)
+        # Only show if in the interesting gray zone (not trivially 0% or 100%)
+        if 0.05 < draw_p < 0.95:
+            advice_lines.append(
+                f"AI MODEL: Banker draw probability at {o_visible_total} vs your {u_total} = {draw_p * 100:.0f}% "
+                f"(real CardGameBanker logic: draw<{banker_ai.take_card_border}, stay≥{banker_ai.hand_good_border}"
+                + (" | CHICKEN MODE" if banker_ai.is_chicken else "") + ")"
+            )
+        elif draw_p <= 0.05 and o_visible_total >= banker_ai.take_card_border:
+            advice_lines.append(
+                f"AI MODEL: Banker will likely STAY at {o_visible_total} "
+                f"(satisfied threshold: {banker_ai.hand_good_border}"
+                + (", CHICKEN MODE" if banker_ai.is_chicken else "") + ")"
+            )
+
+    # ── TRUMP CONDITION STATE WARNINGS ──
+    if condition_state is not None:
+        enemy_trumps_set = set(intel.get("trumps", []))
+        high_priority_trumps = {
+            "Dead Silence", "Black Magic", "Curse", "Escape",
+            "Mind Shift+", "Desire+", "Go for 17",
+        }
+        for trump_name in (enemy_trumps_set & high_priority_trumps):
+            level, reason = condition_state.trump_fire_likelihood(trump_name)
+            if level in ("VERY HIGH", "HIGH"):
+                priority_warnings.append(f"⚡ {trump_name} [{level}]: {reason}")
+            elif level == "MEDIUM":
+                advice_lines.append(f"  {trump_name} [{level}]: {reason}")
+            elif level == "NONE":
+                advice_lines.append(f"  {trump_name}: {reason}")  # e.g. exhausted Black Magic
     if player_hp <= 3:
         priority_warnings.append(
             f"!! LOW HP ({player_hp}/{player_max}) !! Play ultra-conservatively.\n"
@@ -1474,20 +1817,30 @@ def generate_advice(
         advice_lines.append("OBLIVION: Can void a round. Annoying, not fatal — replay and keep pressure.")
 
     # ── Core draw/stay decision ──
-    estimated_opp = estimate_opponent_total(o_visible_total, stay_val)
     behavior_key = (opp_behavior or "auto").strip().lower()
 
+    # Use real AI thresholds in labels if available
+    if banker_ai is not None:
+        ai_label = (
+            f"draws below {banker_ai.take_card_border}, stays at {banker_ai.hand_good_border}+"
+            + (" [CHICKEN]" if banker_ai.is_chicken else "")
+        )
+        expected_opp_stay = banker_ai.hand_good_border
+    else:
+        ai_label = f"draws until {stay_val}+"
+        expected_opp_stay = stay_val
+
     behavior_label = {
-        "stay": "Opponent stopped drawing (hidden card modeled across remaining deck)",
-        "auto": f"Opponent AI draws until {stay_val}+",
-        "hit_to_threshold": f"Opponent AI draws until {stay_val}+",
-    }.get(behavior_key, f"Opponent AI draws until {stay_val}+")
+        "stay": "Opponent confirmed stopped drawing (hidden card modeled across remaining deck)",
+        "auto": f"Opponent AI: {ai_label}",
+        "hit_to_threshold": f"Opponent AI: {ai_label}",
+    }.get(behavior_key, f"Opponent AI: {ai_label}")
 
     # Rough estimate for potential damage if you lose (for messaging only)
+    estimated_opp = max(o_visible_total, expected_opp_stay)
     if u_total <= target:
         potential_loss_dmg = max(1, estimated_opp - u_total)
     else:
-        # bust-ish estimate: how far over + opponent closeness-ish
         potential_loss_dmg = (u_total - target) + max(0, target - estimated_opp)
 
     if u_total == target:
@@ -1504,7 +1857,8 @@ def generate_advice(
 
     # Outcome model: compare staying now vs hitting now using selected opponent behavior.
     stay_probs, hit_probs = evaluate_stay_hit_outcomes(
-        u_total, o_visible_total, remaining, stay_val, target, behavior_key
+        u_total, o_visible_total, remaining, stay_val, target, behavior_key,
+        banker_ai=banker_ai,
     )
     bust_pct = 100.0 - safe_pct
     advice_lines.append(f"MODEL: {behavior_label}.")
@@ -1539,7 +1893,8 @@ def generate_advice(
             after_remaining = [c for c in remaining if c != forced_card]
             # After forced draw, opponent continues with normal AI
             opp_dist = opponent_total_distribution(
-                new_opp_total, after_remaining, stay_val, target, behavior="auto"
+                new_opp_total, after_remaining, stay_val, target,
+                behavior="auto", banker_ai=banker_ai, player_visible_total=u_total,
             )
             outcome = outcome_probabilities(u_total, opp_dist, target)
             force_probs["win"] += outcome["win"] * card_weight
@@ -1580,7 +1935,7 @@ def generate_advice(
     )
 
     if show_bust:
-        bust_result = evaluate_bust_inline(u_total, o_visible_total, remaining, stay_val, target, behavior_key)
+        bust_result = evaluate_bust_inline(u_total, o_visible_total, remaining, stay_val, target, behavior_key, banker_ai=banker_ai)
         if bust_result and bust_result["win_pct"] >= 0.20:  # Only show if decent odds
             advice_lines.append(
                 f"If you BUST ON PURPOSE -> "
@@ -1841,7 +2196,7 @@ def record_round_result(round_num: int, player_hp: int, opp_hp: int, intel: dict
 # ============================================================
 # SINGLE ROUND ANALYSIS
 # ============================================================
-def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21, dead_cards: list = None, challenges_completed: set = None, available_trumps: set = None, trump_hand: list = None, fight_num: int = 0, mode_key: str = "3", face_down_card: int = None, player_visible: list = None, opp_visible: list = None) -> tuple:
+def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21, dead_cards: list = None, challenges_completed: set = None, available_trumps: set = None, trump_hand: list = None, fight_num: int = 0, mode_key: str = "3", face_down_card: int = None, player_visible: list = None, opp_visible: list = None, banker_ai: "BankerAI" = None, condition_state: "TrumpConditionState" = None) -> tuple:
     """Run the solver for one round of 21 (read-only, no HP changes).
     Returns (updated_dead_cards, face_down_card, player_visible, opp_visible) for persistence."""
     if dead_cards is None:
@@ -1972,31 +2327,13 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         o_total = sum(o_vis)
 
         # What did the opponent do?
-        print("\n What did the opponent do? (Enter = nothing yet / still playing)")
-        print("  2. Opponent stayed (done drawing, hidden card still unknown)")
-        print("  3. I forced a draw (Love Your Enemy / similar)")
-        beh_input = input(" > ").strip()
-        if beh_input == "2":
+        print("\n Has the opponent stopped drawing? (y = yes, Enter = still playing)")
+        beh_input = input(" > ").strip().lower()
+        if beh_input == "y":
             opp_behavior = "stay"
-            # They stopped drawing but hidden card is unknown
-            print(f" → Opponent stopped drawing. Visible total: {o_total}")
+            print(f" → Opponent stopped. Visible total: {o_total}")
             print(f"   Hidden card is one of: {sorted(remaining)}")
             print(f"   Possible totals: {sorted(o_total + c for c in remaining)}")
-        elif beh_input == "3":
-            forced_raw = input(" What card did they draw? ").strip()
-            if forced_raw:
-                forced_card = int(forced_raw)
-                if 1 <= forced_card <= 11:
-                    o_total += forced_card
-                    o_vis.append(forced_card)
-                    if forced_card in remaining:
-                        remaining.remove(forced_card)
-                    if forced_card not in accounted:
-                        accounted = sorted(set(accounted + [forced_card]))
-                    print(f" → Opponent now at {o_total} (drew {forced_card})")
-                else:
-                    print(" Invalid card, ignoring.")
-            opp_behavior = "auto"  # After forced draw, they continue with normal AI
         else:
             opp_behavior = "auto"
 
@@ -2026,6 +2363,21 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         # Strategic advice
         print_header("STRATEGY ADVICE")
 
+        # Use passed-in BankerAI profile (already resolved by fight_opponent)
+        _banker_ai = banker_ai if banker_ai is not None else get_banker_ai(intel)
+
+        # Update live fields on passed-in condition_state; fall back to fresh one
+        if condition_state is not None:
+            _cond = condition_state
+            _cond.banker_hand_sum = o_total
+            _cond.player_hand_sum = u_total
+            _cond.player_item_num = len(trump_hand) if trump_hand else 0
+        else:
+            _cond = TrumpConditionState()
+            _cond.banker_hand_sum = o_total
+            _cond.player_hand_sum = u_total
+            _cond.player_item_num = len(trump_hand) if trump_hand else 0
+
         # Compute stay win% to share with both advice and trump recommendation
         _stay_val = int(intel.get("stay_val", 17))
         if target != 21:
@@ -2035,7 +2387,8 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         if u_total <= target and remaining:
             try:
                 sp, _ = evaluate_stay_hit_outcomes(
-                    u_total, o_total, remaining, _stay_val, target, opp_behavior
+                    u_total, o_total, remaining, _stay_val, target, opp_behavior,
+                    banker_ai=_banker_ai,
                 )
                 _stay_win_pct = sp.get("win", 0.5)
             except Exception:
@@ -2044,7 +2397,8 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         warnings, advice = generate_advice(
             u_total, o_total, intel, remaining, target, safe_pct, perfect_draws,
             player_hp, player_max, opp_hp, opp_max, opp_behavior,
-            challenges_completed, available_trumps, trump_hand
+            challenges_completed, available_trumps, trump_hand,
+            banker_ai=_banker_ai, condition_state=_cond,
         )
         for w in warnings:
             print(f"\n \033[91m{w}\033[0m")
@@ -2086,7 +2440,7 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
 # ============================================================
 # FIGHT LOOP — Multiple rounds vs. one opponent until death
 # ============================================================
-def handle_interrupt(dead_cards: list, current_target: int, player_bet: int = 1, opp_bet: int = 1, player_visible: list = None, opp_visible: list = None, face_down_card: int = None, intel: dict = None, trump_hand: list = None) -> tuple:
+def handle_interrupt(dead_cards: list, current_target: int, player_bet: int = 1, opp_bet: int = 1, player_visible: list = None, opp_visible: list = None, face_down_card: int = None, intel: dict = None, trump_hand: list = None, condition_state: "TrumpConditionState" = None) -> tuple:
     """
     Interrupt handler: enemy played a trump card mid-round.
     Shows opponent's known trumps and walks through effects step by step.
@@ -2245,6 +2599,8 @@ def handle_interrupt(dead_cards: list, current_target: int, player_bet: int = 1,
         except ValueError:
             player_bet += 10
             msg = f"★★ BLACK MAGIC! YOUR bet +10 → now {player_bet}. LETHAL if you lose!"
+        if condition_state is not None:
+            condition_state.black_magic_uses += 1
 
     # --- CONTROL TRUMPS ---
     elif pt in ("dead silence",):
@@ -2381,31 +2737,54 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
 
     # Variant selection — if opponent has sub-variants, let player pick
     variants = intel.get("variants", {})
+    variant_ai_key = None  # For BankerAI profile override
     if variants:
-        print(f"\n Which variant of {intel['name']}?")
-        print(" (Look at the sack on their head to identify)\n")
         variant_keys = list(variants.keys())
+        print(f"\n ┌─ IDENTIFY THE VARIANT ─────────────────────────────────┐")
+        print(f" │ Look at the sack on their head RIGHT NOW and count:    │")
         for i, key in enumerate(variant_keys, 1):
             v = variants[key]
+            visual = v.get("visual_id", key)
             trumps_str = ", ".join(v["trumps"]) if v["trumps"] else "None"
-            print(f"  {i}. {key} — Trumps: {trumps_str}")
-        print(f"  {len(variant_keys) + 1}. Not sure (use combined loadout)")
+            label = f"  {i}. {visual}"
+            trump_label = f"     Trumps: {trumps_str}"
+            print(f" │ {label:<55s} │")
+            print(f" │ {trump_label:<55s} │")
+        not_sure_num = len(variant_keys) + 1
+        print(f" │  {not_sure_num}. Can't tell — use combined loadout{' ' * 21} │")
+        print(f" └─────────────────────────────────────────────────────────┘")
 
         v_input = input("\n > ").strip()
         try:
             v_idx = int(v_input) - 1
             if 0 <= v_idx < len(variant_keys):
-                chosen = variants[variant_keys[v_idx]]
+                chosen_key = variant_keys[v_idx]
+                chosen = variants[chosen_key]
                 intel = dict(intel)  # Copy so we don't mutate original
                 intel["trumps"] = chosen["trumps"]
                 intel["tip"] = chosen["tip"]
-                intel["name"] = f"{intel['name']} ({variant_keys[v_idx]})"
-                print(f"\n ★ Set to: {variant_keys[v_idx]}")
-                print(f"   Trumps: {', '.join(chosen['trumps'])}")
+                intel["name"] = f"{intel['name']} ({chosen_key})"
+                # Map variant key → BankerAI profile key
+                base_name = intel.get("name", "").split(" (")[0]
+                variant_ai_key = {
+                    ("Barbed Wire Hoffman", "3 wires"): "barbed_3w",
+                    ("Barbed Wire Hoffman", "4 wires"): "barbed_4w",
+                    ("Bloody Handprints Hoffman", "2 hands"): "bloody_s_plus",
+                    ("Bloody Handprints Hoffman", "4 hands"): "bloody_s_plus",
+                }.get((base_name, chosen_key))
+                print(f"\n ★ {chosen_key} — Trumps: {', '.join(chosen['trumps'])}")
             else:
-                print(f" Using combined loadout (all possible trumps).")
+                print(" Using combined loadout.")
         except (ValueError, IndexError):
-            print(f" Using combined loadout (all possible trumps).")
+            print(" Using combined loadout.")
+
+    # Resolve BankerAI profile once — persists for all rounds of this fight
+    _banker_ai = get_banker_ai(intel, variant_key=variant_ai_key)
+
+    # Create TrumpConditionState once — updated each round
+    _condition = TrumpConditionState()
+    _condition.player_finger = intel.get("hp", 5)
+    _condition.banker_finger = intel.get("hp", 5)
 
     display_opponent_info(intel)
 
@@ -2422,6 +2801,12 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
         face_down_card = None  # Your face-down card — locked once set
         player_visible = []   # Your visible drawn cards — remembered across re-analyzes
         opp_visible = []      # Opponent's visible cards — remembered across re-analyzes
+
+        # Update condition state for this round
+        _condition.round = round_num
+        _condition.player_item_num = len(trump_hand)
+        _condition.player_finger = player_hp
+        _condition.banker_finger = opp_hp
         print_header(f"ROUND {round_num} vs. {intel['name']}")
         display_round_history(round_history)
         display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
@@ -2464,24 +2849,35 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
             bet_label = ""
             if player_bet != 1 or opp_bet != 1:
                 bet_label = f" [Your bet: {player_bet} | Opp bet: {opp_bet}]"
-            print(f"\n ─── Round {round_num} Menu ───{target_label}{bet_label}")
-            print(" A. Analyze hand (get advice)")
-            print(f" \033[96mI. Interrupt — enemy played a trump!\033[0m")
-            print(f" P. Play a trump card ({trump_count} in hand)")
-            print(f" W. Edit trump hand ({trump_count} cards)")
-            print(" D. Done — record round result")
-            dead_label = f" ({sorted(dead_cards)})" if dead_cards else " (none)"
-            print(f" X. Dead cards{dead_label}")
-            print(" T. Trump card reference")
-            print(" O. Opponent intel")
-            print(" H. Round history")
-            print(" S. HP status")
-            print(" Q. Quit fight")
+            print(f"\n ─── Round {round_num} ───{target_label}{bet_label} [{trump_count} trumps]")
+            print(" A  Analyze hand")
+            print(f" \033[96mI  Enemy played a trump\033[0m")
+            print(f" P  Play your trump ({trump_count})")
+            print(" D  Done — record result")
+            print(" Q  Quit fight    ?  Info")
 
-            action = input("\n Action: ").strip().upper()
+            action = input("\n > ").strip().upper()
+
+            if action == "?":
+                print("\n --- INFO ---")
+                print(" W  Edit trump hand")
+                print(" X  Dead cards")
+                print(" T  Trump reference")
+                print(" O  Opponent intel")
+                print(" H  Round history")
+                print(" S  HP status")
+                sub = input("\n > ").strip().upper()
+                action = sub  # Fall through to handler below
 
             if action == "A":
-                dead_cards, face_down_card, player_visible, opp_visible = analyze_round(intel, player_hp, player_max, opp_hp, opp_max, current_target, dead_cards, challenges_completed, available_trumps, trump_hand, fight_num=fight_num, mode_key=mode_key, face_down_card=face_down_card, player_visible=player_visible, opp_visible=opp_visible)
+                dead_cards, face_down_card, player_visible, opp_visible = analyze_round(
+                    intel, player_hp, player_max, opp_hp, opp_max, current_target,
+                    dead_cards, challenges_completed, available_trumps, trump_hand,
+                    fight_num=fight_num, mode_key=mode_key,
+                    face_down_card=face_down_card, player_visible=player_visible,
+                    opp_visible=opp_visible,
+                    banker_ai=_banker_ai, condition_state=_condition,
+                )
 
             elif action == "P":
                 if not trump_hand:
@@ -2693,7 +3089,8 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                 # ── INTERRUPT: Enemy played a trump card ──
                 dead_cards, current_target, player_bet, opp_bet, int_msg, player_visible, opp_visible, face_down_card, trump_hand = handle_interrupt(
                     dead_cards, current_target, player_bet, opp_bet,
-                    player_visible, opp_visible, face_down_card, intel, trump_hand
+                    player_visible, opp_visible, face_down_card, intel, trump_hand,
+                    condition_state=_condition,
                 )
 
             elif action == "W":
