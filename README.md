@@ -8,10 +8,13 @@ This solver has been upgraded from a basic probability calculator into a highly 
 
 * **Deck Tracking Warning:** The shared deck contains exactly 11 cards (1–11) with absolutely no duplicates. **It is absolutely vital that you meticulously input every single card drawn, returned, or exchanged into the terminal prompt.** If you fail to input an opponent's card draw, the entire combinatorial matrix becomes corrupted and the mathematical integrity of the system is compromised.
 * **Predictive AI Modeling:** The solver does not treat all AI as identical. At the start of a sequence, you will be prompted for the visual descriptors of the current AI you are facing (sack markings, variant cuts/hands/wires). This profile is stored in a persistent memory object that actively dictates the heuristic weighting applied to all trump card suggestions.
-* **Dynamic Trump Recommendation Engine:** The solver utilizes a 4-tier priority engine that scores your held cards based on utility weight, the active opponent profile, and your position in the gauntlet. It prioritizes long-term resource conservation — for example, automatically outputting "SAVE DESTROY CARDS FOR FIGHT #10" when facing non-boss opponents in Survival+.
+* **Dynamic Trump Recommendation Engine:** The solver utilizes a 4-tier priority engine that scores your held cards based on utility weight, the active opponent profile, and your position in the gauntlet. It prioritizes long-term resource conservation — for example, automatically outputting "SAVE DESTROY CARDS FOR FIGHT #10" when facing non-boss opponents in Survival+. **Smart suppression:** Trump advice only appears when it matters — when you're busted, losing, at low HP, fighting a boss, or facing enemy trump threats. Comfortable early-game wins against weak opponents get no unnecessary clutter.
+* **Standard vs Special Trump Display:** Opponent profiles now separate standard trumps (One-Up, Shield — common cards any opponent uses) from special trumps (Desire, Mind Shift, Curse — unique dangerous abilities). Special trumps are highlighted in yellow in the target info panel.
+* **Run Restart Suggestion:** After each fight in the first half of a gauntlet, the solver evaluates your HP-to-remaining-fights ratio. If survival probability is critically low (e.g., 2 HP with 6 fights left), it recommends restarting the run rather than grinding out a doomed attempt.
+* **Mr. Big Head Priority:** In Survival+, if Harvest is not yet unlocked, Mr. Big Head is flagged as a priority target when he appears. Defeating him twice unlocks Harvest — one of the strongest trump cards in the game.
 * **Interrupt-Driven State Recalculation:** When the opponent plays a trump card mid-round that alters the board (card removal, bet changes, exchanges, Dead Silence, Curse, etc.), press **I** to declare the interrupt. The solver updates the game state and you can immediately re-analyze with corrected probabilities.
 * **Failed Draw Deduction:** When playing a numbered draw card (2–7 Card) and it fails (card not in deck), the solver automatically deduces that the opponent holds that card as their hidden face-down card. This transitions the opponent from a probabilistic range to a mathematical certainty.
-* **Utility Weight System:** Every trump card has an internal `utility_weight` (0–100) and `effect_type` classification. The recommendation engine uses these to suggest the lowest-cost solution first against non-boss opponents, preserving high-value Board Wipe and Draw Forcer cards for boss encounters.
+* **Utility Weight System:** Every trump card has an internal `utility_weight` (0–100) and `effect_type` classification. Weights are **never shown to the user** — they drive sorting and prioritization silently. When multiple cards solve the same problem, the cheapest is suggested first. High-weight cards (≥60) get "SAVE for bosses" warnings on non-boss fights.
 * **Auto Bet & Target Tracking:** Bets and target values update automatically when you play trump cards (P) or declare enemy interrupts (I). One-Up, Two-Up, Shield, Perfect Draw+, Desire, Shield Assault — all tracked live. Go For cards auto-change the target. Everything resets between rounds since table cards clear.
 * **Silent Challenge Tracker:** The manual configuration menus for challenges have been removed. The solver operates as a silent background daemon that automatically identifies non-standard board states — such as achieving a victory while holding a busted hand — and proactively flashes instructions to secure achievements.
 
@@ -73,7 +76,7 @@ The solver categorizes and tracks all 37+ trump cards across 7 types:
 | Special | Trump Switch, Harvest | 20–50 |
 | Attack (enemy-only) | Curse, Dead Silence, Desire | 0 (not player-obtainable) |
 
-The `utility_weight` of these cards heavily influences the solver's real-time recommendations. Lower-weight cards are suggested first against non-boss opponents to conserve high-value assets.
+The `utility_weight` values drive the solver's internal prioritization — lower-weight cards are burned first, higher-weight cards are preserved for bosses. These values are never displayed to the user.
 
 ## Challenge Tracking
 
@@ -81,11 +84,19 @@ The solver automatically monitors for these achievement conditions during play:
 
 | Challenge | Reward | Auto-Detection |
 |-----------|--------|----------------|
-| Win while bust | Starting Trump +1 | Detects double-bust scenarios where your score is closer to target |
-| Use 15 trumps in 1 round | Trump Switch+ | Tracks trump usage count with burn protocol advice |
+| Win while bust | Starting Trump +1 | Gated: only shown when HP > 2, stay win% < 65%, and odds ≥ 15% |
+| Use 15 trumps in 1 round | Trump Switch+ | Interactive planner with Survival vs S+ analysis and live tracker |
 | Hit 21 three times in a row | Go for 27 | Monitors consecutive perfect scores |
-| Beat Survival without damage | Ultimate Draw | Defensive heuristic weighting from round 1 |
-| Beat Survival+ without damage | Grand Reward | Maximum Shield prioritization throughout |
+| Beat Survival without damage | Ultimate Draw | Auto-tracked in Survival mode — detects damage, offers restart |
+| Beat Survival+ without damage | Grand Reward | Cosmetic only — not tracked |
+
+### No-Damage Survival (Built-In)
+
+No-damage tracking is **automatic** when playing Survival mode. The solver compares HP before and after each fight — the instant you take damage, it flags the challenge as failed and offers to restart the run. If you complete all 5 fights at full HP, it congratulates you and confirms the Ultimate Draw unlock. The Challenge Lab still has a strategy guide with per-fight advice and restart decision trees.
+
+### 15-Trump Round (Challenge Lab)
+
+Research confirms this challenge is **very difficult in Survival** (5 HP opponents = short fights) but **recommended in Survival+** (10 HP opponents = longer fights with more cycling). Requires Harvest + Trump Switch. The planner includes a live tracker with projected capacity calculations.
 
 ## Running
 
