@@ -40,7 +40,7 @@ I had a 7 face down 4 1. Should not be able to change face down card unless a tr
 If the current game state makes bust-win challenge impossible (trumps not available, If round win doesnt defeat the opponent it doesnt make sense to show this " If you BUST ON PURPOSE -> Best card: 11 (total 22) → Win 24.2%. [Completes bust-win challenge!]
 ") - unless trump/ ai logic gives a high chance of it happening
 
-- it shouldnt show this every round/ esp early game -  UNLOCKED: You have Perfect Draw+ — guaranteed best card from the deck.
+- it shouldnt show this every round/ esp early game -  "UNLOCKED: You have Perfect Draw+ — guaranteed best card from the deck."
 
  ACTION: HIT — best win chance at 64.9% (+25.5% over next best).
 
