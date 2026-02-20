@@ -1,1 +1,294 @@
 try to find the actual logic in the game scripts to see for any descrepencies (if possible)
+
+-Change yellow text to a more visible color
+
+-I messed up / misinterpreted the wording for remembering cards. Fix wording and logic:
+I had a 7 face down 4 1. Should not be able to change face down card unless trump card changes that.
+
+-Hoffman is missing the letter n at the end in some strings
+
+Game log:
+
+============================================================
+          ROUND 1 vs. Barbed Wire Hoffman (3 wires)
+============================================================
+
+ No rounds played yet against this opponent.
+
+ ┌─────────────────────────────────────────────────────┐
+ │                       HP STATUS                       │
+ ├─────────────────────────────────────────────────────┤
+ │ YOU: [███████████████] 10/10 (100%)          │
+ │ Barbed Wire Hoffma [███████████████] 10/10 (100%)          │
+ └─────────────────────────────────────────────────────┘
+
+ ─── Round 1 Menu ───
+ A. Analyze hand (get advice)
+ I. Interrupt — enemy played a trump!
+ P. Play a trump card (4 in hand)
+ W. Edit trump hand (4 cards)
+ D. Done — record round result
+ X. Dead cards (none)
+ T. Trump card reference
+ O. Opponent intel
+ H. Round history
+ S. HP status
+ Q. Quit fight
+
+ Action: a
+
+ ┌─────────────────────────────────────────────────────┐
+ │                       HP STATUS                       │
+ ├─────────────────────────────────────────────────────┤
+ │ YOU: [███████████████] 10/10 (100%)          │
+ │ Barbed Wire Hoffma [███████████████] 10/10 (100%)          │
+ └─────────────────────────────────────────────────────┘
+
+ Current target: 21
+
+ Enter YOUR card values (space-separated, e.g., '10 6'):
+ (First card = your face-down card — will be remembered)
+ > 7 4
+ Enter OPPONENT'S visible card(s) (space-separated):
+ > 2
+ Enter DEAD/REMOVED cards (or Enter for none):
+ >
+
+ What did the opponent do? (Enter = nothing yet / still playing)
+  2. Opponent stayed (done drawing, hidden card still unknown)
+  3. I forced a draw (Love Your Enemy / similar)
+ >
+
+ ┌──────────────────────────────────────────────┐
+ │                 DECK TRACKER                 │
+ ├──────────────────────────────────────────────┤
+ │  1:IN   2:OUT  3:IN   4:OUT  5:IN   6:IN  │
+ │  7:OUT  8:IN   9:IN  10:IN  11:IN  │
+ └──────────────────────────────────────────────┘
+ Cards remaining: 8 | Sum available: 53
+
+ YOUR TOTAL: 11 (cards: [7, 4])
+ OPPONENT VISIBLE: 2 (cards: [2])
+ TARGET: 21
+ SAFE HIT CHANCE: 88% (7/8 cards)
+ BUST CHANCE: 12%
+ PERFECT DRAW: Card(s) [10] → exactly 21!
+
+ If you draw:
+  Card  1 → total 12 ✓
+  Card  3 → total 14 ✓
+  Card  5 → total 16 ✓
+  Card  6 → total 17 ✓
+  Card  8 → total 19 ✓
+  Card  9 → total 20 ✓
+  Card 10 → total 21 ✓ ★ PERFECT!
+  Card 11 → total 22 ✖ BUST
+
+============================================================
+                       STRATEGY ADVICE
+============================================================
+
+ SHIELD ASSAULT: Negates your damage AND hurts you. Stack bet-ups to overwhelm.
+
+ GO FOR 17: Can change target to 17 — your 20 becomes a bust! Watch for it.
+
+ MODEL: Opponent AI draws until 14+.
+
+ (Opponent hasn't stayed — odds are estimates. Select '2' when they stop drawing.)
+
+ If YOU STAY now -> Win 39.5% | Tie 0.0% | Lose 60.5%.
+
+ If YOU HIT now -> Win 59.1% | Tie 5.8% | Lose 35.1% (Bust draw chance: 12.5%).
+
+ If you BUST ON PURPOSE -> Best card: 11 (total 22) → Win 24.2%. [Completes bust-win challenge!]
+
+ UNLOCKED: You have Perfect Draw+ — guaranteed best card from the deck.
+
+ ACTION: HIT — best win chance at 59.1% (+19.6% over next best).
+
+ ┌─ TRUMP CARD ADVICE ─────────────────────────────┐
+ │ SAVE for bosses: Perfect Draw                        │
+ │ 'Perfect Draw' — draws best card (need 10 to reach 21│
+ │ ).                                                   │
+ └─────────────────────────────────────────────────┘
+
+============================================================
+
+ ─── Round 1 Menu ───
+ A. Analyze hand (get advice)
+ I. Interrupt — enemy played a trump!
+ P. Play a trump card (4 in hand)
+ W. Edit trump hand (4 cards)
+ D. Done — record round result
+ X. Dead cards (none)
+ T. Trump card reference
+ O. Opponent intel
+ H. Round history
+ S. HP status
+ Q. Quit fight
+
+ Action: d
+
+============================================================
+                        ROUND RESULT
+============================================================
+ What happened this round?
+
+ 1. I WON
+ 2. I LOST
+ 3. TIE (no damage)
+ 5. Cancel (go back)
+
+ Result (1-5): 5
+
+ ┌─────────────────────────────────────────────────────┐
+ │                       HP STATUS                       │
+ ├─────────────────────────────────────────────────────┤
+ │ YOU: [███████████████] 10/10 (100%)          │
+ │ Barbed Wire Hoffma [███████████████] 10/10 (100%)          │
+ └─────────────────────────────────────────────────────┘
+
+ Did your trump hand change this round? (opponent trumps, draws, etc.)
+  Current hand: ['Perfect Draw', 'Two-Up', 'Trump Switch', 'Go for 27']
+  Y = edit hand, Enter = no changes
+ >
+
+============================================================
+          ROUND 2 vs. Barbed Wire Hoffman (3 wires)
+============================================================
+
+ No rounds played yet against this opponent.
+
+ ┌─────────────────────────────────────────────────────┐
+ │                       HP STATUS                       │
+ ├─────────────────────────────────────────────────────┤
+ │ YOU: [███████████████] 10/10 (100%)          │
+ │ Barbed Wire Hoffma [███████████████] 10/10 (100%)          │
+ └─────────────────────────────────────────────────────┘
+
+ ─── Round 2 Menu ───
+ A. Analyze hand (get advice)
+ I. Interrupt — enemy played a trump!
+ P. Play a trump card (4 in hand)
+ W. Edit trump hand (4 cards)
+ D. Done — record round result
+ X. Dead cards (none)
+ T. Trump card reference
+ O. Opponent intel
+ H. Round history
+ S. HP status
+ Q. Quit fight
+
+ Action: a
+
+ ┌─────────────────────────────────────────────────────┐
+ │                       HP STATUS                       │
+ ├─────────────────────────────────────────────────────┤
+ │ YOU: [███████████████] 10/10 (100%)          │
+ │ Barbed Wire Hoffma [███████████████] 10/10 (100%)          │
+ └─────────────────────────────────────────────────────┘
+
+ Current target: 21
+
+ Enter YOUR card values (space-separated, e.g., '10 6'):
+ (First card = your face-down card — will be remembered)
+ > 4 7
+ Enter OPPONENT'S visible card(s) (space-separated):
+ > 2 11
+ Enter DEAD/REMOVED cards (or Enter for none):
+ >
+
+ What did the opponent do? (Enter = nothing yet / still playing)
+  2. Opponent stayed (done drawing, hidden card still unknown)
+  3. I forced a draw (Love Your Enemy / similar)
+ >
+
+ ┌──────────────────────────────────────────────┐
+ │                 DECK TRACKER                 │
+ ├──────────────────────────────────────────────┤
+ │  1:IN   2:OUT  3:IN   4:OUT  5:IN   6:IN  │
+ │  7:OUT  8:IN   9:IN  10:IN  11:OUT │
+ └──────────────────────────────────────────────┘
+ Cards remaining: 7 | Sum available: 42
+
+ YOUR TOTAL: 11 (cards: [4, 7])
+ OPPONENT VISIBLE: 13 (cards: [2, 11])
+ TARGET: 21
+ SAFE HIT CHANCE: 100% (7/7 cards)
+ BUST CHANCE: 0%
+ PERFECT DRAW: Card(s) [10] → exactly 21!
+
+ If you draw:
+  Card  1 → total 12 ✓
+  Card  3 → total 14 ✓
+  Card  5 → total 16 ✓
+  Card  6 → total 17 ✓
+  Card  8 → total 19 ✓
+  Card  9 → total 20 ✓
+  Card 10 → total 21 ✓ ★ PERFECT!
+
+============================================================
+                       STRATEGY ADVICE
+============================================================
+
+ SHIELD ASSAULT: Negates your damage AND hurts you. Stack bet-ups to overwhelm.
+
+ GO FOR 17: Can change target to 17 — your 20 becomes a bust! Watch for it.
+
+ MODEL: Opponent AI draws until 14+.
+
+ (Opponent hasn't stayed — odds are estimates. Select '2' when they stop drawing.)
+
+ If YOU STAY now -> Win 39.4% | Tie 0.0% | Lose 60.6%.
+
+ If YOU HIT now -> Win 64.9% | Tie 8.6% | Lose 26.5% (Bust draw chance: 0.0%).
+
+ UNLOCKED: You have Perfect Draw+ — guaranteed best card from the deck.
+
+ ACTION: HIT — best win chance at 64.9% (+25.5% over next best).
+
+ ┌─ TRUMP CARD ADVICE ─────────────────────────────┐
+ │ SAVE for bosses: Perfect Draw                        │
+ │ 'Perfect Draw' — draws best card (need 10 to reach 21│
+ │ ).                                                   │
+ └─────────────────────────────────────────────────┘
+
+============================================================
+
+ ─── Round 2 Menu ───
+ A. Analyze hand (get advice)
+ I. Interrupt — enemy played a trump!
+ P. Play a trump card (4 in hand)
+ W. Edit trump hand (4 cards)
+ D. Done — record round result
+ X. Dead cards (none)
+ T. Trump card reference
+ O. Opponent intel
+ H. Round history
+ S. HP status
+ Q. Quit fight
+
+ Action: a
+
+ ┌─────────────────────────────────────────────────────┐
+ │                       HP STATUS                       │
+ ├─────────────────────────────────────────────────────┤
+ │ YOU: [███████████████] 10/10 (100%)          │
+ │ Barbed Wire Hoffma [███████████████] 10/10 (100%)          │
+ └─────────────────────────────────────────────────────┘
+
+ Current target: 21
+
+ Your face-down card: 4 (remembered)
+ Enter your OTHER visible card(s) (space-separated):
+ > 4 1
+ Enter OPPONENT'S visible card(s) (space-separated):
+ > 2 11
+ Enter DEAD/REMOVED cards (or Enter for none):
+ >
+ ⚠ WARNING: Card 4 entered twice! (Deck has one of each)
+
+ What did the opponent do? (Enter = nothing yet / still playing)
+  2. Opponent stayed (done drawing, hidden card still unknown)
+  3. I forced a draw (Love Your Enemy / similar)
+ 
