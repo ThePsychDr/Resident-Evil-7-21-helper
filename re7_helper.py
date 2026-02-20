@@ -654,8 +654,19 @@ def display_trump_hand(trump_hand: list) -> None:
     print(" └─────────────────────────────────────────────────┘")
 
 
-def edit_trump_hand(trump_hand: list) -> list:
-    """Let user add/remove trump cards from their hand."""
+def edit_trump_hand(trump_hand: list, available_trumps: set = None) -> list:
+    """Let user add/remove trump cards from their hand.
+    available_trumps: if provided, only show unlocked cards in the add list."""
+    # Cards that require unlocking — if available_trumps is set, filter these
+    UNLOCKABLE = {"Perfect Draw+", "Ultimate Draw", "Trump Switch+", "Shield+",
+                  "Two-Up+", "Go for 24", "Go for 27", "Harvest"}
+
+    if available_trumps is not None:
+        allowed = [c for c in PLAYER_TRUMPS
+                   if c not in UNLOCKABLE or c in available_trumps]
+    else:
+        allowed = PLAYER_TRUMPS  # No filtering — show all
+
     while True:
         display_trump_hand(trump_hand)
         print("\n Options:")
@@ -686,8 +697,12 @@ def edit_trump_hand(trump_hand: list) -> list:
                 print(" Invalid input.")
         elif choice == "+":
             print("\n Available trump cards:")
-            for i, name in enumerate(PLAYER_TRUMPS, 1):
+            for i, name in enumerate(allowed, 1):
                 print(f"  {i:>2}. {name}")
+            if available_trumps is not None:
+                locked = [c for c in UNLOCKABLE if c not in available_trumps]
+                if locked:
+                    print(f"\n  🔒 Locked ({len(locked)}): {', '.join(sorted(locked))}")
             print(f"\n Enter numbers to add (e.g., '1 3 7'), or card names:")
             raw = input(" > ").strip()
             if raw:
@@ -695,14 +710,14 @@ def edit_trump_hand(trump_hand: list) -> list:
                 try:
                     indices = [int(x) for x in raw.split()]
                     for idx in indices:
-                        if 1 <= idx <= len(PLAYER_TRUMPS):
-                            trump_hand.append(PLAYER_TRUMPS[idx - 1])
-                            print(f"  + {PLAYER_TRUMPS[idx - 1]}")
+                        if 1 <= idx <= len(allowed):
+                            trump_hand.append(allowed[idx - 1])
+                            print(f"  + {allowed[idx - 1]}")
                 except ValueError:
                     # Try as card names (partial match)
                     for part in raw.split(","):
                         part = part.strip()
-                        matches = [n for n in PLAYER_TRUMPS if part.lower() in n.lower()]
+                        matches = [n for n in allowed if part.lower() in n.lower()]
                         if len(matches) == 1:
                             trump_hand.append(matches[0])
                             print(f"  + {matches[0]}")
@@ -726,30 +741,20 @@ def recommend_trump_play(
     opp_behavior: str = "auto",
     fight_num: int = 0,
     mode_key: str = "3",
+    stay_win_pct: float = None,
 ) -> list:
     """
     Smart trump card auto-suggestion engine.
-    Considers: game state, enemy AI patterns, conservative survival strategy,
-    upcoming harder opponents, and challenge completion.
+    Weight values drive sorting internally but are NEVER shown to user.
 
-    KEY MECHANIC: utility_weight from TRUMPS dict drives card selection.
-    - When multiple cards solve the same problem, lowest weight is suggested first.
-    - High-weight cards (>=60) get a SAVE warning against non-boss opponents.
-    - Boss fights unlock full arsenal — no SAVE warnings.
-
-    Returns list of recommendation strings with priority markers.
+    stay_win_pct: if provided, used to suppress advice when winning comfortably.
+    Returns list of recommendation strings, or empty list if no action needed.
     """
     if not trump_hand:
         return []
 
     def get_weight(card_name):
-        """Get utility weight for a card. Higher = more valuable to save."""
         return TRUMPS.get(card_name, {}).get("weight", 50)
-
-    def weight_tag(card_name):
-        """Return a cost indicator like [w10] for display."""
-        w = get_weight(card_name)
-        return f"[cost:{w}]"
 
     recs = []
     hand_set = set(trump_hand)
@@ -759,230 +764,173 @@ def recommend_trump_play(
     busted = u_total > target
     opp_name = intel.get("name", "")
     is_boss = "Boss" in opp_name or "Undead" in opp_name or "Molded" in opp_name
-
-    # Count destroy cards for resource management
     destroys_held = sum(1 for c in trump_hand if c.startswith("Destroy"))
-
-    # Weight threshold: cards at or above this are "expensive" — warn before using on non-bosses
     SAVE_THRESHOLD = 60
 
-    # ══════════════════════════════════════════════════════
-    # GAUNTLET RESOURCE MANAGEMENT — fight_num awareness
-    # ══════════════════════════════════════════════════════
+    # ── SMART SUPPRESSION ──
+    # Skip trump advice when you're winning comfortably against a weak opponent
+    has_enemy_threats = bool(enemy_trumps & {
+        "Dead Silence", "Black Magic", "Curse", "Escape",
+        "Mind Shift", "Mind Shift+", "Desire", "Desire+",
+        "Shield Assault", "Shield Assault+", "Twenty-One Up",
+        "Oblivion", "Destroy+", "Destroy++"
+    })
+    needs_advice = (
+        busted
+        or has_enemy_threats
+        or player_hp <= 3
+        or is_boss
+        or (stay_win_pct is not None and stay_win_pct < 0.55)
+        or u_total == target
+        or fight_num >= 5
+    )
+    if not needs_advice:
+        return []
+
+    # ── GAUNTLET RESOURCE MANAGEMENT ──
     if mode_key == "3" and fight_num > 0 and not is_boss:
         if fight_num < 5 and destroys_held > 0:
-            recs.append(f"⚠ SAVE DESTROY CARDS — Molded Hoffman (fight #5) needs them for Black Magic!")
+            recs.append("⚠ SAVE Destroy cards — Molded Hoffman (fight #5) needs them!")
         elif fight_num > 5 and fight_num < 10 and destroys_held > 0:
-            recs.append(f"\033[91m★★ SAVE ALL DESTROY CARDS FOR FIGHT #10 — Undead Hoffman's Dead Silence is LETHAL!\033[0m")
+            recs.append("\033[91m★★ SAVE ALL Destroy cards for fight #10 — Dead Silence is lethal!\033[0m")
     elif mode_key == "2" and fight_num > 0 and fight_num < 5 and destroys_held > 0:
-        recs.append(f"⚠ SAVE Destroy cards — Molded Hoffman (fight #5) needs them for Curse/Black Magic!")
+        recs.append("⚠ SAVE Destroy cards — Molded Hoffman (fight #5) needs them!")
 
-    # High-weight card inventory warning (non-boss only)
     if not is_boss:
-        expensive = [c for c in trump_hand if get_weight(c) >= SAVE_THRESHOLD]
+        expensive = sorted(set(c for c in trump_hand if get_weight(c) >= SAVE_THRESHOLD), key=get_weight, reverse=True)
         if expensive:
-            names = sorted(set(expensive), key=get_weight, reverse=True)
-            top3 = names[:3]
-            recs.append(f"HIGH-VALUE CARDS: {', '.join(f'{n} {weight_tag(n)}' for n in top3)} — save for bosses if possible.")
+            recs.append(f"SAVE for bosses: {', '.join(expensive[:3])}")
 
-    # ══════════════════════════════════════════════════════
-    # PRIORITY 1: EMERGENCY — You're busted
-    # Sort fixes by weight: cheapest fix first
-    # ══════════════════════════════════════════════════════
+    # ── PRIORITY 1: EMERGENCY — Busted ──
     if busted:
         fixes = []
-
         if "Return" in hand_set:
-            fixes.append((get_weight("Return"), "★★ PLAY 'Return' — send back your last card to un-bust!"))
+            fixes.append((get_weight("Return"), "★★ PLAY 'Return' — send back your last card!"))
         if "Go for 27" in hand_set and u_total <= 27:
-            fixes.append((get_weight("Go for 27"), f"★★ PLAY 'Go for 27' — your {u_total} is safe under 27!"))
+            fixes.append((get_weight("Go for 27"), f"★★ PLAY 'Go for 27' — {u_total} is safe under 27!"))
         if "Go for 24" in hand_set and u_total <= 24 and target == 21:
-            fixes.append((get_weight("Go for 24"), f"★★ PLAY 'Go for 24' — your {u_total} is safe under 24!"))
+            fixes.append((get_weight("Go for 24"), f"★★ PLAY 'Go for 24' — {u_total} is safe under 24!"))
         if "Exchange" in hand_set:
             fixes.append((get_weight("Exchange"), "★ 'Exchange' — swap your bust card with opponent's."))
-
-        # Numbered cards that could un-bust (e.g. Return then draw lower)
-        # Not direct fixes but worth noting
-
         if fixes:
-            # Sort cheapest first
             fixes.sort(key=lambda x: x[0])
             recs.append("BUST RECOVERY (cheapest fix first):")
-            for w, msg in fixes:
+            for _, msg in fixes:
                 recs.append(f"  {msg}")
         else:
             shield_cards = [c for c in trump_hand if c.startswith("Shield") and "Assault" not in c]
             if shield_cards:
                 cheapest = min(shield_cards, key=get_weight)
-                recs.append(f"No un-bust cards. Play '{cheapest}' {weight_tag(cheapest)} to reduce damage.")
+                recs.append(f"No un-bust cards. Play '{cheapest}' to reduce damage.")
         return recs
 
-    # ══════════════════════════════════════════════════════
-    # PRIORITY 2: REACTIVE — Counter enemy trump threats
-    # Based on what this specific enemy actually plays
-    # ══════════════════════════════════════════════════════
-
-    # Dead Silence (Undead Hoffman) — highest priority Destroy target
+    # ── PRIORITY 2: REACTIVE — Counter enemy threats ──
     if "Dead Silence" in enemy_trumps:
         ds_info = trump_behavior.get("Dead Silence", {})
         if ds_info.get("freq") in ("very_high", "high"):
             if destroys_held >= 2:
-                recs.append(f"★ SAVE {destroys_held} Destroys for Dead Silence — he uses it REPEATEDLY!")
+                recs.append(f"★ SAVE {destroys_held} Destroys for Dead Silence — he uses it repeatedly!")
             elif destroys_held == 1:
                 recs.append("★ SAVE your Destroy for Dead Silence — top priority!")
-                recs.append("  If Dead Silence is active: use Exchange to try busting him instead.")
             else:
-                recs.append("⚠ No Destroy cards! If Dead Silence hits, use Exchange to bust him.")
-        else:
-            if destroys_held > 0:
-                recs.append("SAVE Destroy for Dead Silence if he plays it.")
-
-    # Black Magic (Molded Hoffman) — YOUR bet +10 = instant death
-    if "Black Magic" in enemy_trumps:
-        if destroys_held > 0 and "Dead Silence" not in enemy_trumps:
-            recs.append("★ SAVE Destroy for Black Magic — YOUR bet +10 = instant death if you lose!")
+                recs.append("⚠ No Destroy! If Dead Silence hits, use Exchange.")
         elif destroys_held > 0:
-            recs.append("  Also save a Destroy for Black Magic (bet +10 = death).")
+            recs.append("SAVE Destroy for Dead Silence if he plays it.")
 
-    # Curse (Molded Hoffman) — forces highest card
+    if "Black Magic" in enemy_trumps and destroys_held > 0:
+        if "Dead Silence" not in enemy_trumps:
+            recs.append("★ SAVE Destroy for Black Magic — bet +10 = instant death!")
+        else:
+            recs.append("  Also save a Destroy for Black Magic (bet +10).")
+
     if "Curse" in enemy_trumps and remaining:
         highest = max(remaining)
         if u_total + highest > target:
-            # Suggest cheapest counter
             counters = []
             if "Return" in hand_set:
-                counters.append((get_weight("Return"), f"'Return' {weight_tag('Return')} to send back the forced {highest}"))
+                counters.append((get_weight("Return"), "'Return' to send back forced card"))
             if "Exchange" in hand_set:
-                counters.append((get_weight("Exchange"), f"'Exchange' {weight_tag('Exchange')} to give bad card to opponent"))
+                counters.append((get_weight("Exchange"), "'Exchange' to give bad card to opponent"))
             if counters:
                 counters.sort(key=lambda x: x[0])
-                cheapest = counters[0][1]
-                recs.append(f"If Cursed (forced {highest}, bust to {u_total + highest}): use {cheapest}")
-                if len(counters) > 1:
-                    recs.append(f"  Or: {counters[1][1]}")
+                recs.append(f"If Cursed (forced {highest}, bust to {u_total + highest}): use {counters[0][1]}")
 
-    # Escape (Mr. Big Head) — destroys win progress
-    if "Escape" in enemy_trumps:
-        if destroys_held > 0:
-            recs.append("★ SAVE Destroy for 'Escape' — otherwise your wins are voided! He replays it.")
+    if "Escape" in enemy_trumps and destroys_held > 0:
+        recs.append("★ SAVE Destroy for 'Escape' — otherwise wins are voided!")
 
-    # Mind Shift / Mind Shift+ — play 2 (or 3) trumps to remove it
     if "Mind Shift+" in enemy_trumps:
-        # Suggest cheapest trumps to burn
-        by_weight = sorted(trump_hand, key=get_weight)
-        cheapest_3 = by_weight[:3] if len(by_weight) >= 3 else by_weight
-        names = ', '.join(f"'{c}' {weight_tag(c)}" for c in cheapest_3)
-        recs.append(f"⚠ Mind Shift+: play 3 trumps to remove, or lose ALL. Cheapest to burn: {names}")
+        by_weight = sorted(trump_hand, key=get_weight)[:3]
+        recs.append(f"⚠ Mind Shift+: play 3 trumps or lose ALL. Burn: {', '.join(by_weight)}")
     elif "Mind Shift" in enemy_trumps:
-        by_weight = sorted(trump_hand, key=get_weight)
-        cheapest_2 = by_weight[:2] if len(by_weight) >= 2 else by_weight
-        names = ', '.join(f"'{c}' {weight_tag(c)}" for c in cheapest_2)
-        recs.append(f"⚠ Mind Shift: play 2 trumps to remove, or lose half. Cheapest to burn: {names}")
+        by_weight = sorted(trump_hand, key=get_weight)[:2]
+        recs.append(f"⚠ Mind Shift: play 2 trumps or lose half. Burn: {', '.join(by_weight)}")
 
-    # Destroy+ (Molded Hoffman) — don't stack too many bet-ups
     if "Destroy+" in enemy_trumps:
-        bet_ups_in_hand = [c for c in trump_hand if c.startswith("One-Up") or c.startswith("Two-Up")]
-        if len(bet_ups_in_hand) > 1:
-            recs.append("Don't stack all bet-ups at once — enemy has Destroy+ to wipe them.")
+        bet_ups = [c for c in trump_hand if c.startswith("One-Up") or c.startswith("Two-Up")]
+        if len(bet_ups) > 1:
+            recs.append("Don't stack all bet-ups — enemy has Destroy+ to wipe them.")
 
-    # Oblivion (Undead Hoffman) — can't counter, just accept
-    if "Oblivion" in enemy_trumps:
-        ob_info = trump_behavior.get("Oblivion", {})
-        if ob_info.get("when") == "losing":
-            recs.append("Oblivion: if you're winning, he may cancel the round. Can't counter — stay patient.")
-
-    # Desire / Desire+ — penalizes hoarding trumps
     if "Desire" in enemy_trumps or "Desire+" in enemy_trumps:
         d_type = "Desire+" if "Desire+" in enemy_trumps else "Desire"
-        count_modifier = "FULL" if "Desire+" in enemy_trumps else "half"
-        # Suggest cheapest trumps to dump
-        by_weight = sorted(trump_hand, key=get_weight)
-        cheapest = by_weight[:2] if len(by_weight) >= 2 else by_weight
-        dump_names = ', '.join(f"'{c}' {weight_tag(c)}" for c in cheapest)
-        recs.append(f"⚠ {d_type}: bet scales with {count_modifier} trump count. Dump cheap cards: {dump_names}")
+        by_weight = sorted(trump_hand, key=get_weight)[:2]
+        recs.append(f"⚠ {d_type}: dump cheap trumps to lower your bet. Burn: {', '.join(by_weight)}")
 
-    # ══════════════════════════════════════════════════════
-    # PRIORITY 3: PROACTIVE — Offensive plays
-    # ══════════════════════════════════════════════════════
-
-    # Perfect hand — stack damage (cheapest bet-ups first)
+    # ── PRIORITY 3: PROACTIVE — Offensive ──
     if u_total == target:
-        bet_cards = [c for c in trump_hand if c in ("One-Up", "Two-Up", "Two-Up+")]
+        bet_cards = sorted([c for c in trump_hand if c in ("One-Up", "Two-Up", "Two-Up+")], key=get_weight)
         if bet_cards:
-            sorted_bets = sorted(bet_cards, key=get_weight)
-            labels = ', '.join(f"'{c}' {weight_tag(c)}" for c in sorted_bets)
-            recs.append(f"★ PERFECT {target}! Stack bet-ups (cheapest first): {labels}")
+            recs.append(f"★ PERFECT {target}! Stack bet-ups: {', '.join(bet_cards)}")
 
-    # Love Your Enemy — force opponent to draw (best card for them, but can bust)
     if "Love Your Enemy" in hand_set and opp_behavior != "stay":
         if o_visible_total >= target - 3:
             bust_cards = [c for c in remaining if o_visible_total + c > target]
             if bust_cards:
-                recs.append(f"'Love Your Enemy' {weight_tag('Love Your Enemy')} — {len(bust_cards)}/{len(remaining)} cards bust opponent!")
+                recs.append(f"'Love Your Enemy' — {len(bust_cards)}/{len(remaining)} remaining cards bust opponent!")
 
-    # Perfect Draw when you need exactly the right card — suggest cheapest draw option
     if gap_to_target > 0:
-        draw_options = []
-        for card in ["Perfect Draw", "Perfect Draw+", "Ultimate Draw"]:
-            if card in hand_set:
-                draw_options.append((get_weight(card), card))
+        draw_options = sorted(
+            [(get_weight(c), c) for c in ["Perfect Draw", "Perfect Draw+", "Ultimate Draw"] if c in hand_set],
+            key=lambda x: x[0]
+        )
         if draw_options:
-            draw_options.sort(key=lambda x: x[0])
-            cheapest = draw_options[0]
-            recs.append(f"'{cheapest[1]}' {weight_tag(cheapest[1])} — draws best card (need {gap_to_target} to reach {target}).")
+            recs.append(f"'{draw_options[0][1]}' — draws best card (need {gap_to_target} to reach {target}).")
             if len(draw_options) > 1 and not is_boss:
-                expensive = [d for d in draw_options[1:] if d[0] >= SAVE_THRESHOLD]
-                if expensive:
-                    recs.append(f"  (SAVE '{expensive[0][1]}' {weight_tag(expensive[0][1])} for bosses — use cheapest draw first.)")
+                recs.append(f"  (Save '{draw_options[-1][1]}' for bosses — use cheapest draw first.)")
 
-    # Numbered card draws — sorted by weight (all equal at 15, but sorted for consistency)
     num_draws = []
     for card_name in ["2 Card", "3 Card", "4 Card", "5 Card", "6 Card", "7 Card"]:
         if card_name in hand_set:
             needed = int(card_name[0])
             if u_total + needed == target and needed in remaining:
-                num_draws.append((get_weight(card_name), f"★ '{card_name}' {weight_tag(card_name)} gives you exactly {target}!"))
+                num_draws.append((get_weight(card_name), f"★ '{card_name}' gives you exactly {target}!"))
             elif u_total + needed <= target and needed in remaining:
-                num_draws.append((get_weight(card_name), f"'{card_name}' {weight_tag(card_name)} is safe ({u_total}+{needed}={u_total+needed})."))
-    if num_draws:
-        num_draws.sort(key=lambda x: x[0])
-        for _, msg in num_draws:
-            recs.append(msg)
+                num_draws.append((get_weight(card_name), f"'{card_name}' is safe ({u_total}+{needed}={u_total+needed})."))
+    for _, msg in sorted(num_draws, key=lambda x: x[0]):
+        recs.append(msg)
 
-    # Two-Up+ — removes opponent's card AND raises bet
     if "Two-Up+" in hand_set and opp_behavior != "stay":
-        recs.append(f"'Two-Up+' {weight_tag('Two-Up+')} returns opponent's card to deck AND bet +2.")
+        recs.append("'Two-Up+' returns opponent's card to deck AND bet +2.")
 
-    # Exchange when opponent has a high visible card and you have a low one
     if "Exchange" in hand_set and opp_behavior != "stay" and gap_to_target > 0:
-        recs.append(f"'Exchange' {weight_tag('Exchange')} can steal opponent's high card.")
+        recs.append("'Exchange' can steal opponent's high card.")
 
-    # ══════════════════════════════════════════════════════
-    # PRIORITY 4: DEFENSIVE / CONSERVATIVE
-    # ══════════════════════════════════════════════════════
-
-    # Low HP — prioritize survival (cheapest shield first)
+    # ── PRIORITY 4: DEFENSIVE ──
     if player_hp <= 3:
         shield_cards = [c for c in trump_hand if c.startswith("Shield") and "Assault" not in c]
         if shield_cards:
             cheapest = min(shield_cards, key=get_weight)
-            recs.append(f"LOW HP ({player_hp}) — play '{cheapest}' {weight_tag(cheapest)} to reduce damage.")
+            recs.append(f"LOW HP ({player_hp}) — play '{cheapest}' to reduce damage.")
 
-    # Harvest should always be played first if held (it pays for itself)
     if "Harvest" in hand_set:
-        recs.append(f"★ Play 'Harvest' {weight_tag('Harvest')} FIRST! Every trump afterward draws a replacement.")
+        recs.append("★ Play 'Harvest' first! Every trump afterward draws a replacement.")
 
-    # Trump Switch for value (low weight — good to play early)
     if "Trump Switch+" in hand_set and len(trump_hand) <= 3:
-        recs.append(f"'Trump Switch+' {weight_tag('Trump Switch+')} — discard 1, draw 4. Good value when hand is small.")
+        recs.append("'Trump Switch+' — discard 1, draw 4.")
     elif "Trump Switch" in hand_set and len(trump_hand) <= 2:
-        recs.append(f"'Trump Switch' {weight_tag('Trump Switch')} — discard 2, draw 3. Net +1.")
+        recs.append("'Trump Switch' — discard 2, draw 3.")
 
-    # ══════════════════════════════════════════════════════
-    # FALLBACK
-    # ══════════════════════════════════════════════════════
     if not recs:
-        recs.append("No urgent plays. Hold trumps for counter-play or bet stacking.")
+        return []
 
     return recs
 
@@ -1428,10 +1376,15 @@ def generate_advice(
     opp_behavior: str = "auto",
     challenges_completed: set = None,
     available_trumps: set = None,
+    trump_hand: list = None,
 ):
-    """Generate strategic advice factoring in HP state + opponent trumps."""
+    """Generate strategic advice factoring in HP state + opponent trumps.
+    trump_hand: player's current held trumps — used to gate Love Your Enemy / bust suggestions."""
     advice_lines = []
     priority_warnings = []
+    if trump_hand is None:
+        trump_hand = []
+    hand_set = set(trump_hand)
 
     stay_val = int(intel.get("stay_val", 17))
     # Adjust opponent AI threshold when target differs from 21
@@ -1559,10 +1512,11 @@ def generate_advice(
         f"Lose {hit_probs['loss'] * 100:.1f}% (Bust draw chance: {bust_pct:.1f}%)."
     )
 
-    # Force draw analysis (Love Your Enemy — stay at your total, force opponent to draw)
+    # Force draw analysis (Love Your Enemy — only if player holds it)
     force_probs = None
     opp_bust_from_force = 0.0
-    if remaining and behavior_key != "stay":
+    has_lye = "Love Your Enemy" in hand_set
+    if remaining and behavior_key != "stay" and has_lye:
         force_probs = {"win": 0.0, "tie": 0.0, "loss": 0.0}
         card_weight = 1.0 / len(remaining)
         opp_bust_count = 0
@@ -1589,7 +1543,7 @@ def generate_advice(
             f"(busts opponent: {opp_bust_from_force:.0f}%)."
         )
 
-    # Bust-to-win analysis
+    # Bust-to-win analysis — only show if bust-win challenge is incomplete
     bust_result = None
     if challenges_completed is None:
         challenges_completed = set()
@@ -1598,7 +1552,8 @@ def generate_advice(
     bust_challenge_done = "bust_win" in challenges_completed
     bust_cards = [c for c in remaining if u_total + c > target]
 
-    if bust_cards and behavior_key != "stay":
+    # Only compute and show bust option if challenge is incomplete
+    if bust_cards and behavior_key != "stay" and not bust_challenge_done:
         bust_result = evaluate_bust_inline(u_total, o_visible_total, remaining, stay_val, target, behavior_key)
         if bust_result and bust_result["win_pct"] > 0:
             bust_label = "INTENTIONAL BUST"
@@ -1794,7 +1749,7 @@ def evaluate_bust_challenge(u_total: int, o_visible_total: int, remaining, targe
 # ============================================================
 # ROUND RESULT RECORDING
 # ============================================================
-def record_round_result(round_num: int, player_hp: int, opp_hp: int):
+def record_round_result(round_num: int, player_hp: int, opp_hp: int, intel: dict = None):
     """
     Ask what happened and update HP.
     Damage in RE7 21 is based on the bet amount, not score difference.
@@ -1802,12 +1757,16 @@ def record_round_result(round_num: int, player_hp: int, opp_hp: int):
     - Survival+/Normal: voltage/saw moves by the bet amount
     Returns: (new_player_hp, new_opp_hp, round_entry_dict or None)
     """
+    enemy_trumps = set(intel.get("trumps", [])) if intel else set()
+    can_void = "Escape" in enemy_trumps or "Oblivion" in enemy_trumps
+
     print_header("ROUND RESULT")
     print(" What happened this round?\n")
     print(" 1. I WON")
     print(" 2. I LOST")
     print(" 3. TIE (no damage)")
-    print(" 4. VOID (Escape / Oblivion cancelled)")
+    if can_void:
+        print(" 4. VOID (Escape / Oblivion cancelled)")
     print(" 5. Cancel (go back)")
 
     choice = input("\n Result (1-5): ").strip()
@@ -1865,9 +1824,9 @@ def record_round_result(round_num: int, player_hp: int, opp_hp: int):
 # ============================================================
 # SINGLE ROUND ANALYSIS
 # ============================================================
-def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21, dead_cards: list = None, challenges_completed: set = None, available_trumps: set = None, trump_hand: list = None, fight_num: int = 0, mode_key: str = "3") -> list:
+def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21, dead_cards: list = None, challenges_completed: set = None, available_trumps: set = None, trump_hand: list = None, fight_num: int = 0, mode_key: str = "3", face_down_card: int = None) -> tuple:
     """Run the solver for one round of 21 (read-only, no HP changes).
-    Returns updated dead_cards list for persistence across rounds."""
+    Returns (updated_dead_cards, face_down_card) for persistence."""
     if dead_cards is None:
         dead_cards = []
     display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
@@ -1880,27 +1839,40 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
     opp_behavior = "auto"
 
     try:
-        print(f"\n Enter YOUR card values (space-separated, e.g., '10 6'):")
-        u_input = input(" > ").strip()
-        if not u_input:
-            print(" No cards entered.")
-            return dead_cards
-        u_hand = list(map(int, u_input.split()))
+        # Face-down card memory
+        if face_down_card is not None:
+            print(f"\n Your face-down card: {face_down_card} (remembered)")
+            print(f" Enter your OTHER visible card(s) (space-separated):")
+            u_input = input(" > ").strip()
+            if not u_input:
+                u_hand = [face_down_card]
+            else:
+                u_hand = [face_down_card] + list(map(int, u_input.split()))
+        else:
+            print(f"\n Enter YOUR card values (space-separated, e.g., '10 6'):")
+            print(f" (First card = your face-down card — will be remembered)")
+            u_input = input(" > ").strip()
+            if not u_input:
+                print(" No cards entered.")
+                return dead_cards, face_down_card
+            u_hand = list(map(int, u_input.split()))
+            if u_hand:
+                face_down_card = u_hand[0]  # Remember face-down card
         for c in u_hand:
             if c < 1 or c > 11:
                 print(f" ERROR: Card {c} invalid (1–11).")
-                return dead_cards
+                return dead_cards, face_down_card
 
         print(" Enter OPPONENT'S visible card(s) (space-separated):")
         o_input = input(" > ").strip()
         if not o_input:
             print(" No opponent cards entered.")
-            return dead_cards
+            return dead_cards, face_down_card
         o_vis = list(map(int, o_input.split()))
         for c in o_vis:
             if c < 1 or c > 11:
                 print(f" ERROR: Card {c} invalid (1–11).")
-                return dead_cards
+                return dead_cards, face_down_card
 
         if dead_cards:
             print(f" Remembered dead cards: {sorted(dead_cards)}")
@@ -1912,12 +1884,12 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         for c in new_dead:
             if c < 1 or c > 11:
                 print(f" ERROR: Card {c} invalid (1–11).")
-                return dead_cards
+                return dead_cards, face_down_card
         dead = sorted(set(dead_cards + new_dead))
         for c in dead:
             if c < 1 or c > 11:
                 print(f" ERROR: Card {c} invalid (1–11).")
-                return dead_cards
+                return dead_cards, face_down_card
 
         # Duplicate check (deck has one of each)
         all_cards = u_hand + o_vis + dead
@@ -1986,48 +1958,62 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
 
         # Strategic advice
         print_header("STRATEGY ADVICE")
+
+        # Compute stay win% to share with both advice and trump recommendation
+        _stay_val = int(intel.get("stay_val", 17))
+        if target != 21:
+            _stay_val += (target - 21)
+            _stay_val = max(1, _stay_val)
+        _stay_win_pct = None
+        if u_total <= target and remaining:
+            try:
+                sp, _ = evaluate_stay_hit_outcomes(
+                    u_total, o_total, remaining, _stay_val, target, opp_behavior
+                )
+                _stay_win_pct = sp.get("win", 0.5)
+            except Exception:
+                _stay_win_pct = 0.5
+
         warnings, advice = generate_advice(
             u_total, o_total, intel, remaining, target, safe_pct, perfect_draws,
             player_hp, player_max, opp_hp, opp_max, opp_behavior,
-            challenges_completed, available_trumps
+            challenges_completed, available_trumps, trump_hand
         )
         for w in warnings:
             print(f"\n \033[91m{w}\033[0m")
         for a in advice:
             print(f"\n {a}")
 
-        tip = intel.get("tip", "")
-        if tip:
-            print(f"\n OPPONENT TIP:\n {tip}")
-
-        # Trump card play recommendations
+        # Trump card play recommendations (suppressed when not needed)
         if trump_hand:
-            stay_val = int(intel.get("stay_val", 17))
-            if target != 21:
-                stay_val += (target - 21)
-                stay_val = max(1, stay_val)
+            import re as _re
             trump_recs = recommend_trump_play(
-                trump_hand, u_total, o_total, remaining, target, stay_val,
+                trump_hand, u_total, o_total, remaining, target, _stay_val,
                 intel, player_hp, opp_hp, opp_behavior,
-                fight_num=fight_num, mode_key=mode_key
+                fight_num=fight_num, mode_key=mode_key,
+                stay_win_pct=_stay_win_pct
             )
             if trump_recs:
                 print("\n ┌─ TRUMP CARD ADVICE ─────────────────────────────┐")
                 for rec in trump_recs:
-                    # Wrap long lines
-                    while len(rec) > 53:
-                        print(f" │ {rec[:53]:<53s}│")
-                        rec = rec[53:]
-                    print(f" │ {rec:<53s}│")
+                    # Strip ANSI for width calculation
+                    clean = _re.sub(r'\033\[[0-9;]*m', '', rec)
+                    while len(clean) > 53:
+                        # Print first 53 visible chars
+                        print(f" │ {rec[:53 + (len(rec) - len(clean))]}│")
+                        rec = rec[53 + (len(rec) - len(clean)):]
+                        clean = _re.sub(r'\033\[[0-9;]*m', '', rec)
+                    pad = 53 - len(clean)
+                    print(f" │ {rec}{' ' * pad}│")
                 print(" └─────────────────────────────────────────────────┘")
 
         print("\n" + "=" * 60)
 
-        return dead
+        return dead, face_down_card
 
     except ValueError:
         print(" ERROR: Enter valid numbers only.")
-        return dead_cards
+        return dead_cards, face_down_card
 
 
 # ============================================================
@@ -2244,7 +2230,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
     # Initial trump hand setup
     print("\n Do you want to enter your starting trump cards? (y/n)")
     if input(" > ").strip().lower() == "y":
-        trump_hand = edit_trump_hand(trump_hand)
+        trump_hand = edit_trump_hand(trump_hand, available_trumps)
 
     while player_hp > 0 and opp_hp > 0:
         round_num += 1
@@ -2252,6 +2238,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
         player_bet = 1   # Base bet — modified by trumps (resets each round)
         opp_bet = 1      # Base opponent bet (resets each round)
         current_target = 21  # Go For cards are "while on table" — reset each round
+        face_down_card = None  # Your face-down card — remembered across re-analyzes
         print_header(f"ROUND {round_num} vs. {intel['name']}")
         display_round_history(round_history)
         display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
@@ -2283,7 +2270,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
 """)
             print("=" * 60)
             input("\n Press Enter once this round concludes...")
-            player_hp, opp_hp, entry = record_round_result(round_num, player_hp, opp_hp)
+            player_hp, opp_hp, entry = record_round_result(round_num, player_hp, opp_hp, intel)
             if entry is not None:
                 round_history.append(entry)
             continue
@@ -2311,7 +2298,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
             action = input("\n Action: ").strip().upper()
 
             if action == "A":
-                dead_cards = analyze_round(intel, player_hp, player_max, opp_hp, opp_max, current_target, dead_cards, challenges_completed, available_trumps, trump_hand, fight_num=fight_num, mode_key=mode_key)
+                dead_cards, face_down_card = analyze_round(intel, player_hp, player_max, opp_hp, opp_max, current_target, dead_cards, challenges_completed, available_trumps, trump_hand, fight_num=fight_num, mode_key=mode_key, face_down_card=face_down_card)
 
             elif action == "P":
                 if not trump_hand:
@@ -2504,7 +2491,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                 )
 
             elif action == "W":
-                trump_hand = edit_trump_hand(trump_hand)
+                trump_hand = edit_trump_hand(trump_hand, available_trumps)
 
             elif action == "X":
                 if dead_cards:
@@ -2532,7 +2519,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                             print(" Invalid input.")
 
             elif action == "D":
-                player_hp, opp_hp, entry = record_round_result(round_num, player_hp, opp_hp)
+                player_hp, opp_hp, entry = record_round_result(round_num, player_hp, opp_hp, intel)
                 if entry is not None:
                     round_history.append(entry)
 
@@ -2561,7 +2548,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                     print(f"  Current hand: {trump_hand if trump_hand else '(empty)'}")
                     print(f"  Y = edit hand, Enter = no changes")
                     if input(" > ").strip().lower() == "y":
-                        trump_hand = edit_trump_hand(trump_hand)
+                        trump_hand = edit_trump_hand(trump_hand, available_trumps)
                 break
 
             elif action == "T":
@@ -2602,7 +2589,7 @@ def get_opponent_list(mode_key: str):
     return []
 
 
-def select_survival_plus_opponent(fight_num: int) -> dict:
+def select_survival_plus_opponent(fight_num: int, available_trumps: set = None) -> dict:
     """Select the opponent for a given Survival+ fight number (1-10)."""
     if fight_num == 5:
         print(f"\n ★ Fight #{fight_num} is ALWAYS Molded Hoffman (mid-boss)!")
@@ -2618,15 +2605,28 @@ def select_survival_plus_opponent(fight_num: int) -> dict:
     print(" Identify by the sack on their head:\n")
 
     pool = OPPONENTS_SURVIVAL_PLUS
+    harvest_unlocked = available_trumps is not None and "Harvest" in available_trumps
     for i, opp in enumerate(pool):
-        print(f" {i + 1}. {opp['name']} — {opp.get('desc', '')}")
+        label = f" {i + 1}. {opp['name']} — {opp.get('desc', '')}"
+        # Flag Mr. Big Head as priority if Harvest not yet unlocked
+        if "Big Head" in opp["name"] and not harvest_unlocked:
+            label += " \033[93m★ PRIORITY TARGET (unlocks Harvest!)\033[0m"
+        print(label)
+
+    if not harvest_unlocked:
+        print(f"\n \033[93m★ TIP: If Mr. Big Head appears, prioritize beating him!\033[0m")
+        print(f"   Defeating him twice unlocks 'Harvest' (trump draw after every trump you play).")
 
     while True:
         choice = input(f"\n Select (1-{len(pool)}): ").strip()
         try:
             idx = int(choice) - 1
             if 0 <= idx < len(pool):
-                return pool[idx]
+                selected = pool[idx]
+                if "Big Head" in selected["name"] and not harvest_unlocked:
+                    print(f"\n \033[93m★ Mr. Big Head — PRIORITY: Beat him to unlock Harvest!\033[0m")
+                    print(f"   Watch for 'Escape' — save Destroy to counter it!")
+                return selected
             print(" Invalid selection.")
         except ValueError:
             print(" Enter a number.")
@@ -2663,7 +2663,7 @@ def run_mode(mode_key: str, challenges_completed: set = None, available_trumps: 
 
         if mode_key == "3":
             # Survival+ — dynamic selection
-            opp = select_survival_plus_opponent(fight_num)
+            opp = select_survival_plus_opponent(fight_num, available_trumps)
         else:
             # Normal / Survival — fixed order
             opponents = get_opponent_list(mode_key)
@@ -2685,6 +2685,28 @@ def run_mode(mode_key: str, challenges_completed: set = None, available_trumps: 
             print(f" Defeated by {opp['name']}.")
             print(f" Opponents beaten: {idx}/{total_opponents}")
             return
+
+        # ── RUN RESTART SUGGESTION ──
+        # If HP is critically low in the first half, the run is likely doomed.
+        remaining_fights = total_opponents - fight_num
+        if remaining_fights > 0 and fight_num <= 4:
+            # Heuristic: need roughly 1 HP per remaining fight minimum
+            # For S+: 10 fights, if you have 3 HP after fight 4 with 6 fights left → bad
+            # For S: 5 fights, if you have 1 HP after fight 2 with 3 left → bad
+            hp_per_fight_needed = 1.0  # Minimum theoretical
+            projected_min = remaining_fights * hp_per_fight_needed
+            survival_ratio = player_hp / remaining_fights if remaining_fights > 0 else 1.0
+
+            if survival_ratio < 0.5:
+                print(f"\n \033[91m⚠ WARNING: {player_hp} HP with {remaining_fights} fights remaining.\033[0m")
+                print(f" \033[91m  Win probability is very low (~{int(survival_ratio * 100)}% survival rate per fight needed).\033[0m")
+                print(f" \033[91m  RECOMMENDATION: Consider restarting the run for a better attempt.\033[0m")
+                restart = input("\n Restart run? (y/n): ").strip().lower()
+                if restart == "y":
+                    print(" Restarting run...")
+                    return
+            elif survival_ratio < 0.8 and fight_num >= 2:
+                print(f"\n \033[93m⚠ HP check: {player_hp} HP, {remaining_fights} fights left — playing tight.\033[0m")
 
     if player_hp > 0:
         print_header(f"★ {mode['name']} COMPLETE! ★")
