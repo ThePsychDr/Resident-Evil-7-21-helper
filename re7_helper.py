@@ -585,13 +585,6 @@ def setup_challenge_progress(force_prompt=False):
 
     return completed, available_trumps
 
-CHALLENGE_SOURCES = [
-    ("RE Wiki - 21 rewards list", "https://residentevil.fandom.com/wiki/21"),
-    ("RE Wiki - basic rules", "https://residentevil.fandom.com/wiki/Card_Game_%2221%22_-_Basic_Rules"),
-    ("RE Wiki - trump cards", "https://residentevil.fandom.com/wiki/Trump_cards"),
-    ("TrueAchievements - Survival+ strategy discussion", "https://www.trueachievements.com/a229688/you-gotta-know-when-to-hold-em-achievement"),
-    ("EntranceJew odds helper", "https://entrancejew.itch.io/re7-21-tool"),
-]
 
 # ============================================================
 # SAVE / LOAD SYSTEM
@@ -1057,14 +1050,16 @@ def hp_bar(current: int, maximum: int, width: int = 20) -> str:
 
 def display_hp_status(player_hp: int, player_max: int, opp_hp: int, opp_max: int, opp_name: str) -> None:
     """Show both HP bars."""
-    name_short = opp_name[:18]
+    name_short = opp_name[:25]  # Allow longer names
     print()
-    print(" ┌─────────────────────────────────────────────────────┐")
-    print(f" │ {'HP STATUS':^53s} │")
-    print(" ├─────────────────────────────────────────────────────┤")
-    print(f" │ YOU: {hp_bar(player_hp, player_max, 15):<40s}│")
-    print(f" │ {name_short:<12s} {hp_bar(opp_hp, opp_max, 15):<40s}│")
-    print(" └─────────────────────────────────────────────────────┘")
+    print(" ┌───────────────────────────────────────────────────────────┐")
+    print(f" │ {'HP STATUS':^59s} │")
+    print(" ├───────────────────────────────────────────────────────────┤")
+    player_bar = hp_bar(player_hp, player_max, 15)
+    opp_bar = hp_bar(opp_hp, opp_max, 15)
+    print(f" │ YOU: {player_bar:<54s}│")
+    print(f" │ {name_short:<25s} {opp_bar:<33s}│")
+    print(" └───────────────────────────────────────────────────────────┘")
 
 
 def display_card_matrix(accounted_for) -> None:
@@ -1115,7 +1110,7 @@ def display_opponent_info(intel: dict) -> None:
     if std_trumps:
         print(f" │ Standard Trumps: {', '.join(std_trumps)}")
     if special_trumps:
-        print(f" │ \033[93mSpecial Trumps: {', '.join(special_trumps)}\033[0m")
+        print(f" │ \033[96mSpecial Trumps: {', '.join(special_trumps)}\033[0m")
     elif not std_trumps:
         print(f" │ Trumps: (none observed)")
 
@@ -1571,34 +1566,32 @@ def generate_advice(
     # Gate bust suggestion: only show when it makes sense
     # - Challenge not yet completed
     # - Bust cards exist and opponent hasn't stayed
-    # - Player HP > 2 (too risky otherwise — you WILL take damage if you bust-lose)
-    # - Stay win% isn't already dominant (>65% means just play normally)
+    # - Player HP > 2 (too risky — you take damage if bust-lose)
+    # - Stay win% isn't already dominant (>60% means just play normally)
+    # - Not early game at full HP (don't encourage risky plays round 1)
+    early_game_full_hp = (player_hp == player_max and opp_hp == opp_max)
     show_bust = (
         bust_cards
         and behavior_key != "stay"
         and not bust_challenge_done
         and player_hp > 2
-        and stay_probs["win"] < 0.65  # Don't throw away a comfortable win
+        and stay_probs["win"] < 0.60
+        and not early_game_full_hp  # Don't suggest risky bust play in round 1
     )
 
     if show_bust:
         bust_result = evaluate_bust_inline(u_total, o_visible_total, remaining, stay_val, target, behavior_key)
-        if bust_result and bust_result["win_pct"] >= 0.15:  # Only show if decent odds
+        if bust_result and bust_result["win_pct"] >= 0.20:  # Only show if decent odds
             advice_lines.append(
                 f"If you BUST ON PURPOSE -> "
                 f"Best card: {bust_result['best_card']} (total {bust_result['bust_total']}) → "
                 f"Win {bust_result['win_pct'] * 100:.1f}%."
                 f" [Completes bust-win challenge!]"
             )
-        elif bust_result and bust_result["win_pct"] < 0.15:
-            bust_result = None  # Too low — don't include in options
+        elif bust_result and bust_result["win_pct"] < 0.20:
+            bust_result = None  # Too low
 
-    # Unlocked trump card reminders
-    if u_total < estimated_opp and u_total < target:
-        if "Perfect Draw+" in available_trumps:
-            advice_lines.append("UNLOCKED: You have Perfect Draw+ — guaranteed best card from the deck.")
-        if "Ultimate Draw" in available_trumps:
-            advice_lines.append("UNLOCKED: You have Ultimate Draw — draws the best possible card.")
+    # (UNLOCKED reminders removed — trump advice engine handles card suggestions contextually)
 
     # ── Action recommendation ──
     # Find the best option among STAY, HIT, FORCE DRAW, and INTENTIONAL BUST
@@ -1608,7 +1601,7 @@ def generate_advice(
     }
     if force_probs is not None:
         options["FORCE A DRAW (Love Your Enemy)"] = force_probs["win"]
-    if bust_result and bust_result["win_pct"] >= 0.15:
+    if bust_result and bust_result["win_pct"] >= 0.20:
         options["INTENTIONAL BUST ★ challenge"] = bust_result["win_pct"]
 
     best_option = max(options, key=options.get)
@@ -1664,7 +1657,7 @@ def generate_advice(
             advice_lines.append(f"ACTION: STAY — too risky ({safe_pct:.0f}% safe). Hope he busts or {u_total} holds.")
 
     # Bust challenge nudge (when not yet completed and bust has decent odds)
-    if bust_result and not bust_challenge_done and bust_result["win_pct"] >= 0.15:
+    if bust_result and not bust_challenge_done and bust_result["win_pct"] >= 0.20:
         if "BUST" not in advice_lines[-1]:
             advice_lines.append(
                 f"💡 BUST CHALLENGE: Drawing {bust_result['best_card']} (→{bust_result['bust_total']}) "
@@ -1848,11 +1841,15 @@ def record_round_result(round_num: int, player_hp: int, opp_hp: int, intel: dict
 # ============================================================
 # SINGLE ROUND ANALYSIS
 # ============================================================
-def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21, dead_cards: list = None, challenges_completed: set = None, available_trumps: set = None, trump_hand: list = None, fight_num: int = 0, mode_key: str = "3", face_down_card: int = None) -> tuple:
+def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21, dead_cards: list = None, challenges_completed: set = None, available_trumps: set = None, trump_hand: list = None, fight_num: int = 0, mode_key: str = "3", face_down_card: int = None, player_visible: list = None, opp_visible: list = None) -> tuple:
     """Run the solver for one round of 21 (read-only, no HP changes).
-    Returns (updated_dead_cards, face_down_card) for persistence."""
+    Returns (updated_dead_cards, face_down_card, player_visible, opp_visible) for persistence."""
     if dead_cards is None:
         dead_cards = []
+    if player_visible is None:
+        player_visible = []
+    if opp_visible is None:
+        opp_visible = []
     display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
 
     print(f"\n Current target: {target}")
@@ -1863,57 +1860,103 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
     opp_behavior = "auto"
 
     try:
-        # Face-down card memory
-        if face_down_card is not None:
-            print(f"\n Your face-down card: {face_down_card} (remembered)")
-            print(f" Enter your OTHER visible card(s) (space-separated):")
-            u_input = input(" > ").strip()
-            if not u_input:
-                u_hand = [face_down_card]
-            else:
-                u_hand = [face_down_card] + list(map(int, u_input.split()))
-        else:
-            print(f"\n Enter YOUR card values (space-separated, e.g., '10 6'):")
-            print(f" (First card = your face-down card — will be remembered)")
-            u_input = input(" > ").strip()
-            if not u_input:
-                print(" No cards entered.")
-                return dead_cards, face_down_card
-            u_hand = list(map(int, u_input.split()))
-            if u_hand:
-                face_down_card = u_hand[0]  # Remember face-down card
-        for c in u_hand:
-            if c < 1 or c > 11:
-                print(f" ERROR: Card {c} invalid (1–11).")
-                return dead_cards, face_down_card
+        # ── HAND MEMORY ──
+        # Face-down card is locked once set (only trumps like Exchange/Return change it).
+        # Visible cards accumulate as you draw. On re-analyze, just add new draws.
+        has_memory = face_down_card is not None
 
-        print(" Enter OPPONENT'S visible card(s) (space-separated):")
-        o_input = input(" > ").strip()
-        if not o_input:
-            print(" No opponent cards entered.")
-            return dead_cards, face_down_card
-        o_vis = list(map(int, o_input.split()))
-        for c in o_vis:
+        if has_memory:
+            # Show current remembered state
+            full_hand = [face_down_card] + player_visible
+            print(f"\n ── REMEMBERED STATE ──")
+            print(f" Your hand: {full_hand} (total {sum(full_hand)})")
+            print(f"   Face-down: {face_down_card} (locked)")
+            if player_visible:
+                print(f"   Visible: {player_visible}")
+            if opp_visible:
+                print(f" Opponent visible: {opp_visible} (total {sum(opp_visible)})")
+
+            # Ask for new draws since last analyze
+            print(f"\n Did you draw new cards? (space-separated, or Enter = no change)")
+            new_draw = input(" Your new cards: ").strip()
+            if new_draw:
+                try:
+                    new_cards = [int(x) for x in new_draw.split()]
+                    for c in new_cards:
+                        if 1 <= c <= 11:
+                            if c not in player_visible and c != face_down_card:
+                                player_visible.append(c)
+                            else:
+                                print(f" ⚠ Card {c} already in your hand, skipping.")
+                        else:
+                            print(f" ⚠ Card {c} invalid (1-11).")
+                except ValueError:
+                    print(" Invalid input, keeping current.")
+
+            print(f" Did opponent draw new cards? (space-separated, or Enter = no)")
+            new_opp = input(" Opponent new cards: ").strip()
+            if new_opp:
+                try:
+                    new_cards = [int(x) for x in new_opp.split()]
+                    for c in new_cards:
+                        if 1 <= c <= 11:
+                            if c not in opp_visible:
+                                opp_visible.append(c)
+                            else:
+                                print(f" ⚠ Card {c} already in opponent hand, skipping.")
+                        else:
+                            print(f" ⚠ Card {c} invalid (1-11).")
+                except ValueError:
+                    print(" Invalid input, keeping current.")
+
+        else:
+            # First analyze this round — get all cards from scratch
+            print(f"\n Enter YOUR face-down card (the hidden card dealt to you):")
+            fd_input = input(" Face-down card: ").strip()
+            if not fd_input:
+                print(" No cards entered.")
+                return dead_cards, face_down_card, player_visible, opp_visible
+            face_down_card = int(fd_input)
+            if face_down_card < 1 or face_down_card > 11:
+                print(f" ERROR: Card {face_down_card} invalid (1–11).")
+                face_down_card = None
+                return dead_cards, face_down_card, player_visible, opp_visible
+
+            print(f" Enter your visible drawn card(s) (space-separated, or Enter if none yet):")
+            vis_input = input(" Visible cards: ").strip()
+            if vis_input:
+                player_visible = [int(x) for x in vis_input.split()]
+            else:
+                player_visible = []
+
+            print(" Enter OPPONENT'S visible card(s) (space-separated):")
+            o_input = input(" Opponent cards: ").strip()
+            if not o_input:
+                print(" No opponent cards entered.")
+                return dead_cards, face_down_card, player_visible, opp_visible
+            opp_visible = [int(x) for x in o_input.split()]
+
+        # Build full hands from memory
+        u_hand = [face_down_card] + player_visible
+        o_vis = list(opp_visible)
+
+        for c in u_hand + o_vis:
             if c < 1 or c > 11:
                 print(f" ERROR: Card {c} invalid (1–11).")
-                return dead_cards, face_down_card
+                return dead_cards, face_down_card, player_visible, opp_visible
 
         if dead_cards:
             print(f" Remembered dead cards: {sorted(dead_cards)}")
-            print(" Enter ADDITIONAL dead/removed cards (or Enter to keep as-is):")
+            print(" Additional dead/removed cards? (Enter = none)")
         else:
-            print(" Enter DEAD/REMOVED cards (or Enter for none):")
-        d_input = input(" > ").strip()
+            print(" Dead/removed cards? (Enter = none)")
+        d_input = input(" Dead cards: ").strip()
         new_dead = list(map(int, d_input.split())) if d_input else []
         for c in new_dead:
             if c < 1 or c > 11:
                 print(f" ERROR: Card {c} invalid (1–11).")
-                return dead_cards, face_down_card
+                return dead_cards, face_down_card, player_visible, opp_visible
         dead = sorted(set(dead_cards + new_dead))
-        for c in dead:
-            if c < 1 or c > 11:
-                print(f" ERROR: Card {c} invalid (1–11).")
-                return dead_cards, face_down_card
 
         # Duplicate check (deck has one of each)
         all_cards = u_hand + o_vis + dead
@@ -2033,174 +2076,289 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
 
         print("\n" + "=" * 60)
 
-        return dead, face_down_card
+        return dead, face_down_card, player_visible, opp_visible
 
     except ValueError:
         print(" ERROR: Enter valid numbers only.")
-        return dead_cards, face_down_card
+        return dead_cards, face_down_card, player_visible, opp_visible
 
 
 # ============================================================
 # FIGHT LOOP — Multiple rounds vs. one opponent until death
 # ============================================================
-def handle_interrupt(dead_cards: list, current_target: int, player_bet: int = 1, opp_bet: int = 1) -> tuple:
+def handle_interrupt(dead_cards: list, current_target: int, player_bet: int = 1, opp_bet: int = 1, player_visible: list = None, opp_visible: list = None, face_down_card: int = None, intel: dict = None, trump_hand: list = None) -> tuple:
     """
     Interrupt handler: enemy played a trump card mid-round.
-    Lets user declare what happened so we can update game state.
-    Returns updated (dead_cards, current_target, player_bet, opp_bet, interrupt_msg).
+    Shows opponent's known trumps and walks through effects step by step.
+    Returns updated (dead_cards, current_target, player_bet, opp_bet, interrupt_msg,
+                     player_visible, opp_visible, face_down_card, trump_hand).
     """
-    print("\n ┌─ ENEMY TRUMP INTERRUPT ──────────────────────────┐")
-    print(" │ What did the opponent just do?                   │")
-    print(" │                                                  │")
-    print(" │  1. Drew/added a card (to their hand)            │")
-    print(" │  2. Removed one of YOUR cards (Two-Up+, etc.)    │")
-    print(" │  3. Raised YOUR bet (Desire, Shield Assault)     │")
-    print(" │  4. Swapped/exchanged cards                      │")
-    print(" │  5. Changed target (Go for 17, etc.)             │")
-    print(" │  6. Used Destroy on YOUR trump                   │")
-    print(" │  7. Played Dead Silence (you can't draw)         │")
-    print(" │  8. Played Oblivion (round cancelled)            │")
-    print(" │  9. Used Curse (discard trump + forced draw)     │")
-    print(" │ 10. Lowered THEIR bet (Shield on their side)     │")
-    print(" │ 11. Other / multiple effects                     │")
-    print(" │  0. Cancel                                       │")
-    print(" └──────────────────────────────────────────────────┘")
+    if player_visible is None:
+        player_visible = []
+    if opp_visible is None:
+        opp_visible = []
+    if trump_hand is None:
+        trump_hand = []
 
-    choice = input("\n > ").strip()
+    # Build opponent's trump list
+    opp_trumps = list(intel.get("trumps", [])) if intel else []
+    std_trumps = list(intel.get("standard_trumps", [])) if intel else []
+    all_opp_trumps = opp_trumps + std_trumps
+
+    # Also check trump_behavior for detailed info
+    trump_behavior = intel.get("trump_behavior", {}) if intel else {}
+
+    print("\n ┌─ ENEMY TRUMP INTERRUPT ──────────────────────────┐")
+    if all_opp_trumps:
+        print(f" │ {intel['name']}'s known trumps:")
+        for i, t in enumerate(all_opp_trumps, 1):
+            note = ""
+            if t in trump_behavior:
+                note = f" — {trump_behavior[t].get('note', '')[:40]}"
+            label = f"  {i}. {t}{note}"
+            print(f" │{label[:53]:<53s}│")
+    print(" │                                                   │")
+    print(" │  O. Other / unlisted trump                        │")
+    print(" │  0. Cancel                                        │")
+    print(" └───────────────────────────────────────────────────┘")
+
+    choice = input("\n > ").strip().upper()
     msg = ""
 
-    if choice == "1":
-        print(" What card value did opponent draw/add?")
-        v = input(" > ").strip()
-        if v:
-            try:
-                val = int(v)
-                if 1 <= val <= 11 and val not in dead_cards:
-                    dead_cards = sorted(set(dead_cards + [val]))
-                    msg = f"Opponent drew {val}. Removed from available deck."
-                else:
-                    msg = f"Card {v} already accounted for or invalid."
-            except ValueError:
-                msg = "Invalid input."
+    if choice == "0":
+        return dead_cards, current_target, player_bet, opp_bet, "", player_visible, opp_visible, face_down_card, trump_hand
 
-    elif choice == "2":
-        print(" What card value was removed from YOUR hand?")
-        v = input(" > ").strip()
+    # Determine which trump was played
+    played_trump = None
+    if choice == "O":
+        print(" What did the opponent play? (type trump name or describe)")
+        played_trump = input(" > ").strip()
+    else:
+        try:
+            idx = int(choice) - 1
+            if 0 <= idx < len(all_opp_trumps):
+                played_trump = all_opp_trumps[idx]
+        except ValueError:
+            pass
+
+    if not played_trump:
+        print(" Invalid selection.")
+        return dead_cards, current_target, player_bet, opp_bet, "", player_visible, opp_visible, face_down_card, trump_hand
+
+    # ── HANDLE EFFECTS BY TRUMP NAME ──
+    pt = played_trump.lower().strip()
+
+    # --- CARD DRAWS (Conjure, Happiness, etc.) ---
+    if pt in ("conjure",):
+        # Opponent draws 3 trumps, their bet +1
+        opp_bet += 1
+        msg = f"{played_trump}: Opponent draws 3 trumps, their bet +1 → {opp_bet}. (Slight advantage for you)"
+
+    elif pt in ("happiness",):
+        msg = f"{played_trump}: Both players draw a trump card."
+        print(" Did you draw a trump? Use W to add it after.")
+
+    # --- BET MODIFIERS ---
+    elif pt in ("desire",):
+        print(f" How many trumps do YOU hold? (currently {len(trump_hand)} tracked)")
+        tc = input(" > ").strip()
+        try:
+            count = int(tc) if tc else len(trump_hand)
+            amt = max(1, count // 2)
+            player_bet += amt
+            msg = f"{played_trump}: YOUR bet +{amt} (half your {count} trumps) → now {player_bet}"
+        except ValueError:
+            msg = f"{played_trump} played. Check your bet on screen."
+
+    elif pt in ("desire+",):
+        print(f" How many trumps do YOU hold? (currently {len(trump_hand)} tracked)")
+        tc = input(" > ").strip()
+        try:
+            count = int(tc) if tc else len(trump_hand)
+            player_bet += count
+            msg = f"{played_trump}: YOUR bet +{count} (full trump count) → now {player_bet}"
+        except ValueError:
+            msg = f"{played_trump} played. Check your bet on screen."
+
+    elif pt in ("shield assault",):
+        player_bet += 3
+        msg = f"{played_trump}: YOUR bet +3 → now {player_bet}. He sacrificed 3 Shields."
+
+    elif pt in ("shield assault+",):
+        player_bet += 5
+        msg = f"{played_trump}: YOUR bet +5 → now {player_bet}."
+
+    elif pt in ("one-up",):
+        opp_bet += 1
+        msg = f"{played_trump}: Opponent's bet +1 → now {opp_bet}"
+
+    elif pt in ("two-up", "two-up+"):
+        amt = 2 if pt == "two-up" else 3
+        opp_bet += amt
+        msg = f"{played_trump}: Opponent's bet +{amt} → now {opp_bet}"
+
+    # --- SHIELDS ---
+    elif pt in ("shield", "shield+"):
+        opp_bet = max(0, opp_bet - 1)
+        msg = f"{played_trump}: Opponent's bet -1 → now {opp_bet}"
+
+    # --- TARGET MODIFIERS ---
+    elif pt in ("go for 17",):
+        current_target = 17
+        msg = f"★ TARGET CHANGED TO 17! Your 18+ is now a bust!"
+
+    elif pt in ("go for 24",):
+        current_target = 24
+        msg = f"Target changed to 24."
+
+    # --- BOARD WIPES ---
+    elif pt in ("destroy", "destroy+", "destroy++"):
+        msg = f"★ {played_trump}: Enemy destroyed your table trump(s)! Use W to update hand."
+        print(" Which of your trumps were destroyed? Use W after to remove them.")
+
+    # --- DECK MANIPULATION ---
+    elif pt in ("curse",):
+        print(" Step 1: You lost a trump card. Use W after to remove it.")
+        print(" Step 2: What card were you FORCED to draw? (highest in deck)")
+        v = input(" Forced card value: ").strip()
         if v:
             try:
                 val = int(v)
                 if 1 <= val <= 11:
-                    # Card goes back to deck (available pool)
-                    if val in dead_cards:
-                        dead_cards.remove(val)
-                    msg = f"Your card {val} returned to deck pool. Re-analyze to update odds."
+                    dead_cards = sorted(set(dead_cards + [val]))
+                    if val not in player_visible and val != face_down_card:
+                        player_visible.append(val)
+                    msg = f"★ Cursed! Lost a trump + forced draw: {val}. Your new total includes {val}."
             except ValueError:
-                msg = "Invalid input."
+                msg = "Curse played. Couldn't parse forced card."
+        else:
+            msg = "Curse played. Enter forced card via A (re-analyze)."
 
-    elif choice == "3":
-        print(" Which enemy card raised YOUR bet?")
-        print("  1. Desire (+ half your trump count)")
-        print("  2. Desire+ (+ your full trump count)")
-        print("  3. Shield Assault (+3)")
-        print("  4. Shield Assault+ (+5)")
-        print("  5. One-Up (+1 to your bet)")
-        print("  6. Other (enter amount)")
+    elif pt in ("black magic",):
+        print(" Step 1: You lost half your trumps.")
+        print(" Step 2: YOUR bet increased by how much?")
+        v = input(" Bet increase: ").strip()
+        try:
+            amt = int(v) if v else 10
+            player_bet += amt
+            msg = f"★★ BLACK MAGIC! YOUR bet +{amt} → now {player_bet}. Lost half trumps. Use W to update."
+        except ValueError:
+            player_bet += 10
+            msg = f"★★ BLACK MAGIC! YOUR bet +10 → now {player_bet}. LETHAL if you lose!"
+
+    # --- CONTROL TRUMPS ---
+    elif pt in ("dead silence",):
+        msg = "★ DEAD SILENCE active — you CANNOT draw cards! Use Destroy to remove it."
+
+    elif pt in ("oblivion",):
+        msg = "★ OBLIVION — round is cancelled. Press D to end round as VOID."
+
+    elif pt in ("mind shift",):
+        print(" Did you play 2+ trumps this round? (y/n)")
+        safe = input(" > ").strip().lower()
+        if safe == "y":
+            msg = f"{played_trump}: Blocked! You played 2+ trumps."
+        else:
+            print(" You lose HALF your trumps. Use W to remove them.")
+            msg = f"★ {played_trump}: Lost half your trumps! Use W to update."
+
+    elif pt in ("mind shift+",):
+        print(" Did you play 3+ trumps this round? (y/n)")
+        safe = input(" > ").strip().lower()
+        if safe == "y":
+            msg = f"{played_trump}: Blocked! You played 3+ trumps."
+        else:
+            print(" You lose ALL your trumps. Use W to clear hand.")
+            msg = f"★★ {played_trump}: Lost ALL trumps! Use W to clear."
+
+    elif pt in ("escape",):
+        msg = f"★ {played_trump}: Opponent can void the round if losing. Use Destroy to remove!"
+
+    elif pt in ("remove",):
+        print(" Which of your table trumps was removed? Use W to update.")
+        msg = f"{played_trump}: Enemy removed one of your active trumps."
+
+    # --- DRAW CARDS ---
+    elif pt in ("perfect draw", "perfect draw+", "ultimate draw"):
+        print(" What card did the opponent draw?")
+        v = input(" Card value: ").strip()
+        if v:
+            try:
+                val = int(v)
+                if 1 <= val <= 11:
+                    if val not in opp_visible:
+                        opp_visible.append(val)
+                    dead_cards = sorted(set(dead_cards + [val]))
+                    msg = f"{played_trump}: Opponent drew {val}."
+            except ValueError:
+                msg = f"{played_trump} played."
+        else:
+            msg = f"{played_trump} played. Re-analyze when you see the card."
+
+    elif pt in ("twenty-one up",):
+        msg = f"★ {played_trump}: Opponent gets exactly 21! You must match or use trump to counter."
+
+    # --- EXCHANGE ---
+    elif pt in ("exchange", "return"):
+        print(" What card did YOU lose?")
+        gave_input = input(" Card lost: ").strip()
+        print(" What card did YOU gain?")
+        got_input = input(" Card gained: ").strip()
+        try:
+            gave = int(gave_input)
+            got = int(got_input)
+            if gave in player_visible:
+                player_visible.remove(gave)
+            elif gave == face_down_card:
+                face_down_card = got
+                got = None
+            if got is not None and 1 <= got <= 11:
+                player_visible.append(got)
+            if gave not in opp_visible and 1 <= gave <= 11:
+                opp_visible.append(gave)
+            if got is not None and got in opp_visible:
+                opp_visible.remove(got)
+            msg = f"{played_trump}: Lost {gave_input}, gained {got_input}."
+        except ValueError:
+            msg = f"{played_trump}: Card swap. Re-analyze to update."
+
+    # --- FALLBACK ---
+    else:
+        print(f" '{played_trump}' — describe what happened:")
+        print("  1. Changed a card (drew/removed/swapped)")
+        print("  2. Changed a bet")
+        print("  3. Changed the target")
+        print("  4. Other effect")
         sub = input(" > ").strip()
         if sub == "1":
-            print(" How many trumps do you hold?")
-            tc = input(" > ").strip()
-            try:
-                amt = max(1, int(tc) // 2)
-                player_bet += amt
-                msg = f"Desire: your bet +{amt} → now {player_bet}"
-            except ValueError:
-                msg = "Invalid."
+            print(" What card value was affected?")
+            v = input(" > ").strip()
+            msg = f"{played_trump} played (card effect). Update via A/W/X."
         elif sub == "2":
-            print(" How many trumps do you hold?")
-            tc = input(" > ").strip()
-            try:
-                amt = int(tc)
-                player_bet += amt
-                msg = f"Desire+: your bet +{amt} → now {player_bet}"
-            except ValueError:
-                msg = "Invalid."
-        elif sub == "3":
-            player_bet += 3
-            msg = f"Shield Assault: your bet +3 → now {player_bet}"
-        elif sub == "4":
-            player_bet += 5
-            msg = f"Shield Assault+: your bet +5 → now {player_bet}"
-        elif sub == "5":
-            player_bet += 1
-            msg = f"Enemy One-Up: your bet +1 → now {player_bet}"
-        elif sub == "6":
-            print(" How much did YOUR bet increase by?")
+            print(" How much did YOUR bet change? (+ or - number)")
             v = input(" > ").strip()
             try:
                 player_bet += int(v)
-                msg = f"Your bet +{v} → now {player_bet}"
+                msg = f"{played_trump}: Your bet → {player_bet}"
             except ValueError:
-                msg = "Invalid."
-
-    elif choice == "4":
-        print(" What card did YOU lose? (value)")
-        gave = input(" > ").strip()
-        print(" What card did YOU gain? (value)")
-        got = input(" > ").strip()
-        msg = f"Swapped: lost {gave}, gained {got}. Re-analyze to recalculate."
-
-    elif choice == "5":
-        print(" New target value? (17 / 21 / 24 / 27)")
-        t = input(" > ").strip()
-        if t in ("17", "21", "24", "27"):
-            current_target = int(t)
-            msg = f"Target changed to {current_target} by opponent!"
+                msg = f"{played_trump} played. Check bet on screen."
+        elif sub == "3":
+            print(" New target? (17/21/24/27)")
+            v = input(" > ").strip()
+            if v in ("17", "21", "24", "27"):
+                current_target = int(v)
+                msg = f"{played_trump}: Target → {current_target}"
+            else:
+                msg = f"{played_trump} played."
         else:
-            msg = "Invalid target."
-
-    elif choice == "6":
-        msg = "Enemy destroyed your trump. Use W to update your trump hand."
-
-    elif choice == "7":
-        msg = "★ DEAD SILENCE active — you cannot draw cards! Use Destroy to remove it."
-
-    elif choice == "8":
-        msg = "★ OBLIVION — round cancelled. Press D to end round as VOID."
-
-    elif choice == "9":
-        print(" You lost a random trump. What card were you FORCED to draw? (highest in deck)")
-        v = input(" > ").strip()
-        if v:
-            try:
-                val = int(v)
-                if 1 <= val <= 11:
-                    dead_cards = sorted(set(dead_cards + [val]))
-                    msg = f"Cursed! Forced draw: {val}. Added to your hand. Use W to remove lost trump."
-            except ValueError:
-                msg = "Invalid input."
-
-    elif choice == "10":
-        print(" How much did opponent's bet decrease by?")
-        v = input(" > ").strip()
-        try:
-            opp_bet = max(0, opp_bet - int(v))
-            msg = f"Opponent's bet reduced → now {opp_bet}"
-        except ValueError:
-            msg = "Invalid."
-
-    elif choice == "11":
-        print(" Describe what happened (for your notes):")
-        desc = input(" > ").strip()
-        msg = f"Enemy action: {desc}. Use W/X to manually update state."
-
-    elif choice == "0":
-        msg = ""
+            desc = input(" Describe: ").strip()
+            msg = f"{played_trump}: {desc}. Use W/X/A to update state."
 
     if msg:
-        print(f"\n \033[93m→ {msg}\033[0m")
+        print(f"\n \033[96m→ {msg}\033[0m")
         print(" TIP: Press A to re-analyze with updated state.")
 
-    return dead_cards, current_target, player_bet, opp_bet, msg
+    return dead_cards, current_target, player_bet, opp_bet, msg, player_visible, opp_visible, face_down_card, trump_hand
 
 
 def fight_opponent(intel: dict, player_hp: int, player_max: int,
@@ -2251,10 +2409,9 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
 
     display_opponent_info(intel)
 
-    # Initial trump hand setup
-    print("\n Do you want to enter your starting trump cards? (y/n)")
-    if input(" > ").strip().lower() == "y":
-        trump_hand = edit_trump_hand(trump_hand, available_trumps)
+    # Always enter starting trump hand — you always begin with trumps
+    print("\n Enter your starting trump cards:")
+    trump_hand = edit_trump_hand(trump_hand, available_trumps)
 
     while player_hp > 0 and opp_hp > 0:
         round_num += 1
@@ -2262,7 +2419,9 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
         player_bet = 1   # Base bet — modified by trumps (resets each round)
         opp_bet = 1      # Base opponent bet (resets each round)
         current_target = 21  # Go For cards are "while on table" — reset each round
-        face_down_card = None  # Your face-down card — remembered across re-analyzes
+        face_down_card = None  # Your face-down card — locked once set
+        player_visible = []   # Your visible drawn cards — remembered across re-analyzes
+        opp_visible = []      # Opponent's visible cards — remembered across re-analyzes
         print_header(f"ROUND {round_num} vs. {intel['name']}")
         display_round_history(round_history)
         display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
@@ -2307,7 +2466,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                 bet_label = f" [Your bet: {player_bet} | Opp bet: {opp_bet}]"
             print(f"\n ─── Round {round_num} Menu ───{target_label}{bet_label}")
             print(" A. Analyze hand (get advice)")
-            print(f" \033[93mI. Interrupt — enemy played a trump!\033[0m")
+            print(f" \033[96mI. Interrupt — enemy played a trump!\033[0m")
             print(f" P. Play a trump card ({trump_count} in hand)")
             print(f" W. Edit trump hand ({trump_count} cards)")
             print(" D. Done — record round result")
@@ -2322,7 +2481,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
             action = input("\n Action: ").strip().upper()
 
             if action == "A":
-                dead_cards, face_down_card = analyze_round(intel, player_hp, player_max, opp_hp, opp_max, current_target, dead_cards, challenges_completed, available_trumps, trump_hand, fight_num=fight_num, mode_key=mode_key, face_down_card=face_down_card)
+                dead_cards, face_down_card, player_visible, opp_visible = analyze_round(intel, player_hp, player_max, opp_hp, opp_max, current_target, dead_cards, challenges_completed, available_trumps, trump_hand, fight_num=fight_num, mode_key=mode_key, face_down_card=face_down_card, player_visible=player_visible, opp_visible=opp_visible)
 
             elif action == "P":
                 if not trump_hand:
@@ -2362,14 +2521,16 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                             opp_bet += 2
                             trump_hand.pop(idx)
                             print(f" ★ Returned opponent's last face-up card to deck. Opp bet +2 → now {opp_bet}.")
-                            print(" What card was returned? (value, to remove from dead cards)")
+                            print(" What card was returned? (value)")
                             r_input = input(" > ").strip()
                             if r_input:
                                 try:
                                     rv = int(r_input)
                                     if rv in dead_cards:
                                         dead_cards.remove(rv)
-                                        print(f" Card {rv} returned to deck pool.")
+                                    if rv in opp_visible:
+                                        opp_visible.remove(rv)
+                                    print(f" Card {rv} removed from opponent, returned to deck.")
                                 except ValueError:
                                     pass
 
@@ -2391,7 +2552,12 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                                 try:
                                     ret_card = int(ret_input)
                                     if 1 <= ret_card <= 11:
-                                        print(f" ★ Returned {ret_card} to deck.")
+                                        # Remove from hand memory
+                                        if ret_card in player_visible:
+                                            player_visible.remove(ret_card)
+                                        elif ret_card == face_down_card:
+                                            face_down_card = None
+                                        print(f" ★ Returned {ret_card} to deck. Hand updated.")
                                         trump_hand.pop(idx)
                                     else:
                                         print(" Invalid card value.")
@@ -2409,7 +2575,10 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                                     rem_card = int(rem_input)
                                     if 1 <= rem_card <= 11:
                                         dead_cards = sorted(set(dead_cards + [rem_card]))
-                                        print(f" ★ Removed opponent's {rem_card}. Added to dead cards.")
+                                        # Remove from opponent hand memory
+                                        if rem_card in opp_visible:
+                                            opp_visible.remove(rem_card)
+                                        print(f" ★ Removed opponent's {rem_card}. Hand updated.")
                                         trump_hand.pop(idx)
                                     else:
                                         print(" Invalid card value.")
@@ -2428,7 +2597,19 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                                 try:
                                     gave = int(give_input)
                                     took = int(take_input)
-                                    print(f" ★ Exchanged: gave {gave}, took {took}.")
+                                    # Update hand memory
+                                    if gave in player_visible:
+                                        player_visible.remove(gave)
+                                    elif gave == face_down_card:
+                                        face_down_card = took
+                                        took = None  # Already placed as face-down
+                                    if took is not None and 1 <= took <= 11:
+                                        player_visible.append(took)
+                                    if gave not in opp_visible and 1 <= gave <= 11:
+                                        opp_visible.append(gave)
+                                    if took is not None and took in opp_visible:
+                                        opp_visible.remove(took)
+                                    print(f" ★ Exchanged: gave {gave}, took {take_input}. Hand updated.")
                                     trump_hand.pop(idx)
                                 except ValueError:
                                     print(" Invalid input.")
@@ -2491,8 +2672,8 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                                 # Card not in deck = opponent has it (face-down hidden card)
                                 # unless it's already visible on the board
                                 if card_val not in dead_cards:
-                                    print(f"\n \033[93m★★ INTEL: {card_val} is NOT in the deck!\033[0m")
-                                    print(f" \033[93m   → Opponent's hidden card is almost certainly {card_val}.\033[0m")
+                                    print(f"\n \033[96m★★ INTEL: {card_val} is NOT in the deck!\033[0m")
+                                    print(f" \033[96m   → Opponent's hidden card is almost certainly {card_val}.\033[0m")
                                     print(f"   (Unless {card_val} was already drawn and you forgot to track it.)")
                                 else:
                                     print(f" {card_val} was already out of the deck.")
@@ -2510,8 +2691,9 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
 
             elif action == "I":
                 # ── INTERRUPT: Enemy played a trump card ──
-                dead_cards, current_target, player_bet, opp_bet, int_msg = handle_interrupt(
-                    dead_cards, current_target, player_bet, opp_bet
+                dead_cards, current_target, player_bet, opp_bet, int_msg, player_visible, opp_visible, face_down_card, trump_hand = handle_interrupt(
+                    dead_cards, current_target, player_bet, opp_bet,
+                    player_visible, opp_visible, face_down_card, intel, trump_hand
                 )
 
             elif action == "W":
@@ -2544,8 +2726,10 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
 
             elif action == "D":
                 player_hp, opp_hp, entry = record_round_result(round_num, player_hp, opp_hp, intel)
-                if entry is not None:
-                    round_history.append(entry)
+                if entry is None:
+                    # User cancelled — stay in current round
+                    continue
+                round_history.append(entry)
 
                 display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
 
@@ -2634,11 +2818,11 @@ def select_survival_plus_opponent(fight_num: int, available_trumps: set = None) 
         label = f" {i + 1}. {opp['name']} — {opp.get('desc', '')}"
         # Flag Mr. Big Head as priority if Harvest not yet unlocked
         if "Big Head" in opp["name"] and not harvest_unlocked:
-            label += " \033[93m★ PRIORITY TARGET (unlocks Harvest!)\033[0m"
+            label += " \033[96m★ PRIORITY TARGET (unlocks Harvest!)\033[0m"
         print(label)
 
     if not harvest_unlocked:
-        print(f"\n \033[93m★ TIP: If Mr. Big Head appears, prioritize beating him!\033[0m")
+        print(f"\n \033[96m★ TIP: If Mr. Big Head appears, prioritize beating him!\033[0m")
         print(f"   Defeating him twice unlocks 'Harvest' (trump draw after every trump you play).")
 
     while True:
@@ -2648,7 +2832,7 @@ def select_survival_plus_opponent(fight_num: int, available_trumps: set = None) 
             if 0 <= idx < len(pool):
                 selected = pool[idx]
                 if "Big Head" in selected["name"] and not harvest_unlocked:
-                    print(f"\n \033[93m★ Mr. Big Head — PRIORITY: Beat him to unlock Harvest!\033[0m")
+                    print(f"\n \033[96m★ Mr. Big Head — PRIORITY: Beat him to unlock Harvest!\033[0m")
                     print(f"   Watch for 'Escape' — save Destroy to counter it!")
                 return selected
             print(" Invalid selection.")
@@ -2733,7 +2917,7 @@ def run_mode(mode_key: str, challenges_completed: set = None, available_trumps: 
             remaining_fights = total_opponents - fight_num
             if remaining_fights > 0:
                 print(f"   {remaining_fights} fights remaining. Ultimate Draw requires zero damage.")
-                print(f"   \033[93mRestart run for a fresh no-damage attempt? (y/n)\033[0m")
+                print(f"   \033[96mRestart run for a fresh no-damage attempt? (y/n)\033[0m")
                 if input("   > ").strip().lower() == "y":
                     print(" Restarting run...")
                     return
@@ -2759,7 +2943,7 @@ def run_mode(mode_key: str, challenges_completed: set = None, available_trumps: 
                     print(" Restarting run...")
                     return
             elif survival_ratio < 0.8 and fight_num >= 2:
-                print(f"\n \033[93m⚠ HP check: {player_hp} HP, {remaining_fights} fights left — playing tight.\033[0m")
+                print(f"\n \033[96m⚠ HP check: {player_hp} HP, {remaining_fights} fights left — playing tight.\033[0m")
 
     if player_hp > 0:
         print_header(f"★ {mode['name']} COMPLETE! ★")
@@ -2812,287 +2996,6 @@ def run_free_play(challenges_completed: set = None, available_trumps: set = None
         print(" Invalid input.")
 
 
-# ============================================================
-# CHALLENGE LAB
-# ============================================================
-def run_bust_win_planner() -> None:
-    """Priority challenge planner: defeat opponent while bust."""
-    print_header("PRIORITY CHALLENGE: WIN WHILE BUST")
-    print(" Goal reward: Starting Trump Card +1")
-    print(" Rule: if BOTH bust, the one closer to target wins.\n")
-
-    try:
-        tgt_input = input(" Target total (default 21, supports 24/27): ").strip()
-        target = int(tgt_input) if tgt_input else 21
-        if target not in (17, 21, 24, 27):
-            print(" Unsupported target. Use 17, 21, 24, or 27.")
-            return
-
-        print("\n Enter YOUR current cards (space-separated):")
-        u_hand = parse_card_values(input(" > ").strip())
-        print(" Enter OPPONENT visible cards:")
-        o_vis = parse_card_values(input(" > ").strip())
-        print(" Enter known dead/removed cards (Enter for none):")
-        dead = parse_card_values(input(" > ").strip())
-
-        hidden_raw = input(" Opponent hidden card if known (Enter if unknown): ").strip()
-        known_hidden = int(hidden_raw) if hidden_raw else None
-        if known_hidden is not None and not (1 <= known_hidden <= 11):
-            print(" Hidden card must be 1-11.")
-            return
-
-        known_cards = u_hand + o_vis + dead
-        if known_hidden is not None:
-            known_cards.append(known_hidden)
-
-        # One-of-each deck warning
-        seen = set()
-        for c in known_cards:
-            if c in seen:
-                print(f" WARNING: Card {c} appears more than once in your input.")
-            seen.add(c)
-
-        accounted = sorted(set(known_cards))
-        remaining = [c for c in range(1, 12) if c not in accounted]
-        u_total = sum(u_hand)
-        o_visible_total = sum(o_vis)
-
-        display_card_matrix(accounted)
-        print(f"\n Your total now: {u_total}")
-        print(f" Opponent visible total: {o_visible_total}")
-        print(f" Candidate cards remaining: {len(remaining)}")
-
-        if not remaining:
-            print(" No remaining cards to evaluate.")
-            return
-
-        hidden_candidates = [known_hidden] if known_hidden is not None else remaining[:]
-        _, best = evaluate_bust_challenge(u_total, o_visible_total, remaining, target, hidden_candidates)
-
-        labels = {
-            "stay": "Bust then STAY",
-            "force_random": "Bust then FORCE RANDOM draw",
-            "force_highest": "Bust then FORCE HIGHEST draw",
-        }
-
-        print_header("BUST-WIN ODDS")
-        for mode in ("stay", "force_random", "force_highest"):
-            rec = best.get(mode)
-            if rec is None:
-                print(f"\n {labels[mode]}: No valid bust line.")
-                continue
-            print(
-                f"\n {labels[mode]}:\n"
-                f"  Best draw card: {rec['draw_card']} -> you reach {rec['your_total']} (+{rec['your_over']} over)\n"
-                f"  Win {rec['win'] * 100:.1f}% | Tie {rec['tie'] * 100:.1f}% | Loss {rec['loss'] * 100:.1f}%"
-            )
-
-        candidates = [v for v in best.values() if v is not None]
-        if candidates:
-            top = max(candidates, key=lambda r: (r["win"], -r["loss"]))
-            top_mode = next(k for k, v in best.items() if v == top)
-            print_header("RECOMMENDED LINE")
-            print(
-                f" {labels[top_mode]}\n"
-                f" Draw {top['draw_card']} -> total {top['your_total']}.\n"
-                " Keep your bust small and force opponent to over-bust."
-            )
-        else:
-            print("\n No feasible bust setup from this state.")
-
-        print(
-            "\n Practical execution:\n"
-            " - Prefer busting by +1 or +2 only.\n"
-            " - Then force opponent draw if you can (Love Your Enemy / Curse / Black Magic lines).\n"
-            " - Track whether 9/10/11 are still live before committing."
-        )
-
-    except ValueError as exc:
-        print(f" Input error: {exc}")
-
-
-def run_fifteen_trump_planner() -> None:
-    """Plan a 15-trump win round for Trump Switch+ unlock."""
-    print_header("CHALLENGE: WIN ROUND USING 15 TRUMPS")
-    print(" Goal reward: Trump Switch+")
-    print(" Constraint: max 5 permanent trumps active on table at once.\n")
-
-    print(" ─── SURVIVAL vs SURVIVAL+ ───\n")
-    print(" SURVIVAL (21):")
-    print("   Opponents have 5 HP → fights last 3-5 rounds.")
-    print("   Fewer trump draws per round, limited cycling.")
-    print("   \033[93mVERY DIFFICULT — possible only with Harvest + Trump Switch.\033[0m")
-    print("   You need a long round against Molded Hoffman (boss).")
-    print()
-    print(" SURVIVAL+ (21+):")
-    print("   Opponents have 10 HP → fights last 5-10 rounds.")
-    print("   More time to accumulate and cycle trumps.")
-    print("   \033[92mRECOMMENDED — best chance against Barbed Wire or boss fights.\033[0m")
-    print("   With Harvest active, every trump you play draws a replacement.")
-    print()
-    print(" ─── REQUIRED SETUP ───\n")
-    print(" MUST HAVE:")
-    print("   ★ Harvest (play first — every trump after draws a replacement)")
-    print("   ★ Trump Switch or Trump Switch+ (cycle: discard old, draw new)")
-    print()
-    print(" IDEAL COMBO:")
-    print("   1. Play Harvest (use 1, now drawing replacements)")
-    print("   2. Play cheap trumps: Shield, One-Up, numbered cards (use 2-5)")
-    print("   3. Trump Switch+ → discard 1, draw 4 (use 6, gain 4 cards)")
-    print("   4. Play all 4 new cards (use 7-10)")
-    print("   5. Trump Switch → discard 2, draw 3 (use 11, gain 3)")
-    print("   6. Play remaining (use 12-15)")
-    print("   7. Win the round!")
-    print()
-    print(" KEY: Non-permanent trumps (numbered cards, Return, Exchange)")
-    print(" don't take table slots. Permanent trumps (Shield, One-Up, etc.)")
-    print(" take 1 of 5 slots. Prioritize non-permanent plays.\n")
-
-    try:
-        print(" ─── LIVE TRACKER ───")
-        used = int(input("\n Trumps used this round so far: ").strip() or "0")
-        active_perm = int(input(" Permanent trumps on table (0-5): ").strip() or "0")
-        non_perm_hand = int(input(" Non-permanent trumps in hand: ").strip() or "0")
-        perm_hand = int(input(" Permanent trumps in hand: ").strip() or "0")
-        has_harvest = input(" Is Harvest active? (y/n): ").strip().lower() == "y"
-        has_switch = input(" Have Trump Switch/Switch+? (y/n): ").strip().lower() == "y"
-
-        active_perm = max(0, min(5, active_perm))
-        need = max(0, 15 - used)
-        slots_left = max(0, 5 - active_perm)
-        immediate_capacity = non_perm_hand + min(perm_hand, slots_left)
-
-        print(f"\n ── STATUS ──")
-        print(f" Used: {used}/15 | Need: {need} more")
-        print(f" Permanent slots: {5 - slots_left}/5 used ({slots_left} left)")
-        print(f" Playable right now: {immediate_capacity}")
-        if has_harvest:
-            print(" Harvest: ACTIVE ★ (each play draws a replacement)")
-        if has_switch:
-            print(" Trump Switch available: can cycle for +1-3 net cards")
-
-        if need == 0:
-            print(f"\n \033[92m★ Requirement MET! Win the round now!\033[0m")
-            return
-
-        projected = immediate_capacity
-        if has_harvest:
-            projected += min(immediate_capacity, 3)  # Harvest replacements
-        if has_switch:
-            projected += 3  # Net gain from switch
-
-        if projected >= need:
-            print(f"\n \033[92m✓ You can likely reach 15 this round (projected: ~{used + projected}).\033[0m")
-        else:
-            shortfall = need - projected
-            print(f"\n \033[93m⚠ Short by ~{shortfall}. Need more cycling or trump draws.\033[0m")
-            if not has_harvest:
-                print("   → Play Harvest first if you have it!")
-            if not has_switch:
-                print("   → Trump Switch would help cycle cards.")
-
-        print(
-            "\n Sequence:\n"
-            " 1) Non-permanent effects first (don't waste table slots).\n"
-            " 2) Fill permanent slots only when needed.\n"
-            " 3) Use Trump Switch to cycle when hand is low.\n"
-            " 4) Once at 15, secure the round win."
-        )
-
-    except ValueError:
-        print(" Invalid input.")
-
-
-def show_no_damage_blueprint() -> None:
-    """Strategy guide for no-damage Survival runs. Live tracking is built into run_mode."""
-    print_header("NO-DAMAGE SURVIVAL — STRATEGY GUIDE")
-    print(f" Objective: {CHALLENGE_GOALS['no_damage_survival']['name']}")
-    print(f" Reward: {CHALLENGE_GOALS['no_damage_survival']['reward']}")
-    print()
-    print(" \033[92m★ Live tracking is automatic when you play Survival mode.\033[0m")
-    print("   The solver detects damage and offers to restart immediately.")
-    print("   Survival+ no-damage is cosmetic only — not tracked.\n")
-
-    print(" KEY PRINCIPLES:")
-    print("  - Win 5 fights taking ZERO total damage.")
-    print("  - Save Shields for emergencies (reduce loss damage to 0).")
-    print("  - Save Destroy for Molded Hoffman's Curse (fight #5).")
-    print("  - If you take ANY damage, restart immediately.\n")
-
-    print(" ─── PER-FIGHT STRATEGY ───")
-    print()
-    print(" Fight 1 (Tally Mark): Easy. Stay at 17+. Don't use valuable trumps.")
-    print("   → If you lose R1 with bet=1, Shield negates it. Otherwise restart.")
-    print()
-    print(" Fight 2 (Bloody Handprints): Desire + Mind Shift.")
-    print("   → Dump cheap trumps (play 2/round to block Mind Shift).")
-    print("   → Don't hoard — Desire punishes it.")
-    print()
-    print(" Fight 3 (Barbed Wire): Shield spam + Shield Assault.")
-    print("   → Destroy Shield Assault immediately.")
-    print("   → Watch for Go for 17 target change.")
-    print()
-    print(" Fight 4 (Tally Mark Upgraded): Slightly harder basic.")
-    print("   → Clean play. Save trumps for boss.")
-    print()
-    print(" Fight 5 (Molded Hoffman BOSS): Curse + Conjure.")
-    print("   → MUST have Destroy ready for Curse.")
-    print("   → Return/Exchange to fix forced bad draws.")
-    print("   → Card-count obsessively.\n")
-
-    print(" ─── RESTART DECISION TREE ───")
-    print()
-    print(" RESTART IMMEDIATELY IF:")
-    print("   ✖ You take ANY damage (challenge void)")
-    print("   ✖ All Destroy cards gone before fight #5")
-    print()
-    print(" CONSIDER RESTARTING IF:")
-    print("   ⚠ Used Shield early (none left for emergencies)")
-    print("   ⚠ Used Destroy on non-Curse target (need it for fight #5)")
-    print()
-    print(" KEEP GOING IF:")
-    print("   ✓ Full HP through fight #3")
-    print("   ✓ Have 1+ Destroy and 1+ Shield entering fight #5")
-
-
-def display_challenge_sources() -> None:
-    """Show the internet sources used for challenge strategy."""
-    print_header("CHALLENGE SOURCES")
-    for label, url in CHALLENGE_SOURCES:
-        print(f" - {label}: {url}")
-    print(
-        "\n Source notes:\n"
-        " - Core rules/rewards from RE wiki pages.\n"
-        " - Execution details are community-tested tactics."
-    )
-
-
-def run_challenge_lab() -> None:
-    """Focused tools for high-value challenge clears."""
-    while True:
-        print_header("CHALLENGE LAB")
-        print("\n Bust-Win challenge is now integrated into normal play advice.")
-        print(" When you have a good chance to win while bust, the solver will tell you.\n")
-        print(" 1. 15-Trump Planner")
-        print(" 2. No-Damage Blueprint")
-        print(" 3. Internet Sources")
-        print(" Q. Back")
-
-        choice = input("\n Select: ").strip().upper()
-        if choice == "1":
-            run_fifteen_trump_planner()
-            input("\n Press Enter to continue...")
-        elif choice == "2":
-            show_no_damage_blueprint()
-            input("\n Press Enter to continue...")
-        elif choice == "3":
-            display_challenge_sources()
-            input("\n Press Enter to continue...")
-        elif choice == "Q":
-            return
-        else:
-            print(" Invalid selection.")
-
 
 # ============================================================
 # MAIN MENU
@@ -3107,7 +3010,6 @@ def main() -> None:
         print(" 2. Survival 21 (5-opponent gauntlet)")
         print(" 3. Survival+ 21 (10-opponent hard gauntlet)")
         print(" 4. Free Play (pick any opponent)")
-        print(" C. Challenge Lab (priority unlock planner)")
         print()
         print(" R. Trump Card Reference")
         print(f" U. Update challenge progress ({len(challenges_completed)} completed)")
@@ -3121,8 +3023,6 @@ def main() -> None:
         elif choice == "R":
             display_trumps_reference()
             input(" Press Enter to continue...")
-        elif choice == "C":
-            run_challenge_lab()
         elif choice == "U":
             challenges_completed, available_trumps = setup_challenge_progress(force_prompt=True)
             input(" Press Enter to continue...")
