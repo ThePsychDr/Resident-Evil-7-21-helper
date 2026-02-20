@@ -25,21 +25,22 @@ I had a 7 face down 4 1. Should not be able to change face down card unless a tr
 -Hoffman is missing the letter n at the end in some strings
 
 - when recording game state ask the user prompts in the order they happen (opponent plays trump/s record and then prompt the user for what happened in order depending on which trump is playedtake into consideration what has happened for next calculations and updating game state)
-
+ better than remembering every move after the play (follow game logic for question order)
 - remove challenge lab until it works with logic not just print a guide
  1. Defeat the Elusive Mr. Big Head ( Already logic for this challenge this is just a priority list on which to unlock first )
     Shouldnt even be a challenge lab option just account for his appearences in survival+
  2. Beat Survival without taking damage
  3. Use 15+ trump cards in a single round (impossible until Harvest + Trump Switch is unlocked)
-^ only 3 challenges needed to be focused on 
+^ only 3 challenges that needs to be focused on to lessen the luck factor in beating 21+ (every other challenge should be unlocked by the time you are able to beat 21+ unless you get an extremely lucky run)
 
-- Dont show If you FORCE A DRAW (Love Your Enemy) -> Win 35.7% | Tie 0.0% | Lose 64.3% (busts opponent: 0%). If not unlocked / in your hand
+- Dont show If you FORCE A DRAW (Love Your Enemy) -> Win 35.7% | Tie 0.0% | Lose 64.3% (busts opponent: 0%). If that trump card is not unlocked / in your hand
 
  If you BUST ON PURPOSE -> Best card: 10 (total 22) → Win 34.9%. [Completes bust-win challenge!]
 
-If the current game state makes bust-win challenge impossible (trumps not available, If next round won doesnt defeat the opponent it doesnt make sense to show this)
+If the current game state makes bust-win challenge impossible (trumps not available, If round win doesnt defeat the opponent it doesnt make sense to show this " If you BUST ON PURPOSE -> Best card: 11 (total 22) → Win 24.2%. [Completes bust-win challenge!]
+") - unless trump/ ai logic gives a high chance of it happening
 
-- it shouldnt show this every round/ esp early game UNLOCKED: You have Perfect Draw+ — guaranteed best card from the deck.
+- it shouldnt show this every round/ esp early game -  UNLOCKED: You have Perfect Draw+ — guaranteed best card from the deck.
 
  ACTION: HIT — best win chance at 64.9% (+25.5% over next best).
 
