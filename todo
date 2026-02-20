@@ -340,6 +340,6 @@ Game log 1 :
 -----------------------
 Regular survival 21 doesnt take into account which trumps are locked/ unlocked. change to survival+ trump system with correct logic for the 2 modes.
 
-
+Update README.md to reflect changes
 
 
