@@ -1,13 +1,56 @@
-try to find the actual logic in the game scripts to see for any descrepencies (if possible)
+
+-Doesnt make sense to ask "Do you want to enter your starting trump cards? (y/n)"
+ > y
+
+ No trump cards in hand.
+
+ Options:
+  +  Add trump card(s)
+  -  Remove a trump card (by number)
+  c  Clear all
+  Enter  Done
+
+You always begin with trumps in survival and survival+
+Just begin assume y will always be pressed in the first round (Literally called STARTING TRUMP CARDS)
 
 -Change yellow text to a more visible color
 
--I messed up / misinterpreted the wording for remembering cards. Fix wording and logic:
-I had a 7 face down 4 1. Should not be able to change face down card unless trump card changes that.
+- add memory for current hands.  Change when trumps played disrupt current hands
+
+-I messed up / misinterpreted the wording for remembering cards 2 examples of it happening below. Fix wording and logic:
+I had a 7 face down 4 1. Should not be able to change face down card unless a trump card changes that.
+
+- regular 21 still shows 10 health for enemies not 5.
 
 -Hoffman is missing the letter n at the end in some strings
 
-Game log:
+- when recording game state ask the user prompts in the order they happen (opponent plays trump/s record and then prompt the user for what happened in order depending on which trump is playedtake into consideration what has happened for next calculations and updating game state)
+
+- remove challenge lab until it works with logic not just print a guide
+ 1. Starting Trump Card +1 ( Already logic for this challenge this is just a priority list on which to unlock first )
+ 2. Beat Survival without taking damage
+ 3. Use 15+ trump cards in a single round
+^ only 3 challenges needed to be focused on 
+
+- Dont show If you FORCE A DRAW (Love Your Enemy) -> Win 35.7% | Tie 0.0% | Lose 64.3% (busts opponent: 0%). If not unlocked / in your hand
+
+ If you BUST ON PURPOSE -> Best card: 10 (total 22) → Win 34.9%. [Completes bust-win challenge!]
+
+If the current game state makes bust-win challenge impossible (trumps not available, If next round won doesnt defeat the opponent it doesnt make sense to show no damage strats)
+
+- it shouldnt show this every round/ esp early game UNLOCKED: You have Perfect Draw+ — guaranteed best card from the deck.
+
+ ACTION: HIT — best win chance at 64.9% (+25.5% over next best).
+
+ ┌─ TRUMP CARD ADVICE ─────────────────────────────┐
+ │ SAVE for bosses: Perfect Draw                        │
+ │ 'Perfect Draw' — draws best card (need 10 to reach 21│
+ │ ).                                                   │
+ └─────────────────────────────────────────────────┘
+
+
+
+Game log 1 :
 
 ============================================================
           ROUND 1 vs. Barbed Wire Hoffman (3 wires)
@@ -291,4 +334,10 @@ Game log:
  What did the opponent do? (Enter = nothing yet / still playing)
   2. Opponent stayed (done drawing, hidden card still unknown)
   3. I forced a draw (Love Your Enemy / similar)
- 
+
+-----------------------
+Regular survival 21 doesnt take into account which trumps are locked/ unlocked. change to survival+ trump system
+
+
+
+
