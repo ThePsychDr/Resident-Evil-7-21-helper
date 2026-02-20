@@ -36,7 +36,7 @@ I had a 7 face down 4 1. Should not be able to change face down card unless a tr
 
  If you BUST ON PURPOSE -> Best card: 10 (total 22) → Win 34.9%. [Completes bust-win challenge!]
 
-If the current game state makes bust-win challenge impossible (trumps not available, If next round won doesnt defeat the opponent it doesnt make sense to show no damage strats)
+If the current game state makes bust-win challenge impossible (trumps not available, If next round won doesnt defeat the opponent it doesnt make sense to show this)
 
 - it shouldnt show this every round/ esp early game UNLOCKED: You have Perfect Draw+ — guaranteed best card from the deck.
 
@@ -48,6 +48,7 @@ If the current game state makes bust-win challenge impossible (trumps not availa
  │ ).                                                   │
  └─────────────────────────────────────────────────┘
 
+trump card advice should only be given when neccesary to win later game/ to complete a challenge
 
 
 Game log 1 :
