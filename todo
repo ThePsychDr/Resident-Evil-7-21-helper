@@ -27,9 +27,10 @@ I had a 7 face down 4 1. Should not be able to change face down card unless a tr
 - when recording game state ask the user prompts in the order they happen (opponent plays trump/s record and then prompt the user for what happened in order depending on which trump is playedtake into consideration what has happened for next calculations and updating game state)
 
 - remove challenge lab until it works with logic not just print a guide
- 1. Starting Trump Card +1 ( Already logic for this challenge this is just a priority list on which to unlock first )
+ 1. Defeat the Elusive Mr. Big Head ( Already logic for this challenge this is just a priority list on which to unlock first )
+    Shouldnt even be a challenge lab option just account for his appearences in survival+
  2. Beat Survival without taking damage
- 3. Use 15+ trump cards in a single round
+ 3. Use 15+ trump cards in a single round (impossible until Harvest + Trump Switch is unlocked)
 ^ only 3 challenges needed to be focused on 
 
 - Dont show If you FORCE A DRAW (Love Your Enemy) -> Win 35.7% | Tie 0.0% | Lose 64.3% (busts opponent: 0%). If not unlocked / in your hand
@@ -48,7 +49,7 @@ If the current game state makes bust-win challenge impossible (trumps not availa
  │ ).                                                   │
  └─────────────────────────────────────────────────┘
 
-trump card advice should only be given when neccesary to win later game/ to complete a challenge
+- trump card advice should only be given when neccesary to win late game/ to complete a challenge
 
 
 Game log 1 :
@@ -337,7 +338,7 @@ Game log 1 :
   3. I forced a draw (Love Your Enemy / similar)
 
 -----------------------
-Regular survival 21 doesnt take into account which trumps are locked/ unlocked. change to survival+ trump system
+Regular survival 21 doesnt take into account which trumps are locked/ unlocked. change to survival+ trump system with correct logic for the 2 modes.
 
 
 
