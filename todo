@@ -24,7 +24,7 @@ I had a 7 face down 4 1. Should not be able to change face down card unless a tr
 
 -Hoffman is missing the letter n at the end in some strings
 
-- when recording game state ask the user prompts in the order they happen (opponent plays trump/s record and then prompt the user for what happened in order depending on which trump is playedtake into consideration what has happened for next calculations and updating game state)
+- when recording game state ask the user prompts in the order they happen (opponent plays trump/s record and then prompt the user for what happened in order depending on which trump is played/take into consideration what has happened for next calculations and updating game state)
  better than remembering every move after the play (follow game logic for question order)
 - remove challenge lab until it works with logic not just print a guide
  1. Defeat the Elusive Mr. Big Head ( Already logic for this challenge this is just a priority list on which to unlock first )
