@@ -1,4 +1,1 @@
-Challenge lab "no damage" mode with restart logic
-Opponent trump section in target description (which trumps they actually played)
-15 trump cards per round — research if possible in Survival vs S+
-Bust-on-purpose gating against bet/current state
+try to find the actual logic in the game scripts to see for any descrepencies (if possible)
