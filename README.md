@@ -1,3 +1,10 @@
+
+# This tool is no longer going to be updated publicly - the actual game logic can be deduced through reframework - it will become 90-100% accurate once I implement the game logic. 100% accurate if the cards dealt/ opponents you will face are predetermined through a fixed seed
+
+# If anyone else wants to complete it and release it please just give credit if you use my work as a base.
+
+Its pretty accurate already from using internet sources and in game testing but still has some issues
+
 # Resident Evil 7: 21 — Card Game Solver
 
 A terminal-based companion tool for the **21** card game from the *Resident Evil 7: Biohazard — Banned Footage Vol. 2* DLC. Tracks cards, computes odds, models opponent AI, and gives strategic advice in real time as you play.
