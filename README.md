@@ -1,5 +1,5 @@
 
-# This tool is no longer going to be updated publicly - the actual game logic can be deduced through reframework - it will become 90-100% accurate once I implement the game logic. 100% accurate if the cards dealt/ opponents you will face are predetermined through a fixed seed
+# This tool is no longer going to be updated publicly - the actual game logic can be deduced through reframework - it will become 90-100% accurate once I implement the game logic. 100% accurate if the cards dealt/ opponents you will face are predetermined through a fixed seed. I will only resume this public build if the rng factor is high enough/ even exists
 
 # If anyone else wants to complete it and release it please just give credit if you use my work as a base.
 
