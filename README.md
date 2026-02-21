@@ -1,5 +1,5 @@
 
-# This tool is no longer going to be updated publicly - the actual game logic can be deduced through reframework - it will become 90-100% accurate once I implement the game logic. 100% accurate if the cards dealt/ opponents you will face are predetermined through a fixed seed. I will only resume this public build if the rng factor is high enough/ even exists
+# This tool is no longer going to be updated publicly - the actual game logic can be deduced through reframework - it will become 90-100% accurate once I implement the game logic. 100% accurate if the cards dealt/ opponents you will face are predetermined through a fixed seed. I will only resume this public build if the rng factor is high enough/ even exists or if there is a fixed seed based on something you can deduce ingame with no special tools. If you need to run a trace tool to find the seed I will not continue because it will only make it 100% accurate on pc where you can do whatever you want anyways. this was being built for the console versions of the game
 
 # If anyone else wants to complete it and release it please just give credit if you use my work as a base.
 
