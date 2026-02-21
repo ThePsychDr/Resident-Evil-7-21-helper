@@ -4,6 +4,7 @@ First test of new logic implements - I lost
 add a option to revise your trump cards (Misclicked that I didnt recieve new one)
 Fix return to menu/ quitting options/ logic 
 should auto ask if you drew trumps after each round
+(Find logic on what decides if a trump is drawn and how many after the round is over)
 Barbed Wire Hoffman (3 wires) - played One-Up (Search game code/logic to figure out why)
 Revise Strategy advice ( says "your 20 becomes a bust!" when youre not even at 20
 5 card trump did not auto update hand - Check all trump logic
@@ -19,7 +20,7 @@ Revise Strategy advice ( says "your 20 becomes a bust!" when youre not even at 2
   Enter  Done
 
 
- >Change this to auto go to add trump when starting a game
+ >Change this to auto go to add trump when starting a gamemode that gives you trumps when you begin
 
 - Dont give general advice and only reccomend trumps in hand
 - fix dead card logic 
@@ -522,7 +523,7 @@ Try Perfect Draw / Exchange / Love Your Enemy / Shield.
 
  > /
  Invalid action. Use A/I/P/W/D/X/T/O/H/S/Q.
- ^ fix above string to show only current valid inputs (I know they all work the bindings are just shown after inputting ?)
+ ^ fix above string to show only current valid/relevant inputs (I know they all work the bindings are just shown after inputting ?)
 
  --Display this after stragey advice not before
 
