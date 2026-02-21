@@ -1,7 +1,12 @@
 
-# This tool is no longer going to be updated publicly - the actual game logic can be deduced through reframework - it will become 90-100% accurate once I implement the game logic. 100% accurate if the cards dealt/ opponents you will face are predetermined through a fixed seed. I will only resume this public build if the rng factor is high enough/ even exists or if there is a fixed seed based on something you can deduce ingame with no special tools. If you need to run a trace tool to find the seed I will not continue because it will only make it 100% accurate on pc where you can do whatever you want anyways. this was being built for the console versions of the game
+#This project’s public build is paused.
+Using REFramework, I can deduce the actual 21 game rules (trumps, damage, AI behavior) and bring the simulator extremely close to the in-game logic.
 
-# If anyone else wants to complete it and release it please just give credit if you use my work as a base.
+What I won’t ship publicly is a solution that requires tracing/instrumentation to reconstruct RNG state or seeds—because that only guarantees perfect prediction on PC, and this tool was meant to help console players.
+
+If it turns out the game uses a fixed or in-game-deducible seed (something you can determine without special tools), I’ll revisit a public release. Otherwise, the tool can still be useful as a rules-accurate simulator + probability/strategy solver rather than a perfect “next card” predictor.
+
+If anyone wants to continue and publish their own build using my work as a base, please give credit.
 
 Its pretty accurate already from using internet sources and in game testing but still has some issues
 
