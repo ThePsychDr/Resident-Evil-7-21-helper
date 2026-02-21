@@ -1,5 +1,5 @@
 # This project’s public build is paused.
-Using REFramework, I can deduce the actual 21 game rules (trumps, damage, AI behavior) and bring the simulator extremely close to the in-game logic.
+Using REFramework, I can deduce the actual 21 game rules (trumps, damage, AI behavior) and build the tool to be extremely close to or replicate the in-game logic.
 What I won’t ship publicly is a solution that requires tracing/instrumentation to reconstruct RNG state or seeds—because that only guarantees perfect prediction on PC, and this tool was meant to help console players.
 If it turns out the game uses a fixed or in-game-deducible seed (something you can determine without special tools), I’ll revisit a public release. Otherwise, the tool can still be useful as a rules-accurate simulator + probability/strategy solver rather than a perfect “next card” predictor.
 If anyone wants to continue and publish their own build using my work as a base, please give credit.
