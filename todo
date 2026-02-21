@@ -1,3 +1,9 @@
+TODO - notes/ comments also during game test
+
+First test of new logic implements - I lost
+add a option to revise your trump cards (Misclicked that I didnt recieve new one)
+Fix return to menu/ quitting options/ logic 
+should auto ask if you drew trumps after each round
 
  Enter your starting trump cards:
 
@@ -11,3 +17,534 @@
 
 
  >Change this to auto go to add trump when starting a game
+
+- Dont give general advice and only reccomend trumps in hand
+- fix dead card logic 
+
+"First test"
+❯ python3 re7_helper.py
+
+ ✓ Loaded save: 4 challenges completed
+   Unlocked trumps: Go for 24, Go for 27, Perfect Draw+, Shield+, Two-Up+
+   (Press U from main menu to update)
+
+============================================================
+           RESIDENT EVIL 7: 21 — CARD GAME SOLVER
+============================================================
+
+ SELECT MODE:
+
+ 1. Normal 21 (vs. Lucas — tutorial) ⚠ limited accuracy
+ 2. Survival 21 (5-opponent gauntlet)
+ 3. Survival+ 21 (10-opponent hard gauntlet)
+ 4. Free Play (pick any opponent)
+
+ R. Trump Card Reference
+ U. Update challenge progress (4 completed)
+ Q. Quit
+
+ Select: 3
+
+============================================================
+                        Survival+ 21
+============================================================
+
+ Electric rig mode: you and each opponent have 10 HP.
+You face 10 Hoffman variants in a row.
+Your HP carries over — every point matters!
+Opponent order is random EXCEPT:
+  #5 is ALWAYS Molded Hoffman (mid-boss).
+  #10 is ALWAYS Undead Hoffman (final boss).
+  Mr. Big Head may appear randomly.
+AI is more aggressive, trump cards are deadlier.
+Completion unlocks 'Perfect Draw' trump and the trophy.
+
+ Starting HP: 10
+ Opponents: 10
+
+ Press Enter to begin...
+
+============================================================
+                Survival+ 21 — OPPONENT 1/10
+============================================================
+ Your HP: 10/10
+
+ Who are you facing for fight #1?
+ Identify by the sack on their head:
+
+ 1. Tally Mark Hoffman — Sack head with vertical cut marks.
+ 2. Bloody Handprints Hoffman — Sack head with bloody handprints.
+ 3. Barbed Wire Hoffman — Sack head with horizontal barbed wire marks.
+ 4. Mr. Big Head Hoffman — Giant gray cartoon mask, missing right eye. RARE random encounter. ★ PRIORITY TARGET (unlocks Harvest!)
+
+ ★ TIP: If Mr. Big Head appears, prioritize beating him!
+   Defeating him twice unlocks 'Harvest' (trump draw after every trump you play).
+
+ Select (1-4): 3
+ Next: Barbed Wire Hoffman (SHIELD SPAMMER) — 10 HP
+
+============================================================
+               FIGHT: vs. Barbed Wire Hoffman
+============================================================
+
+ ┌─ IDENTIFY THE VARIANT ─────────────────────────────────┐
+ │ Look at the sack on their head RIGHT NOW and count:    │
+ │   1. 3 horizontal barbed wire wraps on the sack         │
+ │      Trumps: Shield, Go for 17, Shield Assault          │
+ │   2. 4 horizontal barbed wire wraps on the sack         │
+ │      Trumps: Shield, Shield Assault, Go for 17, Two-Up  │
+ │  3. Can't tell — use combined loadout                      │
+ └─────────────────────────────────────────────────────────┘
+
+ > 1
+
+ ★ 3 wires — Trumps: Shield, Go for 17, Shield Assault
+
+ ┌─ TARGET: Barbed Wire Hoffman (3 wires)
+ │ Mode: Survival+
+ │ AI Type: SHIELD SPAMMER
+ │ Special Trumps: Shield, Go for 17, Shield Assault
+ │ AI DRAW MODEL  (CardGameBanker.hpp):
+ │   Draws below 14 | Stays at 16+
+ │   Reads YOUR hand as dangerous: 17–21  |  weak: 1–12
+ │ TRUMP RANDOMNESS: Pool FIXED per opponent, deal ORDER randomized
+ │ CARDS (1–11): Reshuffled each round via RNG — not predetermined
+ └─ Sack head with horizontal barbed wire marks.
+
+ INTEL:
+ 3-WIRE VARIANT:
+Trumps: Shield, Go for 17, Shield Assault
+'Shield Assault' — removes 3 of HIS shields, YOUR bet +3.
+'Go for 17' — changes target! Your 18+ becomes a bust!
+COUNTER: Destroy Shield Assault. Watch for target change.
+
+ Enter your starting trump cards:
+
+ No trump cards in hand.
+
+ Options:
+  +  Add trump card(s)
+  -  Remove a trump card (by number)
+  c  Clear all
+  Enter  Done
+ > +
+
+ Available trump cards:
+   1. One-Up
+   2. Two-Up
+   3. Two-Up+
+   4. Shield
+   5. Shield+
+   6. 2 Card
+   7. 3 Card
+   8. 4 Card
+   9. 5 Card
+  10. 6 Card
+  11. 7 Card
+  12. Return
+  13. Remove
+  14. Exchange
+  15. Perfect Draw
+  16. Perfect Draw+
+  17. Love Your Enemy
+  18. Go for 24
+  19. Go for 27
+  20. Destroy
+  21. Destroy+
+  22. Destroy++
+  23. Trump Switch
+
+  🔒 Locked (3): Harvest, Trump Switch+, Ultimate Draw
+
+ Enter numbers to add (e.g., '1 3 7'), or card names:
+ > 14 6 9 2
+  + Exchange
+  + 2 Card
+  + 5 Card
+  + Two-Up
+
+ ┌─ YOUR TRUMP CARDS ──────────────────────────────┐
+ │  1. Exchange             Swap the last face-up cards drawn b│
+ │  2. 2 Card               Draw the 2 card. If not in deck, no│
+ │  3. 5 Card               Draw the 5 card. If not in deck, no│
+ │  4. Two-Up               Opponent's bet +2 while on table. A│
+ └─────────────────────────────────────────────────┘
+
+ Options:
+  +  Add trump card(s)
+  -  Remove a trump card (by number)
+  c  Clear all
+  Enter  Done
+ >
+
+============================================================
+          ROUND 1 vs. Barbed Wire Hoffman (3 wires)
+============================================================
+
+ No rounds played yet against this opponent.
+
+ ┌───────────────────────────────────────────────────────────┐
+ │                          HP STATUS                          │
+ ├───────────────────────────────────────────────────────────┤
+ │ YOU: [███████████████] 10/10 (100%)                        │
+ │ Barbed Wire Hoffman (3 wi [███████████████] 10/10 (100%)   │
+ └───────────────────────────────────────────────────────────┘
+
+ ─── Round 1 ─── [4 trumps]
+ A  Analyze hand
+ I  Enemy played a trump
+ P  Play your trump (4)
+ D  Done — record result
+ Q  Quit fight    ?  Info
+
+ > a
+
+ ┌───────────────────────────────────────────────────────────┐
+ │                          HP STATUS                          │
+ ├───────────────────────────────────────────────────────────┤
+ │ YOU: [███████████████] 10/10 (100%)                        │
+ │ Barbed Wire Hoffman (3 wi [███████████████] 10/10 (100%)   │
+ └───────────────────────────────────────────────────────────┘
+
+ Current target: 21
+
+ Enter YOUR face-down card (the hidden card dealt to you):
+ Face-down card: 6
+ Enter your visible drawn card(s) (space-separated, or Enter if none yet):
+ Visible cards: 1
+ Enter OPPONENT'S visible card(s) (space-separated):
+ Opponent cards: 4
+ Dead/removed cards? (Enter = none)
+ Dead cards:
+
+ Has the opponent stopped drawing? (y = yes, Enter = still playing)
+ >
+
+ ┌──────────────────────────────────────────────┐
+ │                 DECK TRACKER                 │
+ ├──────────────────────────────────────────────┤
+ │  1:OUT  2:IN   3:IN   4:OUT  5:IN   6:OUT │
+ │  7:IN   8:IN   9:IN  10:IN  11:IN  │
+ └──────────────────────────────────────────────┘
+ Cards remaining: 8 | Sum available: 55
+
+ YOUR TOTAL: 7 (cards: [6, 1])
+ OPPONENT VISIBLE: 4 (cards: [4])
+ TARGET: 21
+ SAFE HIT CHANCE: 100% (8/8 cards)
+ BUST CHANCE: 0%
+
+ If you draw:
+  Card  2 → total  9 ✓
+  Card  3 → total 10 ✓
+  Card  5 → total 12 ✓
+  Card  7 → total 14 ✓
+  Card  8 → total 15 ✓
+  Card  9 → total 16 ✓
+  Card 10 → total 17 ✓
+  Card 11 → total 18 ✓
+
+============================================================
+                       STRATEGY ADVICE
+============================================================
+
+ SHIELD ASSAULT: Negates your damage AND hurts you. Stack bet-ups to overwhelm.
+
+ GO FOR 17: Can change target to 17 — your 20 becomes a bust! Watch for it.
+
+ MODEL: Opponent AI: draws below 14, stays at 16+ [CHICKEN].
+
+ (Opponent hasn't stayed — odds are estimates. Select '2' when they stop drawing.)
+
+ If YOU STAY now -> Win 13.6% | Tie 0.0% | Lose 86.4%.
+
+ If YOU HIT now -> Win 34.5% | Tie 8.0% | Lose 57.5% (Bust draw chance: 0.0%).
+
+ ACTION: HIT — best win chance at 34.5% (+20.8% over next best).
+
+ ┌─ TRUMP CARD ADVICE ─────────────────────────────┐
+ │ SAVE for bosses: Exchange                            │
+ │ '2 Card' is safe (7+2=9).                            │
+ │ '5 Card' is safe (7+5=12).                           │
+ │ 'Exchange' can steal opponent's high card.           │
+ └─────────────────────────────────────────────────┘
+
+============================================================
+
+ ─── Round 1 ─── [4 trumps]
+ A  Analyze hand
+ I  Enemy played a trump
+ P  Play your trump (4)
+ D  Done — record result
+ Q  Quit fight    ?  Info
+
+ > a
+
+ ┌───────────────────────────────────────────────────────────┐
+ │                          HP STATUS                          │
+ ├───────────────────────────────────────────────────────────┤
+ │ YOU: [███████████████] 10/10 (100%)                        │
+ │ Barbed Wire Hoffman (3 wi [███████████████] 10/10 (100%)   │
+ └───────────────────────────────────────────────────────────┘
+
+ Current target: 21
+
+ ── REMEMBERED STATE ──
+ Your hand: [6, 1] (total 7)
+   Face-down: 6 (locked)
+   Visible: [1]
+ Opponent visible: [4] (total 4)
+
+ Did you draw new cards? (space-separated, or Enter = no change)
+ Your new cards: 9
+ Did opponent draw new cards? (space-separated, or Enter = no)
+ Opponent new cards: 11
+ Dead/removed cards? (Enter = none)
+ Dead cards:
+
+ Has the opponent stopped drawing? (y = yes, Enter = still playing)
+ >
+
+ ┌──────────────────────────────────────────────┐
+ │                 DECK TRACKER                 │
+ ├──────────────────────────────────────────────┤
+ │  1:OUT  2:IN   3:IN   4:OUT  5:IN   6:OUT │
+ │  7:IN   8:IN   9:OUT 10:IN  11:OUT │
+ └──────────────────────────────────────────────┘
+ Cards remaining: 6 | Sum available: 35
+
+ YOUR TOTAL: 16 (cards: [6, 1, 9])
+ OPPONENT VISIBLE: 15 (cards: [4, 11])
+ TARGET: 21
+ SAFE HIT CHANCE: 50% (3/6 cards)
+ BUST CHANCE: 50%
+ PERFECT DRAW: Card(s) [5] → exactly 21!
+
+ If you draw:
+  Card  2 → total 18 ✓
+  Card  3 → total 19 ✓
+  Card  5 → total 21 ✓ ★ PERFECT!
+  Card  7 → total 23 ✖ BUST
+  Card  8 → total 24 ✖ BUST
+  Card 10 → total 26 ✖ BUST
+
+============================================================
+                       STRATEGY ADVICE
+============================================================
+
+ ⚡ Go for 17 [HIGH]: Banker approaching 17 — Go for 17 incoming if they hit it
+
+ AI MODEL: Banker will likely STAY at 15 (satisfied threshold: 16, CHICKEN MODE)
+
+ SHIELD ASSAULT: Negates your damage AND hurts you. Stack bet-ups to overwhelm.
+
+ GO FOR 17: Can change target to 17 — your 20 becomes a bust! Watch for it.
+
+ MODEL: Opponent AI: draws below 14, stays at 16+ [CHICKEN].
+
+ (Opponent hasn't stayed — odds are estimates. Select '2' when they stop drawing.)
+
+ If YOU STAY now -> Win 97.5% | Tie 0.0% | Lose 2.5%.
+
+ If YOU HIT now -> Win 49.8% | Tie 0.3% | Lose 49.8% (Bust draw chance: 50.0%).
+
+ ACTION: STAY — best win chance at 97.5% (+47.7% over next best).
+
+ ┌─ TRUMP CARD ADVICE ─────────────────────────────┐
+ │ SAVE for bosses: Exchange                            │
+ │ '2 Card' is safe (16+2=18).                          │
+ │ ★ '5 Card' gives you exactly 21!                     │
+ │ 'Exchange' can steal opponent's high card.           │
+ └─────────────────────────────────────────────────┘
+
+============================================================
+
+ ─── Round 1 ─── [4 trumps]
+ A  Analyze hand
+ I  Enemy played a trump
+ P  Play your trump (4)
+ D  Done — record result
+ Q  Quit fight    ?  Info
+
+ > d
+
+============================================================
+                        ROUND RESULT
+============================================================
+ What happened this round?
+
+ 1. I WON
+ 2. I LOST
+ 3. TIE (no damage)
+ 5. Cancel (go back)
+
+ Result (1-5): 2
+
+ How much damage was dealt?
+ (The bet amount shown on screen — base is 1, trumps raise it)
+ Damage: 1
+
+ → 1 damage to YOU!
+
+
+ // Trying to quit/ return to main menu scenario
+ > q
+ Quit fight? Progress is lost. (y/n): y
+
+============================================================
+                Survival+ 21 — OPPONENT 2/10
+============================================================
+ Your HP: 9/10
+
+ Who are you facing for fight #2?
+ Identify by the sack on their head:
+
+ 1. Tally Mark Hoffman — Sack head with vertical cut marks.
+ 2. Bloody Handprints Hoffman — Sack head with bloody handprints.
+ 3. Barbed Wire Hoffman — Sack head with horizontal barbed wire marks.
+ 4. Mr. Big Head Hoffman — Giant gray cartoon mask, missing right eye. RARE random encounter. ★ PRIORITY TARGET (unlocks Harvest!)
+
+ ★ TIP: If Mr. Big Head appears, prioritize beating him!
+   Defeating him twice unlocks 'Harvest' (trump draw after every trump you play).
+
+ Select (1-4): ?
+ Enter a number.
+
+ Select (1-4): 2
+ Next: Bloody Handprints Hoffman (TRUMP STEALER) — 10 HP
+
+ Ready? (Enter = yes, q = quit): q
+ Returning to menu.
+
+ Press Enter to return to menu...
+
+ " End of first test"
+
+  If YOU STAY now -> Win 42.6% | Tie 3.4% | Lose 53.9%.
+
+ If YOU HIT now -> Win 33.1% | Tie 7.3% | Lose 59.6% (Bust draw chance: 62.5%).
+
+ ACTION: USE TRUMP — only 38% safe and 17 likely loses to ~18.
+Try Perfect Draw / Exchange / Love Your Enemy / Shield.
+
+ ┌─ TRUMP CARD ADVICE ─────────────────────────────┐
+ │ SAVE for bosses: Perfect Draw+                       │
+ │ 'Perfect Draw+' — draws best card (need 4 to reach 21│
+ │ ).                                                   │
+ │ ★ '4 Card' gives you exactly 21!                     │
+ │ 'Two-Up+' returns opponent's card to deck AND bet +2.│
+ └─────────────────────────────────────────────────┘
+
+- Dont give general advice and only reccomend trumps in hand
+
+ │  4. 4 Card               Draw the 4 card. If not in deck, no│
+ └─────────────────────────────────────────────────┘
+
+ Which card to play? (number, or Enter to cancel)
+ > 4
+
+ Playing: 4 Card
+ Effect: Draw the 4 card. If not in deck, nothing happens.
+
+ Did the draw succeed? (Was 4 still in the deck?)
+  Y = yes, drew 4
+  N = no, nothing happened (card not in deck)
+ > y
+ ★ Drew 4. Added to your hand.
+
+ ─── Round 1 ─── [3 trumps]
+ A  Analyze hand
+ I  Enemy played a trump
+ P  Play your trump (3)
+ D  Done — record result
+ Q  Quit fight    ?  Info
+
+ > i
+
+ ┌─ ENEMY TRUMP INTERRUPT ──────────────────────────┐
+ │ Tally Mark Hoffman's known trumps:
+ │  1. One-Up                                          │
+ │  2. Shield                                          │
+ │                                                   │
+ │  O. Other / unlisted trump                        │
+ │  0. Cancel                                        │
+ └───────────────────────────────────────────────────┘
+
+ > 1
+
+ → One-Up: Opponent's bet +1 → now 2
+ TIP: Press A to re-analyze with updated state.
+
+ ─── Round 1 ─── [Your bet: 1 | Opp bet: 2] [3 trumps]
+ A  Analyze hand
+ I  Enemy played a trump
+ P  Play your trump (3)
+ D  Done — record result
+ Q  Quit fight    ?  Info
+
+ > a
+
+ ┌───────────────────────────────────────────────────────────┐
+ │                          HP STATUS                          │
+ ├───────────────────────────────────────────────────────────┤
+ │ YOU: [███████████████] 5/5 (100%)                          │
+ │ Tally Mark Hoffman        [███████████████] 5/5 (100%)     │
+ └───────────────────────────────────────────────────────────┘
+
+ Current target: 21
+
+ ── REMEMBERED STATE ──
+ Your hand: [7, 10] (total 17)
+   Face-down: 7 (locked)
+   Visible: [10]
+ Opponent visible: [2] (total 2)
+
+ Did you draw new cards? (space-separated, or Enter = no change)
+ Your new cards: 4
+ Did opponent draw new cards? (space-separated, or Enter = no)
+ Opponent new cards: 8
+ Remembered dead cards: [4]
+ Additional dead/removed cards? (Enter = none)
+ Dead cards:
+ ⚠ WARNING: Card 4 entered twice! (Deck has one of each)
+
+ - 4 card was added to dead cards immedietly after playing draw 4 trump; breaks logic/ gameflow
+
+─── Round 1 ─── [Your bet: 1 | Opp bet: 2] [3 trumps]
+ A  Analyze hand
+ I  Enemy played a trump
+ P  Play your trump (3)
+ D  Done — record result
+ Q  Quit fight    ?  Info
+
+ > /
+ Invalid action. Use A/I/P/W/D/X/T/O/H/S/Q.
+ ^ fix above string to show only current valid inputs (I know they all work the bindings are just shown after inputting ?)
+
+ --Display this after stragey advice not before
+
+→ Opponent stopped. Visible total: 14
+   Hidden card is one of: [5, 6, 7, 8, 9]
+   Possible totals: [19, 20, 21, 22, 23]
+
+ ┌──────────────────────────────────────────────┐
+ │                 DECK TRACKER                 │
+ ├──────────────────────────────────────────────┤
+ │  1:OUT  2:OUT  3:OUT  4:OUT  5:IN   6:IN  │
+ │  7:IN   8:IN   9:IN  10:OUT 11:OUT │
+ └──────────────────────────────────────────────┘
+ Cards remaining: 5 | Sum available: 35
+
+ YOUR TOTAL: 17 (cards: [1, 2, 11, 3])
+ OPPONENT STAYED (visible): 14 (cards: [10, 4])
+ TARGET: 21
+ SAFE HIT CHANCE: 0% (0/5 cards)
+ BUST CHANCE: 100%
+
+ If you draw:
+  Card  5 → total 22 ✖ BUST
+  Card  6 → total 23 ✖ BUST
+  Card  7 → total 24 ✖ BUST
+  Card  8 → total 25 ✖ BUST
+  Card  9 → total 26 ✖ BUST
+
