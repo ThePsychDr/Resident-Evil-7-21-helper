@@ -1,0 +1,336 @@
+{
+  "schema_version": "re7_cardgame_hoffman_rules_v0.1",
+  "game": "Resident Evil 7 (RT/STM) - 21 Survival & Survival+",
+  "source_files_in_zip": {
+    "survival_hoffmans": [
+      "chapter7_2/survival/hoffmans/1_attacker.fsm.16",
+      "chapter7_2/survival/hoffmans/2_defence.fsm.16",
+      "chapter7_2/survival/hoffmans/3_tricky.fsm.16",
+      "chapter7_2/survival/hoffmans/4_molded.fsm.16",
+      "chapter7_2/survival/hoffmans/5_attacker_p.fsm.16",
+      "chapter7_2/survival/hoffmans/6_defence_p.fsm.16",
+      "chapter7_2/survival/hoffmans/7_tricky_p.fsm.16",
+      "chapter7_2/survival/hoffmans/8_lassboss.fsm.16",
+      "chapter7_2/survival/hoffmans/9_rare.fsm.16"
+    ],
+    "shared_logic": [
+      "chapter7_2/cardgame/fsm_bkdrawphase_test.fsm.16",
+      "chapter7_2/item/fsm_bkitemusecheck.fsm.16",
+      "chapter7_2/other/fsm_bk_carditems_action.fsm.16",
+      "chapter7_2/survival/fsm_hoffmanssettings.fsm.16",
+      "chapter7_2/survival/fsm_hoffmanthinkchanger.fsm.16",
+      "chapter7_2/survival/fsm_hoffmansitemcheck.fsm.16"
+    ]
+  },
+  "notes": [
+    "Evaluate rules top-to-bottom; first match wins.",
+    "Some checks (CheckHandNumber, Check_PlayerHands, CheckUseItem/2, UseSheildAssaltCheck) exist by name but need node-param inspection for exact behavior.",
+    "Range checks are inferred from the check name (e.g., Check_21_19 => [19..21]). Verify in FSM node params if you want 1:1 accuracy."
+  ],
+  "check_definitions": {
+    "Check_16_0": { "type": "bk_total_lte", "value": 16 },
+    "Check_17_0": { "type": "bk_total_lte", "value": 17 },
+    "Check_18_0": { "type": "bk_total_lte", "value": 18 },
+    "Check_19_0": { "type": "bk_total_lte", "value": 19 },
+    "Check_21": { "type": "bk_total_eq", "value": 21, "verify": true },
+    "Check_21_19": { "type": "bk_total_range_inclusive", "min": 19, "max": 21 },
+    "Check_18_10": { "type": "bk_total_range_inclusive", "min": 10, "max": 18 },
+    "Check_Hand15_17": { "type": "bk_total_range_inclusive", "min": 15, "max": 17, "verify": true },
+    "Check_LastCard_6_11": { "type": "last_faceup_range_inclusive", "min": 6, "max": 11 },
+    "Check_PlayerBetUp": { "type": "pl_bet_up_active", "value": true },
+
+    "CheckHandNumber": { "type": "placeholder", "hint": "likely compares hand count (bk_hand_count or pl_hand_count)" },
+    "Check_PlayerHands": { "type": "placeholder", "hint": "likely compares player hand total/closeness/hand-count" },
+    "CheckUseItem": { "type": "placeholder", "hint": "likely gating: is item usable now / cooldown / item-used-count" },
+    "CheckUseItem2": { "type": "placeholder", "hint": "secondary gating condition; possibly difficulty-dependent" },
+    "UseSheildAssaltCheck": { "type": "placeholder", "hint": "shield-assault-specific gate" },
+    "UseItemCheck": { "type": "placeholder", "hint": "rare archetype gate for Escape usage" }
+  },
+  "action_definitions": {
+    "UseDraw2": { "effect": "draw_n", "n": 2 },
+    "UseDraw3": { "effect": "draw_n", "n": 3 },
+    "UseDraw4": { "effect": "draw_n", "n": 4 },
+    "UseDraw5": { "effect": "draw_n", "n": 5 },
+
+    "UseBetUp1": { "effect": "bet_up", "amount": 1 },
+    "UseBetUp_1p": { "effect": "bet_up", "amount": 1, "variant": "p" },
+    "UseBetUp2_p": { "effect": "bet_up", "amount": 2, "variant": "p" },
+    "UseBetUp2_x": { "effect": "bet_up", "amount": 2, "variant": "x" },
+    "UseBetUp21": { "effect": "bet_up", "amount": 21, "verify": true },
+    "UseBetDown_1": { "effect": "bet_down", "amount": 1 },
+
+    "UseGoal17": { "effect": "set_target", "target": 17 },
+    "UseGoal24": { "effect": "set_target", "target": 24 },
+    "UseGoal27": { "effect": "set_target", "target": 27 },
+
+    "UseSheildAssalt": { "effect": "shield_assault" },
+    "UseCurse": { "effect": "curse" },
+    "UseDe": { "effect": "destroy" },
+
+    "UseHappiness": { "effect": "happiness" },
+    "UseDesire": { "effect": "desire" },
+    "UseEscape": { "effect": "escape" },
+
+    "UsePerfectDraw_x": { "effect": "perfect_draw", "variant": "x" },
+    "UsePerfectDraw_p": { "effect": "perfect_draw", "variant": "p" },
+    "UseDeadSilence": { "effect": "dead_silence" },
+    "UseOvlivion": { "effect": "oblivion" }
+  },
+  "global_policies": {
+    "items_per_turn_max_default": 1,
+    "once_flags": [ "IsUsedRemove", "IsUsedBetUp2", "IsUsedBetUp21" ],
+    "suggested_draw_stay_thresholds_by_archetype": {
+      "Attacker": 0.35,
+      "Defence": 0.20,
+      "Tricky": 0.28,
+      "Molded": 0.30,
+      "Attacker_p": 0.38,
+      "Defence_p": 0.22,
+      "Tricky_p": 0.30,
+      "LassBoss": 0.40,
+      "Rare": 0.25
+    },
+    "bluff_rates_by_archetype": {
+      "Tricky": 0.15,
+      "Tricky_p": 0.18,
+      "LassBoss": 0.10
+    }
+  },
+  "thinksets": {
+    "1": { "name": "Attacker", "hoffman_file": "chapter7_2/survival/hoffmans/1_attacker.fsm.16" },
+    "2": { "name": "Defence", "hoffman_file": "chapter7_2/survival/hoffmans/2_defence.fsm.16" },
+    "3": { "name": "Tricky", "hoffman_file": "chapter7_2/survival/hoffmans/3_tricky.fsm.16" },
+    "4": { "name": "Molded", "hoffman_file": "chapter7_2/survival/hoffmans/4_molded.fsm.16" },
+    "5": { "name": "Attacker_p", "hoffman_file": "chapter7_2/survival/hoffmans/5_attacker_p.fsm.16" },
+    "6": { "name": "Defence_p", "hoffman_file": "chapter7_2/survival/hoffmans/6_defence_p.fsm.16" },
+    "7": { "name": "Tricky_p", "hoffman_file": "chapter7_2/survival/hoffmans/7_tricky_p.fsm.16" },
+    "8": { "name": "LassBoss", "hoffman_file": "chapter7_2/survival/hoffmans/8_lassboss.fsm.16" },
+    "9": { "name": "Rare", "hoffman_file": "chapter7_2/survival/hoffmans/9_rare.fsm.16" }
+  },
+  "rules": {
+    "Attacker": [
+      {
+        "id": "atk_draw5_low",
+        "priority": 10,
+        "when": [ { "has": "HasDraw5" }, { "check": "Check_16_0" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseDraw5" }
+      },
+      {
+        "id": "atk_draw4_lowmid",
+        "priority": 20,
+        "when": [ { "has": "HasDraw4" }, { "check": "Check_17_0" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseDraw4" }
+      },
+      {
+        "id": "atk_draw2_mid",
+        "priority": 30,
+        "when": [ { "has": "HasDraw2" }, { "check": "Check_19_0" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseDraw2" }
+      },
+      {
+        "id": "atk_betup1_pressure",
+        "priority": 40,
+        "when": [
+          { "has": "HasBetUp1_p" },
+          { "items_used_lt": 1 },
+          { "any": [ { "bk_total_lte": 19 }, { "behind": true } ] }
+        ],
+        "then": { "do": "UseBetUp1" }
+      }
+    ],
+    "Defence": [
+      {
+        "id": "def_betdown_if_player_betup",
+        "priority": 10,
+        "when": [ { "check": "Check_PlayerBetUp" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseBetDown_1" }
+      },
+      {
+        "id": "def_goal17_in_risk_band",
+        "priority": 20,
+        "when": [ { "has": "HasGoal17" }, { "check": "Check_Hand15_17" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseGoal17" }
+      },
+      {
+        "id": "def_shieldassault",
+        "priority": 30,
+        "when": [ { "has": "HasSheildAssalt" }, { "check": "UseSheildAssaltCheck" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseSheildAssalt" }
+      },
+      {
+        "id": "def_destroy_mid",
+        "priority": 40,
+        "when": [ { "has": "HasDestroy" }, { "check": "Check_Hand15_17" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseDe" }
+      }
+    ],
+    "Tricky": [
+      {
+        "id": "trk_happiness_on_edge",
+        "priority": 10,
+        "when": [
+          { "has": "HasHappiness" },
+          { "check": "Check_21_19" },
+          { "check": "Check_PlayerHands" },
+          { "items_used_lt": 1 }
+        ],
+        "then": { "do": "UseHappiness" }
+      },
+      {
+        "id": "trk_desire_on_edge",
+        "priority": 20,
+        "when": [ { "has": "HasDesire" }, { "check": "Check_21_19" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseDesire" }
+      },
+      {
+        "id": "trk_draw4_setup",
+        "priority": 30,
+        "when": [ { "has": "HasDraw4" }, { "bk_total_lte": 17 }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseDraw4" }
+      }
+    ],
+    "Molded": [
+      {
+        "id": "mol_curse_gate",
+        "priority": 10,
+        "when": [ { "has": "HasCurse" }, { "check": "CheckUseItem" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseCurse" }
+      },
+      {
+        "id": "mol_betup2p_once",
+        "priority": 20,
+        "when": [
+          { "has": "HasBetUp2_p" },
+          { "flag_false": "IsUsedBetUp2" },
+          { "check": "Check_Hand15_17" },
+          { "items_used_lt": 1 }
+        ],
+        "then": { "do": "UseBetUp2_p", "set_flag": "IsUsedBetUp2" }
+      },
+      {
+        "id": "mol_draw5_low",
+        "priority": 30,
+        "when": [ { "has": "HasDraw5" }, { "check": "Check_16_0" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseDraw5" }
+      },
+      {
+        "id": "mol_destroy_mid",
+        "priority": 40,
+        "when": [ { "has": "HasDestroy" }, { "check": "Check_Hand15_17" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseDe" }
+      }
+    ],
+    "Attacker_p": [
+      {
+        "id": "atkP_betup21_finish",
+        "priority": 5,
+        "when": [ { "has": "HasBetUp21" }, { "check": "Check_21" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseBetUp21", "set_flag": "IsUsedBetUp21" }
+      },
+      {
+        "id": "atkP_draw5_low",
+        "priority": 10,
+        "when": [ { "has": "HasDraw5" }, { "check": "Check_16_0" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseDraw5" }
+      },
+      {
+        "id": "atkP_draw4_lowmid",
+        "priority": 20,
+        "when": [ { "has": "HasDraw4" }, { "check": "Check_17_0" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseDraw4" }
+      },
+      {
+        "id": "atkP_draw3_mid",
+        "priority": 30,
+        "when": [ { "has": "HasDraw3" }, { "check": "Check_18_0" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseDraw3" }
+      },
+      {
+        "id": "atkP_draw2_mid",
+        "priority": 40,
+        "when": [ { "has": "HasDraw2" }, { "check": "Check_19_0" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseDraw2" }
+      }
+    ],
+    "Defence_p": [
+      {
+        "id": "defP_betdown_if_player_betup",
+        "priority": 10,
+        "when": [ { "check": "Check_PlayerBetUp" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseBetDown_1" }
+      },
+      {
+        "id": "defP_goal17_in_risk_band",
+        "priority": 20,
+        "when": [ { "has": "HasGoal17" }, { "check": "Check_Hand15_17" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseGoal17" }
+      },
+      {
+        "id": "defP_lastcard_6_11_react",
+        "priority": 40,
+        "when": [ { "check": "Check_LastCard_6_11" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseBetUp_1p", "optional": true }
+      }
+    ],
+    "Tricky_p": [
+      {
+        "id": "trkP_happiness_on_edge",
+        "priority": 10,
+        "when": [
+          { "has": "HasHappiness" },
+          { "check": "Check_21_19" },
+          { "check": "Check_PlayerHands" },
+          { "check": "CheckUseItem" },
+          { "items_used_lt": 1 }
+        ],
+        "then": { "do": "UseHappiness" }
+      },
+      {
+        "id": "trkP_desire_on_edge",
+        "priority": 20,
+        "when": [ { "has": "HasDesire" }, { "check": "Check_21_19" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseDesire" }
+      }
+    ],
+    "LassBoss": [
+      {
+        "id": "boss_perfectdraw_x_midband",
+        "priority": 10,
+        "when": [ { "has": "HasPerfectDraw_x" }, { "check": "Check_18_10" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UsePerfectDraw_x" }
+      },
+      {
+        "id": "boss_perfectdraw_p_midband",
+        "priority": 20,
+        "when": [ { "has": "HasPerfectDraw_p" }, { "check": "Check_18_10" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UsePerfectDraw_p" }
+      },
+      {
+        "id": "boss_oblivion_edge",
+        "priority": 30,
+        "when": [ { "has": "HasOvlivion" }, { "check": "Check_21_19" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseOvlivion" }
+      },
+      {
+        "id": "boss_deadsilence_edge",
+        "priority": 40,
+        "when": [ { "has": "HasDeadSilence" }, { "check": "Check_21_19" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseDeadSilence" }
+      },
+      {
+        "id": "boss_betup2x_once",
+        "priority": 50,
+        "when": [ { "has": "HasBetUp2_x" }, { "flag_false": "IsUsedBetUp2" }, { "behind": true }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseBetUp2_x", "set_flag": "IsUsedBetUp2" }
+      }
+    ],
+    "Rare": [
+      {
+        "id": "rare_escape",
+        "priority": 10,
+        "when": [ { "has": "HasEscape" }, { "check": "UseItemCheck" }, { "items_used_lt": 1 } ],
+        "then": { "do": "UseEscape" }
+      }
+    ]
+  }
+}
