@@ -1721,7 +1721,7 @@ def opponent_total_distribution(
             if total >= target:
                 return 0.0
             # Old model: blend in some overshoot uncertainty
-            gap_to_target = max(0, target - o_visible_total)
+            gap_to_target = max(0, target - total)
             overshoot_chance = min(0.50, 0.15 + (gap_to_target / target) * 0.35)
             return overshoot_chance
 
