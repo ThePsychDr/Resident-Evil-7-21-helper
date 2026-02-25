@@ -1069,7 +1069,7 @@
     },
     "Remove": {
       "cat": "Cards",
-      "desc": "Return opponent's last face-up card to the deck.",
+      "desc": "Remove an opponent's face-up card from play for this round (it becomes a dead card).",
       "weight": 45,
       "etype": "Draw Forcer"
     },
