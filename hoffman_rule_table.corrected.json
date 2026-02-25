@@ -1,0 +1,1269 @@
+{
+  "schema_version": "2.0",
+  "game": "Resident Evil 7 (RT/STM) - 21 Survival & Survival+",
+  "notes": [
+    "Evaluate rules top-to-bottom; first match wins.",
+    "Exact logic extracted from fsm_spcarddraw.fsm.16 and hoffmans/*.fsm.16.",
+    "Draws are not fully random: they roll a 25% chance (Per25) and pull from specific ID pools based on game state.",
+    "Added thinkset coverage from survival FSM bundle (attacker/defence/tricky/molded/boss/rare). Rule ordering is a heuristic based on observed check tokens; not a full decoded FSM graph."
+  ],
+  "global_policies": {
+    "items_per_turn_max_default": 1,
+    "once_flags": [
+      "IsUsedRemove",
+      "IsUsedBetUp2",
+      "IsUsedBetUp21"
+    ],
+    "trump_draw_logic": {
+      "first_trump_guarantee": "IsFirstSPCardGet",
+      "standard_draw_chance": "Per25 (25% RNG roll at standard trigger points)",
+      "card_pools": [
+        "RandomSPcard_0_4",
+        "RandomSPcard_5_8",
+        "RandomSPcard_9_12",
+        "RandomSPcard_13_20"
+      ],
+      "pool_selection_gates": [
+        "CheckCondition1",
+        "CheckCondition2",
+        "CheckCondition3"
+      ]
+    },
+    "suggested_draw_stay_thresholds_by_archetype": {
+      "Attacker": 0.35,
+      "Defence": 0.2,
+      "Tricky": 0.28,
+      "Molded": 0.3,
+      "Attacker_p": 0.38,
+      "Defence_p": 0.22,
+      "Tricky_p": 0.3,
+      "LassBoss": 0.4,
+      "Rare": 0.25
+    }
+  },
+  "check_definitions": {
+    "Check_16_0": {
+      "type": "bk_total_lte",
+      "value": 16
+    },
+    "Check_17_0": {
+      "type": "bk_total_lte",
+      "value": 17
+    },
+    "Check_18_0": {
+      "type": "bk_total_lte",
+      "value": 18
+    },
+    "Check_19_0": {
+      "type": "bk_total_lte",
+      "value": 19
+    },
+    "Check_21": {
+      "type": "bk_total_eq",
+      "value": 21,
+      "verify": true
+    },
+    "Check_21_19": {
+      "type": "bk_total_range_inclusive",
+      "min": 19,
+      "max": 21
+    },
+    "Check_18_10": {
+      "type": "bk_total_range_inclusive",
+      "min": 10,
+      "max": 18
+    },
+    "Check_Hand15_17": {
+      "type": "bk_total_range_inclusive",
+      "min": 15,
+      "max": 17,
+      "verify": true
+    },
+    "Check_LastCard_6_11": {
+      "type": "last_faceup_range_inclusive",
+      "min": 6,
+      "max": 11
+    },
+    "CheckUseItem": {
+      "type": "enemy_can_use_item",
+      "heuristic": true
+    },
+    "CheckUseItem2": {
+      "type": "enemy_can_use_item",
+      "heuristic": true
+    },
+    "CheckHandNumber": {
+      "type": "enemy_hand_count_gte",
+      "value": 2,
+      "heuristic": true
+    },
+    "Check_PlayerHands": {
+      "type": "player_trumps_gte",
+      "value": 3,
+      "heuristic": true
+    },
+    "Check_PlayerBetUp": {
+      "type": "player_betup_active"
+    }
+  },
+  "action_definitions": {
+    "UseDraw2": {
+      "effect": "draw_n",
+      "n": 2
+    },
+    "UseDraw5": {
+      "effect": "draw_n",
+      "n": 5
+    },
+    "UseBetUp1": {
+      "effect": "bet_up",
+      "amount": 1
+    },
+    "UseBetUp_1p": {
+      "effect": "bet_up",
+      "amount": 1,
+      "variant": "p"
+    },
+    "UseSheildAssalt": {
+      "effect": "shield_assault"
+    },
+    "UseCurse": {
+      "effect": "curse"
+    },
+    "UseDe": {
+      "effect": "destroy"
+    },
+    "UsePerfectDraw_x": {
+      "effect": "perfect_draw",
+      "variant": "x"
+    },
+    "UseDraw3": {
+      "effect": "draw_n",
+      "n": 3
+    },
+    "UseDraw4": {
+      "effect": "draw_n",
+      "n": 4
+    },
+    "UseBetDown_1": {
+      "effect": "bet_down",
+      "amount": 1
+    },
+    "UseGoal17": {
+      "effect": "set_target",
+      "target": 17
+    },
+    "UseEscape": {
+      "effect": "escape"
+    },
+    "UseDeadSilence": {
+      "effect": "dead_silence"
+    },
+    "UseOvlivion": {
+      "effect": "oblivion"
+    },
+    "UsePerfectDraw_p": {
+      "effect": "perfect_draw",
+      "variant": "p"
+    },
+    "UseBetUp21": {
+      "effect": "bet_up",
+      "amount": 1,
+      "variant": "21"
+    },
+    "UseBetUp2_p": {
+      "effect": "bet_up",
+      "amount": 2,
+      "variant": "p"
+    },
+    "UseBetUp2_x": {
+      "effect": "bet_up",
+      "amount": 2,
+      "variant": "x"
+    },
+    "UseDesire": {
+      "effect": "desire"
+    },
+    "UseHappiness": {
+      "effect": "happiness"
+    },
+    "UseMindShift": {
+      "effect": "mind_shift"
+    },
+    "UseConjuring": {
+      "effect": "conjure"
+    },
+    "UseShieldAssault": {
+      "effect": "shield_assault"
+    },
+    "UseOblivion": {
+      "effect": "oblivion"
+    },
+    "UseDestroy": {
+      "effect": "destroy"
+    },
+    "UseGoal24": {
+      "effect": "set_target",
+      "target": 24
+    },
+    "UseGoal27": {
+      "effect": "set_target",
+      "target": 27
+    },
+    "UsePerfectDraw": {
+      "effect": "perfect_draw"
+    },
+    "UseUltimateDraw": {
+      "effect": "ultimate_draw"
+    },
+    "UseTwentyOneUp": {
+      "effect": "twenty_one_up"
+    },
+    "UseHarvest": {
+      "effect": "harvest"
+    },
+    "UseLoveYourEnemy": {
+      "effect": "love_your_enemy"
+    },
+    "UseBlackMagic": {
+      "effect": "black_magic"
+    },
+    "UseTrumpSwitch": {
+      "effect": "trump_switch"
+    },
+    "UseTrumpSwitch_p": {
+      "effect": "trump_switch",
+      "variant": "p"
+    },
+    "UseExchange": {
+      "effect": "exchange"
+    },
+    "UseReturn": {
+      "effect": "return"
+    },
+    "UseRemove": {
+      "effect": "remove"
+    },
+    "UseShield": {
+      "effect": "shield"
+    },
+    "UseShieldPlus": {
+      "effect": "shield",
+      "variant": "plus"
+    },
+    "UseBetUp2": {
+      "effect": "bet_up",
+      "amount": 2
+    },
+    "UseBetUp2_plus": {
+      "effect": "bet_up",
+      "amount": 2,
+      "variant": "plus",
+      "note": "Two-Up+ also returns opponent last face-up"
+    },
+    "UseDrawCard2": {
+      "effect": "draw_specific_card",
+      "card": 2
+    },
+    "UseDrawCard3": {
+      "effect": "draw_specific_card",
+      "card": 3
+    },
+    "UseDrawCard4": {
+      "effect": "draw_specific_card",
+      "card": 4
+    },
+    "UseDrawCard5": {
+      "effect": "draw_specific_card",
+      "card": 5
+    },
+    "UseDrawCard6": {
+      "effect": "draw_specific_card",
+      "card": 6
+    },
+    "UseDrawCard7": {
+      "effect": "draw_specific_card",
+      "card": 7
+    },
+    "UseConjure": {
+      "effect": "conjure"
+    },
+    "UseDesperation": {
+      "effect": "desperation"
+    }
+  },
+  "rules": {
+    "Defence_p": [
+      {
+        "id": "defP_betdown_if_player_betup",
+        "priority": 10,
+        "when": [
+          {
+            "check": "Check_PlayerBetUp"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseBetDown_1"
+        }
+      },
+      {
+        "id": "defP_goal17_in_risk_band",
+        "priority": 20,
+        "when": [
+          {
+            "has": "HasGoal17"
+          },
+          {
+            "check": "Check_Hand15_17"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseGoal17"
+        }
+      },
+      {
+        "id": "defP_lastcard_6_11_react",
+        "priority": 40,
+        "when": [
+          {
+            "check": "Check_LastCard_6_11"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseBetUp_1p",
+          "exact_fsm_node": "UseBetUp_1p"
+        }
+      },
+      {
+        "id": "defP_shield_react_lastcard",
+        "priority": 35,
+        "when": [
+          {
+            "has": "HasSheildAssalt"
+          },
+          {
+            "check": "Check_LastCard_6_11"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseSheildAssalt"
+        }
+      }
+    ],
+    "Attacker": [
+      {
+        "id": "atk_draw5_if_low",
+        "priority": 10,
+        "when": [
+          {
+            "has": "HasDraw5"
+          },
+          {
+            "check": "Check_16_0"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDraw5"
+        }
+      },
+      {
+        "id": "atk_draw4_if_mid",
+        "priority": 20,
+        "when": [
+          {
+            "has": "HasDraw4"
+          },
+          {
+            "check": "Check_17_0"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDraw4"
+        }
+      },
+      {
+        "id": "atk_draw2_if_close",
+        "priority": 30,
+        "when": [
+          {
+            "has": "HasDraw2"
+          },
+          {
+            "check": "Check_19_0"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDraw2"
+        }
+      },
+      {
+        "id": "atk_betup1",
+        "priority": 60,
+        "when": [
+          {
+            "has": "HasBetUp1_p"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseBetUp1"
+        }
+      }
+    ],
+    "Defence": [
+      {
+        "id": "def_betdown_if_player_betup",
+        "priority": 10,
+        "when": [
+          {
+            "check": "Check_PlayerBetUp"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseBetDown_1"
+        }
+      },
+      {
+        "id": "def_goal17_in_risk_band",
+        "priority": 20,
+        "when": [
+          {
+            "has": "HasGoal17"
+          },
+          {
+            "check": "Check_Hand15_17"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseGoal17"
+        }
+      },
+      {
+        "id": "def_shield_react_lastcard",
+        "priority": 40,
+        "when": [
+          {
+            "has": "HasSheildAssalt"
+          },
+          {
+            "check": "Check_LastCard_6_11"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseSheildAssalt"
+        }
+      },
+      {
+        "id": "def_destroy_if_available",
+        "priority": 80,
+        "when": [
+          {
+            "has": "HasDestroy"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDe"
+        }
+      },
+      {
+        "id": "def_draw5_if_low",
+        "priority": 90,
+        "when": [
+          {
+            "has": "HasDraw5"
+          },
+          {
+            "check": "Check_16_0"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDraw5"
+        }
+      },
+      {
+        "id": "def_draw4_if_mid",
+        "priority": 100,
+        "when": [
+          {
+            "has": "HasDraw4"
+          },
+          {
+            "check": "Check_17_0"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDraw4"
+        }
+      }
+    ],
+    "Tricky": [
+      {
+        "id": "tri_desire_if_19_21",
+        "priority": 10,
+        "when": [
+          {
+            "has": "HasDesire"
+          },
+          {
+            "check": "Check_21_19"
+          },
+          {
+            "check": "Check_PlayerHands"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDesire"
+        }
+      },
+      {
+        "id": "tri_happiness_if_19_21",
+        "priority": 20,
+        "when": [
+          {
+            "has": "HasHappiness"
+          },
+          {
+            "check": "Check_21_19"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseHappiness"
+        }
+      },
+      {
+        "id": "tri_mindshift_if_player_trumps",
+        "priority": 30,
+        "when": [
+          {
+            "has": "HasMindShift"
+          },
+          {
+            "check": "Check_PlayerHands"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseMindShift"
+        }
+      },
+      {
+        "id": "tri_draw4",
+        "priority": 60,
+        "when": [
+          {
+            "has": "HasDraw4"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDraw4"
+        }
+      },
+      {
+        "id": "tri_destroy",
+        "priority": 90,
+        "when": [
+          {
+            "has": "HasDestroy"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDe"
+        }
+      }
+    ],
+    "Molded": [
+      {
+        "id": "mol_curse",
+        "priority": 10,
+        "when": [
+          {
+            "has": "HasCurse"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseCurse"
+        }
+      },
+      {
+        "id": "mol_conjure",
+        "priority": 20,
+        "when": [
+          {
+            "has": "HasConjuring"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseConjuring"
+        }
+      },
+      {
+        "id": "mol_betup2_if_15_17",
+        "priority": 30,
+        "when": [
+          {
+            "has": "HasBetUp2_p"
+          },
+          {
+            "check": "Check_Hand15_17"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseBetUp2_p"
+        }
+      },
+      {
+        "id": "mol_draw5_if_low",
+        "priority": 60,
+        "when": [
+          {
+            "has": "HasDraw5"
+          },
+          {
+            "check": "Check_16_0"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDraw5"
+        }
+      },
+      {
+        "id": "mol_destroy",
+        "priority": 90,
+        "when": [
+          {
+            "has": "HasDestroy"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDe"
+        }
+      }
+    ],
+    "Attacker_p": [
+      {
+        "id": "atkP_betup21_if_21",
+        "priority": 5,
+        "when": [
+          {
+            "has": "HasBetUp21"
+          },
+          {
+            "check": "Check_21"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseBetUp21"
+        }
+      },
+      {
+        "id": "atkP_draw5_if_low",
+        "priority": 10,
+        "when": [
+          {
+            "has": "HasDraw5"
+          },
+          {
+            "check": "Check_16_0"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDraw5"
+        }
+      },
+      {
+        "id": "atkP_draw4_if_mid",
+        "priority": 20,
+        "when": [
+          {
+            "has": "HasDraw4"
+          },
+          {
+            "check": "Check_17_0"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDraw4"
+        }
+      },
+      {
+        "id": "atkP_draw3_if_mid2",
+        "priority": 30,
+        "when": [
+          {
+            "has": "HasDraw3"
+          },
+          {
+            "check": "Check_18_0"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDraw3"
+        }
+      },
+      {
+        "id": "atkP_draw2_if_close",
+        "priority": 40,
+        "when": [
+          {
+            "has": "HasDraw2"
+          },
+          {
+            "check": "Check_19_0"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDraw2"
+        }
+      },
+      {
+        "id": "atkP_betup1",
+        "priority": 70,
+        "when": [
+          {
+            "has": "HasBetUp1_p"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseBetUp1"
+        }
+      }
+    ],
+    "Tricky_p": [
+      {
+        "id": "triP_desire_if_19_21",
+        "priority": 10,
+        "when": [
+          {
+            "has": "HasDesire"
+          },
+          {
+            "check": "Check_21_19"
+          },
+          {
+            "check": "Check_PlayerHands"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDesire"
+        }
+      },
+      {
+        "id": "triP_happiness_if_19_21",
+        "priority": 20,
+        "when": [
+          {
+            "has": "HasHappiness"
+          },
+          {
+            "check": "Check_21_19"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseHappiness"
+        }
+      },
+      {
+        "id": "triP_mindshift_if_player_trumps",
+        "priority": 30,
+        "when": [
+          {
+            "has": "HasMindShift"
+          },
+          {
+            "check": "Check_PlayerHands"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseMindShift"
+        }
+      },
+      {
+        "id": "triP_draw4",
+        "priority": 60,
+        "when": [
+          {
+            "has": "HasDraw4"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDraw4"
+        }
+      },
+      {
+        "id": "triP_destroy",
+        "priority": 90,
+        "when": [
+          {
+            "has": "HasDestroy"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDe"
+        }
+      }
+    ],
+    "LassBoss": [
+      {
+        "id": "boss_perfectdraw_x_10_18",
+        "priority": 10,
+        "when": [
+          {
+            "has": "HasPerfectDraw_x"
+          },
+          {
+            "check": "Check_18_10"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UsePerfectDraw_x"
+        }
+      },
+      {
+        "id": "boss_oblivion_19_21",
+        "priority": 20,
+        "when": [
+          {
+            "has": "HasOvlivion"
+          },
+          {
+            "check": "Check_21_19"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseOvlivion"
+        }
+      },
+      {
+        "id": "boss_deadsilence_19_21",
+        "priority": 30,
+        "when": [
+          {
+            "has": "HasDeadSilence"
+          },
+          {
+            "check": "Check_21_19"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseDeadSilence"
+        }
+      },
+      {
+        "id": "boss_perfectdraw_p_10_18",
+        "priority": 40,
+        "when": [
+          {
+            "has": "HasPerfectDraw_p"
+          },
+          {
+            "check": "Check_18_10"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UsePerfectDraw_p"
+        }
+      },
+      {
+        "id": "boss_betup2_x",
+        "priority": 90,
+        "when": [
+          {
+            "has": "HasBetUp2_x"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseBetUp2_x"
+        }
+      }
+    ],
+    "Rare": [
+      {
+        "id": "rare_escape",
+        "priority": 10,
+        "when": [
+          {
+            "has": "HasEscape"
+          },
+          {
+            "items_used_lt": 1
+          }
+        ],
+        "then": {
+          "do": "UseEscape"
+        }
+      }
+    ]
+  },
+  "trump_cards": {
+    "One-Up": {
+      "cat": "Bet",
+      "desc": "Opponent's bet +1 while on table. Also, draw 1 trump card.",
+      "weight": 10,
+      "etype": "Bet Modifier"
+    },
+    "Two-Up": {
+      "cat": "Bet",
+      "desc": "Opponent's bet +2 while on table. Also, draw 1 trump card.",
+      "weight": 20,
+      "etype": "Bet Modifier"
+    },
+    "Two-Up+": {
+      "cat": "Bet",
+      "desc": "Return opponent's last face-up card to deck. Opponent's bet +2 while on table.",
+      "weight": 50,
+      "etype": "Bet Modifier"
+    },
+    "2 Card": {
+      "cat": "Cards",
+      "desc": "Draw the 2 card. If not in deck, nothing happens.",
+      "weight": 15,
+      "etype": "Draw Forcer"
+    },
+    "3 Card": {
+      "cat": "Cards",
+      "desc": "Draw the 3 card. If not in deck, nothing happens.",
+      "weight": 15,
+      "etype": "Draw Forcer"
+    },
+    "4 Card": {
+      "cat": "Cards",
+      "desc": "Draw the 4 card. If not in deck, nothing happens.",
+      "weight": 15,
+      "etype": "Draw Forcer"
+    },
+    "5 Card": {
+      "cat": "Cards",
+      "desc": "Draw the 5 card. If not in deck, nothing happens.",
+      "weight": 15,
+      "etype": "Draw Forcer"
+    },
+    "6 Card": {
+      "cat": "Cards",
+      "desc": "Draw the 6 card. If not in deck, nothing happens.",
+      "weight": 15,
+      "etype": "Draw Forcer"
+    },
+    "7 Card": {
+      "cat": "Cards",
+      "desc": "Draw the 7 card. If not in deck, nothing happens.",
+      "weight": 15,
+      "etype": "Draw Forcer"
+    },
+    "Remove": {
+      "cat": "Cards",
+      "desc": "Return opponent's last face-up card to the deck.",
+      "weight": 45,
+      "etype": "Draw Forcer"
+    },
+    "Return": {
+      "cat": "Cards",
+      "desc": "Return your last face-up card to the deck.",
+      "weight": 40,
+      "etype": "Draw Forcer"
+    },
+    "Exchange": {
+      "cat": "Cards",
+      "desc": "Swap the last face-up cards drawn by you and opponent. Face-down cards can't be swapped.",
+      "weight": 75,
+      "etype": "Draw Forcer"
+    },
+    "Trump Switch": {
+      "cat": "Switch",
+      "desc": "Discard 2 of your trumps at random, draw 3 trumps. Works even with <2 trumps.",
+      "weight": 20,
+      "etype": "Special"
+    },
+    "Trump Switch+": {
+      "cat": "Switch",
+      "desc": "Discard 1 of your trumps at random, draw 4 trumps. Works even with 0 other trumps.",
+      "weight": 30,
+      "etype": "Special"
+    },
+    "Shield": {
+      "cat": "Defense",
+      "desc": "Your bet -1 while on table.",
+      "weight": 10,
+      "etype": "Defensive"
+    },
+    "Shield+": {
+      "cat": "Defense",
+      "desc": "Your bet -2 while on table.",
+      "weight": 20,
+      "etype": "Defensive"
+    },
+    "Destroy": {
+      "cat": "Counter",
+      "desc": "Remove opponent's last trump card from the table.",
+      "weight": 60,
+      "etype": "Board Wipe"
+    },
+    "Destroy+": {
+      "cat": "Counter",
+      "desc": "Remove ALL opponent's trump cards from the table.",
+      "weight": 90,
+      "etype": "Board Wipe"
+    },
+    "Destroy++": {
+      "cat": "Counter",
+      "desc": "Remove ALL opponent's trumps. Opponent can't use trumps while on table.",
+      "weight": 100,
+      "etype": "Board Wipe"
+    },
+    "Perfect Draw": {
+      "cat": "Cards",
+      "desc": "Draw the best possible card from the deck.",
+      "weight": 80,
+      "etype": "Draw Forcer"
+    },
+    "Perfect Draw+": {
+      "cat": "Cards",
+      "desc": "Draw the best possible card. Opponent's bet +5 while on table.",
+      "weight": 90,
+      "etype": "Draw Forcer"
+    },
+    "Ultimate Draw": {
+      "cat": "Cards",
+      "desc": "Draw the best possible card. Also, draw 2 trump cards.",
+      "weight": 100,
+      "etype": "Draw Forcer"
+    },
+    "Go for 24": {
+      "cat": "Target",
+      "desc": "Closest to 24 wins while on table. Replaces other 'Go For' cards.",
+      "weight": 35,
+      "etype": "Target Modifier"
+    },
+    "Go for 27": {
+      "cat": "Target",
+      "desc": "Closest to 27 wins while on table. Replaces other 'Go For' cards.",
+      "weight": 40,
+      "etype": "Target Modifier"
+    },
+    "Harvest": {
+      "cat": "Switch",
+      "desc": "Draw a trump card after every trump you use while on table.",
+      "weight": 50,
+      "etype": "Special"
+    },
+    "Love Your Enemy": {
+      "cat": "Cards",
+      "desc": "Opponent draws the best possible card for THEM from the deck.",
+      "weight": 60,
+      "etype": "Draw Forcer"
+    },
+    "Happiness": {
+      "cat": "Switch",
+      "desc": "Both players draw 1 trump card.",
+      "weight": 0,
+      "etype": "Attack"
+    },
+    "Desire": {
+      "cat": "Attack",
+      "desc": "YOUR bet +half YOUR trump count while on table.",
+      "weight": 0,
+      "etype": "Attack"
+    },
+    "Desire+": {
+      "cat": "Attack",
+      "desc": "YOUR bet +YOUR full trump count while on table.",
+      "weight": 0,
+      "etype": "Attack"
+    },
+    "Mind Shift": {
+      "cat": "Attack",
+      "desc": "You lose half trumps end of round (removed if you play 2+ this round).",
+      "weight": 0,
+      "etype": "Attack"
+    },
+    "Mind Shift+": {
+      "cat": "Attack",
+      "desc": "You lose ALL trumps end of round (removed if you play 3+ this round).",
+      "weight": 0,
+      "etype": "Attack"
+    },
+    "Shield Assault": {
+      "cat": "Attack",
+      "desc": "Enemy removes 3 of HIS Shields. YOUR bet +3 while on table.",
+      "weight": 0,
+      "etype": "Attack"
+    },
+    "Shield Assault+": {
+      "cat": "Attack",
+      "desc": "Enemy removes 2 of HIS Shields. YOUR bet +5 while on table.",
+      "weight": 0,
+      "etype": "Attack"
+    },
+    "Curse": {
+      "cat": "Attack",
+      "desc": "Removes a random trump from YOU. You draw the highest card in deck.",
+      "weight": 0,
+      "etype": "Attack"
+    },
+    "Black Magic": {
+      "cat": "Attack",
+      "desc": "Removes half YOUR trumps. YOUR bet +10. Enemy draws best card. MAX TWICE per fight.",
+      "weight": 0,
+      "etype": "Attack"
+    },
+    "Conjure": {
+      "cat": "Attack",
+      "desc": "Enemy draws 3 trumps. Enemy's bet +1 while on table.",
+      "weight": 0,
+      "etype": "Attack"
+    },
+    "Dead Silence": {
+      "cat": "Attack",
+      "desc": "You CANNOT draw cards (including via trump effects) while on table.",
+      "weight": 0,
+      "etype": "Attack"
+    },
+    "Twenty-One Up": {
+      "cat": "Attack",
+      "desc": "Your result must be exactly 21. YOUR bet +21 while on table.",
+      "weight": 0,
+      "etype": "Attack"
+    },
+    "Go for 17": {
+      "cat": "Target",
+      "desc": "Closest to 17 wins while on table. (Also used by enemies!)",
+      "weight": 30,
+      "etype": "Target Modifier"
+    },
+    "Escape": {
+      "cat": "Special",
+      "desc": "Enemy doesn't take damage if they lose while on table. Round resets.",
+      "weight": 0,
+      "etype": "Special"
+    },
+    "Oblivion": {
+      "cat": "Special",
+      "desc": "Cancels this round. Begins a new round. No damage to either side.",
+      "weight": 0,
+      "etype": "Special"
+    },
+    "Desperation": {
+      "cat": "Special",
+      "desc": "Story-only. Both bets become 100. Opponent can't draw cards.",
+      "weight": 0,
+      "etype": "Special"
+    }
+  }
+}
