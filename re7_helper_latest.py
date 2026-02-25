@@ -416,7 +416,7 @@ TRUMPS = {
     "7 Card": {"cat": "Cards", "desc": "Draw the 7 card. If not in deck, nothing happens.", "weight": 15, "etype": "Draw Forcer"},
 
     # ── Remove/Return/Swap ──
-    "Remove": {"cat": "Cards", "desc": "Return opponent's last face-up card to the deck.", "weight": 45, "etype": "Draw Forcer"},
+    "Remove": {"cat": "Cards", "desc": "Remove an opponent's face-up card from play for this round (it becomes a dead card).", "weight": 45, "etype": "Draw Forcer"},
     "Return": {"cat": "Cards", "desc": "Return your last face-up card to the deck.", "weight": 40, "etype": "Draw Forcer"},
     "Exchange": {"cat": "Cards", "desc": "Swap the last face-up cards drawn by you and opponent. Face-down cards can't be swapped.", "weight": 75, "etype": "Draw Forcer"},
 
@@ -3268,8 +3268,17 @@ def handle_interrupt(dead_cards: list, current_target: int, player_bet: int = 1,
         msg = f"★ {played_trump}: Opponent can void the round if losing. Use Destroy to remove!"
 
     elif pt in ("remove",):
-        print(" Which of your table trumps was removed? Use W to update.")
-        msg = f"{played_trump}: Enemy removed one of your active trumps."
+        print(" Which of YOUR face-up cards was removed from play this round?")
+        v = input(" Card value (1-11): ").strip()
+        if v.isdigit() and 1 <= int(v) <= 11:
+            val = int(v)
+            if val in player_visible:
+                player_visible.remove(val)
+            dead_cards = sorted(set(dead_cards + [val]))
+            msg = f"{played_trump}: Removed your {val} from play (dead card)."
+        else:
+            print(" (No valid value entered; state not updated.)")
+            msg = f"{played_trump}: Remove played (value unknown). Update if possible."
 
     # --- DRAW CARDS ---
     elif pt in ("perfect draw", "perfect draw+", "ultimate draw"):
