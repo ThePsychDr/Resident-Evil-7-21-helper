@@ -1,35 +1,56 @@
 # Resident Evil 7: 21 — Card Game Solver
 
-A terminal-based companion tool for the **21** card game from the *Resident Evil 7: Biohazard — Banned Footage Vol. 2* DLC. Tracks cards, computes odds, models opponent AI, and gives strategic advice in real time as you play.
+A terminal-based companion tool for the **21** card game from *Resident Evil 7: Biohazard — Banned Footage Vol. 2*.  
+It tracks the round state, computes odds, models opponent behavior, and gives practical trump-card advice in real time.
 
-## Core Functionality
+---
 
-This solver has been upgraded from a basic probability calculator into a highly predictive, state-aware companion application.
+## What’s new in the latest build
 
-* **Deck Tracking Warning:** The shared deck contains exactly 11 cards (1–11) with absolutely no duplicates. **It is absolutely vital that you meticulously input every single card drawn, returned, or exchanged into the terminal prompt.** If you fail to input an opponent's card draw, the entire combinatorial matrix becomes corrupted and the mathematical integrity of the system is compromised.
-* **Predictive AI Modeling:** The solver does not treat all AI as identical. At the start of a sequence, you will be prompted for the visual descriptors of the current AI you are facing (sack markings, variant cuts/hands/wires). This profile is stored in a persistent memory object that actively dictates the heuristic weighting applied to all trump card suggestions.
-* **Dynamic Trump Recommendation Engine:** The solver utilizes a 4-tier priority engine that scores your held cards based on utility weight, the active opponent profile, and your position in the gauntlet. It prioritizes long-term resource conservation — for example, automatically outputting "SAVE DESTROY CARDS FOR FIGHT #10" when facing non-boss opponents in Survival+. **Smart suppression:** Trump advice only appears when it matters — when you're busted, losing, at low HP, fighting a boss, or facing enemy trump threats. Comfortable early-game wins against weak opponents get no unnecessary clutter.
-* **Standard vs Special Trump Display:** Opponent profiles now separate standard trumps (One-Up, Shield — common cards any opponent uses) from special trumps (Desire, Mind Shift, Curse — unique dangerous abilities). Special trumps are highlighted in the target info panel.
-* **Hand Memory:** The solver remembers your full hand (face-down card + visible cards) and opponent's visible cards between re-analyzes within the same round. On re-analyze, it shows remembered state and lets you add new cards (`v 3` to add your visible card, `o 5` to add opponent's card) or reset (`r`). Face-down card is locked once set — only a trump card effect can change it.
-* **Run Restart Suggestion:** After each fight in the first half of a gauntlet, the solver evaluates your HP-to-remaining-fights ratio. If survival probability is critically low (e.g., 2 HP with 6 fights left), it recommends restarting the run rather than grinding out a doomed attempt.
-* **Mr. Big Head Priority:** In Survival+, if Harvest is not yet unlocked, Mr. Big Head is flagged as a priority target when he appears. Defeating him twice unlocks Harvest — one of the strongest trump cards in the game.
-* **No-Damage Tracking:** Automatically tracks damage across a Survival run. The instant you take damage, it flags the challenge as failed and offers to restart. Completing all 5 fights at full HP confirms the Ultimate Draw unlock.
-* **Challenge Integration:** All challenges (bust-win, no-damage, 15 trump cards, Big Head priority) are tracked through normal gameplay — no separate Challenge Lab menu. Bust-win suggestions are gated: only shown when the challenge is incomplete, HP > 2, you're not winning comfortably, and it's not round 1 at full HP.
-* **Opponent-Specific Interrupt System:** When the opponent plays a trump card mid-round, press **I** and the solver shows that specific opponent's known trump cards. Select which one they played and the solver walks you through the effects step by step — updating bets, target, hand memory, and dead cards automatically. No more guessing which category an effect falls into.
-* **Failed Draw Deduction:** When playing a numbered draw card (2–7 Card) and it fails (card not in deck), the solver automatically deduces that the opponent holds that card as their hidden face-down card. This transitions the opponent from a probabilistic range to a mathematical certainty.
-* **Utility Weight System:** Every trump card has an internal `utility_weight` (0–100) and `effect_type` classification. Weights are **never shown to the user** — they drive sorting and prioritization silently. When multiple cards solve the same problem, the cheapest is suggested first. High-weight cards (≥60) get "SAVE for bosses" warnings on non-boss fights.
-* **Auto Bet & Target Tracking:** Bets and target values update automatically when you play trump cards (P) or declare enemy interrupts (I). One-Up, Two-Up, Shield, Perfect Draw+, Desire, Shield Assault — all tracked live. Go For cards auto-change the target. Everything resets between rounds since table cards clear.
-* **Silent Challenge Tracker:** All challenges are integrated into normal gameplay — no separate menu required. The solver automatically detects challenge opportunities (bust-win, no-damage, 15 trumps) and provides contextual advice only when conditions are right.
+- **“Remove” is now modeled consistently everywhere as a *dead-card* effect.**  
+  **Remove takes a face-up number card out of play for the rest of the round** (it becomes a *dead card*). That description is synced in both the Python `TRUMPS` database and the Hoffman rule table JSON.
 
-## The Lucas Tutorial (Normal Mode) Restrictions
+- **Enemy “Remove” interrupt is now state-aware.**  
+  If the opponent plays **Remove**, the interrupt flow updates your round state by removing the affected **face-up number card** from your table and adding it to **dead cards**.
 
-**CRITICAL DISCLAIMER:** Standard algorithmic advice is intentionally suspended during the final "Saw" round of the tutorial match against Lucas Baker.
+- **Dead-card tracking is explicit (and used by the odds engine).**  
+  The solver keeps a `dead_cards` list for values that are no longer drawable this round (see “Dead cards” below). This directly changes remaining-deck odds.
 
-This is due to the game's hard-coded narrative cheating. Lucas will inevitably play 'Desperation' (permanently locking all card draws, setting bets to 100) and 'Perfect Draw' (guaranteeing himself a perfect 21). Standard probability logic or target manipulation cannot overcome this scripted sequence.
+- **Hoffman rule table JSON stayed in sync with newly-found cards + corrected descriptions.**  
+  The `hoffman_rule_table.json` file includes a trump catalog (names + categories + effect types + weights) and Hoffman decision rules, so you can tweak AI logic without touching code.
 
-**To survive:** You must hold the **"Love Your Enemy"** trump card. When the solver detects this round (Normal mode, Round 3), it suspends all calculations and outputs explicit instructions to use Love Your Enemy, which forces Lucas to draw past 21 and bust.
+---
 
-## Supported Game Modes
+## Core functionality
+
+- **Deck tracking (1–11, no duplicates):** every round has exactly **11 cards (1–11)**. If you miss inputs (especially enemy draws/returns), odds will drift.
+- **Hand memory:** remembers your face-down + visible cards and opponent visible cards between re-analyzes within a round.
+- **Opponent-specific AI modeling:** different Hoffman variants have different trump kits and behavior notes.
+- **Dynamic trump recommendations:** ranks your held trumps by utility + context (boss fight, low HP, busted, etc.) and avoids clutter in easy spots.
+- **Interrupt system:** when the opponent plays a trump mid-round, press **I** to apply the effect step-by-step and keep state consistent (bets, target, hand memory, dead cards).
+- **Gauntlet resource awareness (Survival+):** warns you when to conserve high-value trumps for Fight #5 / Fight #10.
+- **Challenge-aware suggestions:** (bust-win, no-damage, etc.) are integrated into normal play and only appear when conditions make sense.
+
+---
+
+## Dead cards (important)
+
+In the real minigame, the round deck is “1–11 once each,” and most effects are draws/returns/swaps.
+
+In **this solver**, a **dead card** means:  
+> a card value that is treated as **not available to be drawn again this round**.
+
+Dead cards can happen when:
+
+- **Remove** is used (solver model): the chosen face-up number card is **removed from play for the rest of the round**.
+- **Forced draws** you can fully observe and confirm (e.g., enemy Perfect/Ultimate Draw) — once you confirm the drawn value, it can be treated as “accounted for” in remaining-deck math.
+- **Curse** (solver tracking): if the opponent forces a “highest remaining card” draw and you confirm it, that value is marked accounted for.
+
+Dead cards reset every round.
+
+---
+
+## Supported game modes
 
 | Mode | Opponents | Your HP | Opponent HP | Mechanic |
 |------|-----------|---------|-------------|----------|
@@ -37,76 +58,75 @@ This is due to the game's hard-coded narrative cheating. Lucas will inevitably p
 | **Survival** | 5 Hoffmans | 5 (carries over) | 5 each | Finger-chopping |
 | **Survival+** | 10 Hoffmans | 10 (carries over) | 10 each | Electric rig |
 
-### Survival+ Opponent Structure
+### Survival+ structure
 
-Opponents 1–4 and 6–9 are drawn randomly from a pool of variant types. The solver will ask you to identify them by their sack markings (Tally Marks, Bloody Handprints, Barbed Wire, Mr. Big Head) and then by their specific sub-variant (e.g., 2 cuts vs. 3 cuts).
+- Fights **1–4** and **6–9** are drawn from variant pools (Tally Marks, Bloody Handprints, Barbed Wire, Mr. Big Head).
+- Two fights are fixed:
+  - **Fight #5 — Molded Hoffman (mid-boss)**: nasty specials (Curse / Conjure / etc.)
+  - **Fight #10 — Undead Hoffman (final boss)**: Dead Silence / Oblivion / Ultimate Draw chains
 
-Two fights are always fixed:
-* **Fight #5** — Molded Hoffman (mid-boss). Uses Curse, Black Magic, Conjure.
-* **Fight #10** — Undead Hoffman (final boss). Uses Dead Silence, Oblivion, Ultimate Draw. Can chain multiple special trumps per round.
+---
 
-### Gauntlet Resource Management
+## The Lucas tutorial (Normal mode) restriction
 
-The solver tracks your position in the gauntlet (`fight_num`) and automatically:
-- **Fights 1–4:** Advises saving Destroy cards for Molded Hoffman (fight #5)
-- **Fights 6–9:** Urgently advises saving ALL Destroy cards for Undead Hoffman (fight #10)
-- **Boss fights:** Activates opponent-specific counter-strategies
+**Important:** standard algorithmic advice is intentionally suspended during the final “Saw” round vs Lucas.
 
-## How to Use It During a Game
+Lucas is scripted to use **Desperation** (locks draws / massive bet) and **Perfect Draw** (guarantees 21).  
+The solver will switch into “scripted survival instructions” mode for that round.
 
-1.  Run the script: `python3 re7_helper.py`
-2.  Select your mode (Normal, Survival, or Survival+).
-3.  Identify your opponent when prompted (sack markings, variant).
-4.  Enter your starting trump cards — the solver asks immediately.
-5.  Follow the main fight loop:
-    * **A. Analyze hand:** Enter your face-down card (locked once set), visible cards, and opponent's visible cards. The solver remembers your full hand between re-analyzes — on subsequent calls, add new cards with `v 3` (your card) or `o 5` (opponent card), or `r` to reset.
-    * **I. Interrupt:** Enemy played a trump? Press I — the solver shows the opponent's known trump list and walks you through the effects step by step. Bets, target, and hand memory update automatically.
-    * **P. Play a trump card:** Select from your hand. Bets and target auto-update for bet cards and Go For cards. Failed numbered draws (2–7 Card) trigger hidden card deduction.
-    * **W. Edit trump hand:** Update your inventory after draws, discards, or enemy effects.
-    * **D. Done:** Record the round result (win/loss/tie/void). Cancelling with option 5 keeps you in the current round. Target and bets reset for the next round.
-    * **O. Opponent intel:** View enemy AI profile with standard and special trumps.
+---
 
-## Trump Card Database
+## How to use it during a game
 
-The solver categorizes and tracks all 37+ trump cards across 7 types:
+1. Run the script:
+   ```bash
+   python3 re7_helper.py
+   ```
+2. Pick mode (Normal / Survival / Survival+).
+3. Identify your opponent when prompted (variant markers).
+4. Enter your starting trump hand (the solver asks up front).
+5. During the fight loop:
+   - **A — Analyze:** input/confirm face-down + visible cards + opponent visible cards.
+   - **H — You drew / O — Opponent drew:** quick state updates.
+   - **I — Interrupt:** enemy played a trump → apply effect step-by-step (including **Remove** → dead cards).
+   - **P — Play a trump:** apply your trump effects; target/bets update where applicable.
+   - **W — Edit trump hand:** fix inventory after draws/discards/steals.
+   - **D — Done:** record the round result (win/loss/tie/void) and advance.
 
-| Type | Examples | Weight Range |
-|------|----------|-------------|
-| Bet Modifier | One-Up, Two-Up, Two-Up+ | 10–50 |
-| Draw Forcer | Perfect Draw, Ultimate Draw, 2-7 Card | 15–100 |
-| Board Wipe | Destroy, Destroy+, Destroy++ | 60–100 |
-| Target Modifier | Go for 17/24/27 | 30–40 |
-| Defensive | Shield, Shield+ | 10–20 |
-| Special | Trump Switch, Harvest | 20–50 |
-| Attack (enemy-only) | Curse, Dead Silence, Desire | 0 (not player-obtainable) |
+---
 
-The `utility_weight` values drive the solver's internal prioritization — lower-weight cards are burned first, higher-weight cards are preserved for bosses. These values are never displayed to the user. Trump card advice only appears when necessary — boss fights, losing positions, or challenge opportunities.
+## Trump card database
 
-## Challenge Tracking
+The solver includes a trump database with:
 
-All challenges are integrated into normal gameplay. There is no separate Challenge Lab menu — the solver detects opportunities and warns you automatically.
+- **Category** (Bet / Cards / Target / Defense / Switch / Special / Enemy-only, etc.)
+- **Effect type** (Bet modifier, draw forcer, board wipe, target modifier, control, etc.)
+- **Utility weight** used internally for prioritization (not shown in UI)
 
-| Challenge | Reward | How It Works |
-|-----------|--------|--------------|
-| Win while bust | Starting Trump +1 | Shown only when: challenge incomplete, HP > 2, not winning comfortably, not early-game full HP, and bust win% ≥ 20% |
-| Use 15+ trumps in 1 round | Trump Switch+ | Very difficult in Survival (short fights), recommended in Survival+ (10 HP opponents). Requires Harvest + Trump Switch |
-| Hit 21 three times in a row | Go for 27 | Monitors consecutive perfect scores |
-| Beat Survival without damage | Ultimate Draw | Auto-tracked in Survival mode. Detects any damage, offers immediate restart. Congratulates on completion |
-| Beat Survival+ without damage | Grand Reward | Cosmetic only — not tracked |
-| Defeat Mr. Big Head | Harvest | Auto-flagged as priority target in Survival+ when Harvest is not yet unlocked |
+Notable tracked effects include:
 
-### No-Damage Survival
+- **Go For** targets (**17 / 24 / 27**)  
+- **Numbered draws** (**2–7 Card**) with “failed draw ⇒ hidden-card deduction” logic  
+- **Two-Up+** return-to-deck tracking  
+- **Dead Silence / Oblivion / Mind Shift / Escape** as interrupt-aware control trumps  
+- **Remove** as **dead-card removal** in this solver model
 
-No-damage tracking is **automatic** when playing Survival mode. The solver compares HP before and after each fight — the instant you take damage, it flags the challenge as failed and offers to restart the run. Complete all 5 fights at full HP to unlock Ultimate Draw.
+---
 
-### 15-Trump Round
+## Hoffman rule table (JSON)
 
-This challenge is **very difficult in Survival** (5 HP opponents = 3-5 round fights) but **recommended in Survival+** (10 HP opponents = 5-10 rounds, more time to cycle). Required setup: Harvest (every trump played draws a replacement) + Trump Switch/Switch+ (discard old, draw new).
+`hoffman_rule_table.json` is the “rules engine” side:
 
-## Running
+- contains a Hoffman decision list (priority-ordered rules)
+- contains the trump catalog used for UI descriptions and classification
+- keeps card descriptions consistent with what the solver actually does (especially important for interrupts)
 
-```bash
-python3 re7_helper.py
-```
+If you edit the JSON, keep in mind: **rules are evaluated top-to-bottom** and the first match wins.
 
-Requires Python 3.6+. No external dependencies.
+---
+
+## Requirements
+
+- Python **3.6+**
+- No external dependencies
+
