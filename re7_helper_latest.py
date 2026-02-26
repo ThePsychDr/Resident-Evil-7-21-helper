@@ -416,7 +416,7 @@ TRUMPS = {
     "7 Card": {"cat": "Cards", "desc": "Draw the 7 card. If not in deck, nothing happens.", "weight": 15, "etype": "Draw Forcer"},
 
     # ── Remove/Return/Swap ──
-    "Remove": {"cat": "Cards", "desc": "Remove an opponent's face-up card from play for this round (it becomes a dead card).", "weight": 45, "etype": "Draw Forcer"},
+    "Remove": {"cat": "Cards", "desc": "Return opponent's last face-up card to the deck.", "weight": 45, "etype": "Draw Forcer"},
     "Return": {"cat": "Cards", "desc": "Return your last face-up card to the deck.", "weight": 40, "etype": "Draw Forcer"},
     "Exchange": {"cat": "Cards", "desc": "Swap the last face-up cards drawn by you and opponent. Face-down cards can't be swapped.", "weight": 75, "etype": "Draw Forcer"},
 
@@ -2970,6 +2970,7 @@ def analyze_board_state(
     target: int, dead_cards: list, challenges_completed: set, available_trumps: set,
     trump_hand: list, *, fight_num: int = 0, mode_key: str = "3",
     face_down_card: int, player_visible: list, opp_visible: list,
+    opp_hidden_known: int = None,
     opp_behavior: str = "auto", banker_ai: "BankerAI" = None,
     condition_state: "TrumpConditionState" = None,
 ) -> None:
@@ -2996,6 +2997,8 @@ def analyze_board_state(
 
     dead       = sorted(set(dead_cards or []))
     all_seen   = set(u_hand + o_vis + dead)
+    if opp_hidden_known is not None:
+        all_seen.add(int(opp_hidden_known))
     remaining  = [c for c in range(1, 12) if c not in all_seen]
     u_total    = sum(u_hand)
     o_total    = sum(o_vis)
@@ -3005,8 +3008,13 @@ def analyze_board_state(
 
     if opp_behavior == "stay":
         print(f"\n → Opponent STAYED. Their visible total: {o_total}")
-        print(f"   Hidden card is one of: {sorted(remaining)}")
-        print(f"   Possible totals: {sorted(o_total + c for c in remaining)}")
+        if opp_hidden_known is not None:
+            h = int(opp_hidden_known)
+            print(f"   Hidden card is: {h}  (deduced / known)")
+            print(f"   Total: {o_total + h}")
+        else:
+            print(f"   Hidden card is one of: {sorted(remaining)}")
+            print(f"   Possible totals: {sorted(o_total + c for c in remaining)}")
 
     display_card_matrix(sorted(all_seen))
     safe_pct, bust_pct, perfect_draws = calculate_probabilities(remaining, u_total, target)
@@ -3268,17 +3276,8 @@ def handle_interrupt(dead_cards: list, current_target: int, player_bet: int = 1,
         msg = f"★ {played_trump}: Opponent can void the round if losing. Use Destroy to remove!"
 
     elif pt in ("remove",):
-        print(" Which of YOUR face-up cards was removed from play this round?")
-        v = input(" Card value (1-11): ").strip()
-        if v.isdigit() and 1 <= int(v) <= 11:
-            val = int(v)
-            if val in player_visible:
-                player_visible.remove(val)
-            dead_cards = sorted(set(dead_cards + [val]))
-            msg = f"{played_trump}: Removed your {val} from play (dead card)."
-        else:
-            print(" (No valid value entered; state not updated.)")
-            msg = f"{played_trump}: Remove played (value unknown). Update if possible."
+        print(" Which of your table trumps was removed? Use W to update.")
+        msg = f"{played_trump}: Enemy removed one of your active trumps."
 
     # --- DRAW CARDS ---
     elif pt in ("perfect draw", "perfect draw+", "ultimate draw"):
@@ -3457,6 +3456,8 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
         input("\n Press Enter once this round concludes...")
         return True
 
+    opp_hidden_known = None  # known/deduced opponent face-down card for this round
+
     # helper — re-render the board after any state change
     def _render():
         if face_down_card is None:
@@ -3466,7 +3467,8 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
             dead_cards, challenges_completed, available_trumps, trump_hand,
             fight_num=fight_num, mode_key=mode_key,
             face_down_card=face_down_card, player_visible=player_visible,
-            opp_visible=opp_visible, opp_behavior=opp_behavior,
+            opp_visible=opp_visible, opp_hidden_known=opp_hidden_known,
+            opp_behavior=opp_behavior,
             banker_ai=_banker_ai, condition_state=_condition,
         )
 
@@ -3482,6 +3484,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
         dead_cards     = []
         player_visible = []
         opp_visible    = []
+        opp_hidden_known = None
         face_down_card = None
 
         _condition.round                   = round_num
@@ -3549,7 +3552,11 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
             if action == "H":
                 c = input(" Card you drew (1-11): ").strip()
                 if c.isdigit() and 1 <= int(c) <= 11:
-                    player_visible.append(int(c))
+                    cv = int(c)
+                    player_visible.append(cv)
+                    if opp_hidden_known == cv:
+                        print(" ⚠  That value was previously locked as the opponent's hidden card — clearing the lock.")
+                        opp_hidden_known = None
                     _render()
                 else:
                     print(" Must be 1–11.")
@@ -3558,7 +3565,11 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
             elif action == "O":
                 c = input(" Card opponent drew (1-11): ").strip()
                 if c.isdigit() and 1 <= int(c) <= 11:
-                    opp_visible.append(int(c))
+                    cv = int(c)
+                    opp_visible.append(cv)
+                    if opp_hidden_known == cv:
+                        print(" ⚠  That value was previously locked as the opponent's hidden card — clearing the lock.")
+                        opp_hidden_known = None
                     _condition.banker_took_card = True
                     _render()
                 else:
@@ -3681,8 +3692,20 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
 
                     elif played in ("2 Card","3 Card","4 Card","5 Card","6 Card","7 Card"):
                         cv = int(played[0])
-                        if input(f" Drew the {cv}? (y/n) ").strip().lower() == "y":
+                        drew = input(f" Drew the {cv}? (y/n) ").strip().lower()
+                        if drew == "y":
                             player_visible.append(cv)
+                        else:
+                            # Failed numbered draw: card wasn't in the deck.
+                            # In RE7 (single-copy deck), that usually means the opponent's hidden face-down card is that value.
+                            accounted = set(([face_down_card] if face_down_card else []) + player_visible + opp_visible + (dead_cards or []))
+                            if opp_hidden_known is not None:
+                                accounted.add(int(opp_hidden_known))
+                            if cv not in accounted:
+                                opp_hidden_known = cv
+                                print(f" ★ Failed draw: {cv} is not in the deck → opponent hidden card must be {cv}.")
+                            else:
+                                print(f" (Failed draw: {cv} already accounted for — no new deduction.)")
                         trump_hand.pop(idx)
 
                     elif played in ("Destroy", "Destroy+", "Destroy++"):
