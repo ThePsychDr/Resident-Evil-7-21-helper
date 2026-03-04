@@ -5,6 +5,8 @@ If it turns out the game uses a fixed, in-game-deducible seed (something you can
 If anyone wants to continue and publish their own build using my work as a base, please give credit.
 Its pretty accurate already from using internet sources and in game testing but still has some issues
 
+-the current build can be found in the "sigh" branch - so far no rng state found
+
 # Resident Evil 7: 21 — Card Game Solver
 
 A terminal-based companion tool for the **21** card game from the *Resident Evil 7: Biohazard — Banned Footage Vol. 2* DLC. Tracks cards, computes odds, models opponent AI, and gives strategic advice in real time as you play.
