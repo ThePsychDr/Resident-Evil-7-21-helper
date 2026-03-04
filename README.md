@@ -128,5 +128,6 @@ If you edit the JSON, keep in mind: **rules are evaluated top-to-bottom** and th
 ## Requirements
 
 - Python **3.6+**
+- hoffman_rule_table.json
 - No external dependencies
 
