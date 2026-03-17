@@ -24,6 +24,8 @@ Run:
 """
 
 import os
+import json
+import re
 
 # ============================================================
 # GAME MODE DEFINITIONS
@@ -114,7 +116,7 @@ OPPONENTS_SURVIVAL = [
         "mode": "Survival",
         "desc": "Sack head covered in bloody handprints.",
         "ai": "TRUMP STEALER",
-        "trumps": ["Happiness", "Desire", "Mind Shift"],
+        "trumps": ["Happiness", "Return", "Desire", "Mind Shift"],
         "standard_trumps": ["One-Up", "Shield"],
         "stay_val": 16,
         "hp": 5,
@@ -163,7 +165,7 @@ OPPONENTS_SURVIVAL = [
         "mode": "Survival",
         "desc": "Head covered in black mold. Final boss of Survival.",
         "ai": "DECK MANIPULATOR",
-        "trumps": ["Curse", "Conjure"],
+        "trumps": ["Curse", "Conjure", "Go for 24"],
         "standard_trumps": ["One-Up", "Two-Up", "Shield"],
         "stay_val": 17,
         "hp": 5,
@@ -172,6 +174,7 @@ OPPONENTS_SURVIVAL = [
             "'Curse' discards one of your trumps AND forces you to draw\n"
             "the HIGHEST remaining card — can be lethal.\n"
             "'Conjure' lets him draw 3 trumps (his bet goes up by 1).\n"
+            "'Go for 24' raises the target to 24.\n"
             "STRATEGY: Save 'Destroy' for Curse.\n"
             "Use 'Return'/'Exchange' to fix a forced bad draw.\n"
             "Winning this unlocks Survival+ mode."
@@ -189,33 +192,36 @@ OPPONENTS_SURVIVAL_PLUS = [
         "hp": 10,
         "variants": {
             "2 cuts": {
-                "trumps": ["Happiness", "Return", "Desire", "Mind Shift"],
+                "visual_id": "2 vertical slash marks on the sack",
+                "trumps": ["One-Up", "Two-Up+", "4 Card", "5 Card", "6 Card", "Twenty-One Up"],
                 "tip": (
-                    "2-CUT VARIANT (less dangerous):\n"
-                    "Trumps: Happiness, Return, Desire, Mind Shift\n"
-                    "'Desire' raises YOUR bet by half your trump count.\n"
-                    "'Mind Shift' — you lose half trumps unless you play 2 this round.\n"
-                    "STRATEGY: Don't hoard trumps. Play 2 per round to block Mind Shift."
+                    "2-CUT VARIANT:\n"
+                    "Trumps: One-Up, Two-Up+, N Cards (lots), Twenty-One Up\n"
+                    "'Twenty-One Up' forces YOUR result to be exactly 21 — YOUR bet +21!\n"
+                    "'Two-Up+' removes your last face-up card AND raises bet by 2.\n"
+                    "Has many numbered card draws to control his hand.\n"
+                    "STRATEGY: Keep 'Destroy' for Twenty-One Up — it's a huge bet bomb.\n"
+                    "Don't let your total sit near 21 or he'll lock you with it."
                 ),
             },
             "3 cuts": {
-                "trumps": ["One-Up", "Two-Up", "Desire", "Happiness"],
+                "visual_id": "3 vertical slash marks on the sack",
+                "trumps": ["4 Card", "One-Up", "Two-Up", "Desire", "Happiness"],
                 "tip": (
                     "3-CUT VARIANT:\n"
-                    "Trumps: One-Up, Two-Up, Desire, Happiness\n"
+                    "Trumps: Draw Card, One-Up, Two-Up, Desire, Happiness\n"
                     "Has bet-raising cards (One-Up, Two-Up) — can stack damage.\n"
                     "'Desire' raises YOUR bet by half your trump count.\n"
                     "STRATEGY: Don't hoard trumps. Destroy his bet-ups if stacking."
                 ),
             },
         },
-        # Fallback if no variant selected (union of all)
-        "trumps": ["One-Up", "Two-Up", "Happiness", "Return", "Desire", "Mind Shift"],
+        "trumps": ["One-Up", "Two-Up", "Two-Up+", "4 Card", "5 Card", "Desire", "Happiness", "Twenty-One Up"],
         "tip": (
             "Variants based on cut count (select variant at fight start):\n"
-            " 2 cuts: Happiness, Return, Desire, Mind Shift\n"
-            " 3 cuts: One-Up, Two-Up, Desire, Happiness\n"
-            "STRATEGY: Don't hoard trumps — Desire punishes it."
+            " 2 cuts: One-Up, Two-Up+, N Cards (lots), Twenty-One Up\n"
+            " 3 cuts: Draw Card, One-Up, Two-Up, Desire, Happiness\n"
+            "STRATEGY: Save Destroy for Twenty-One Up (2-cut) or stack bet-ups (3-cut)."
         ),
     },
     {
@@ -227,32 +233,35 @@ OPPONENTS_SURVIVAL_PLUS = [
         "hp": 10,
         "variants": {
             "2 hands": {
+                "visual_id": "2 bloody handprints on the sack",
                 "trumps": ["Happiness", "Return", "Desire", "Mind Shift"],
                 "tip": (
                     "2-HAND VARIANT:\n"
                     "Trumps: Happiness, Return, Desire, Mind Shift\n"
-                    "Same loadout as 2-cut Tally Mark.\n"
-                    "'Mind Shift' — play 2 trumps to remove it.\n"
-                    "STRATEGY: Spend trumps, don't hoard."
+                    "'Mind Shift' — play 2 trumps this round or lose half yours at end.\n"
+                    "'Desire' — YOUR bet +half your trump count while it's on table.\n"
+                    "'Return' removes your last face-up card (disruption).\n"
+                    "STRATEGY: Spend trumps, don't hoard. Play 2/round for Mind Shift."
                 ),
             },
             "4 hands": {
-                "trumps": ["Happiness", "Desire+", "Mind Shift+"],
+                "visual_id": "4 bloody handprints on the sack",
+                "trumps": ["4 Card", "Happiness", "Desire+", "Mind Shift+"],
                 "tip": (
                     "4-HAND VARIANT (DANGEROUS):\n"
-                    "Trumps: Happiness, Desire+, Mind Shift+\n"
-                    "'Desire+' raises YOUR bet by your FULL trump count!\n"
-                    "'Mind Shift+' — you lose ALL trumps unless you play 3 this round!\n"
+                    "Trumps: Draw Card, Happiness, Desire+, Mind Shift+\n"
+                    "'Desire+' — YOUR bet equals your FULL trump count while on table!\n"
+                    "'Mind Shift+' — lose ALL your trumps unless you play 3 this round!\n"
                     "STRATEGY: Spend trumps AGGRESSIVELY. Never hold more than 3-4.\n"
                     "This is one of the most punishing non-boss opponents."
                 ),
             },
         },
-        "trumps": ["Desire", "Desire+", "Mind Shift", "Mind Shift+", "Happiness", "Return"],
+        "trumps": ["4 Card", "Desire", "Desire+", "Mind Shift", "Mind Shift+", "Happiness", "Return"],
         "tip": (
             "Variants based on handprint count (select variant at fight start):\n"
             " 2 hands: Happiness, Return, Desire, Mind Shift\n"
-            " 4 hands: Happiness, Desire+, Mind Shift+ (DANGEROUS)\n"
+            " 4 hands: Draw Card, Happiness, Desire+, Mind Shift+ (DANGEROUS)\n"
             "STRATEGY: Spend trumps aggressively, never hoard."
         ),
     },
@@ -265,6 +274,7 @@ OPPONENTS_SURVIVAL_PLUS = [
         "hp": 10,
         "variants": {
             "3 wires": {
+                "visual_id": "3 horizontal barbed wire wraps on the sack",
                 "trumps": ["Shield", "Go for 17", "Shield Assault"],
                 "tip": (
                     "3-WIRE VARIANT:\n"
@@ -275,6 +285,7 @@ OPPONENTS_SURVIVAL_PLUS = [
                 ),
             },
             "4 wires": {
+                "visual_id": "4 horizontal barbed wire wraps on the sack",
                 "trumps": ["Shield", "Shield Assault", "Go for 17", "Two-Up"],
                 "tip": (
                     "4-WIRE VARIANT:\n"
@@ -354,39 +365,37 @@ BOSS_SURVIVAL_PLUS_FINAL = {
     "mode": "Survival+",
     "desc": "Knives and scissors embedded in head. ALWAYS opponent #10.",
     "ai": "GAME BREAKER",
-    "trumps": ["Ultimate Draw", "Two-Up+", "Perfect Draw+", "Dead Silence", "Oblivion", "Remove"],
+    "trumps": ["Ultimate Draw", "Two-Up+", "Perfect Draw+", "Dead Silence", "Oblivion"],
     "stay_val": 18,
     "hp": 10,
     "trump_behavior": {
         "Dead Silence": {"freq": "very_high", "when": "early", "repeats": True,
                          "note": "Uses most often. Will replay after Destroy. Priority Destroy target."},
         "Perfect Draw+": {"freq": "high", "when": "any", "repeats": True,
-                          "note": "Almost always gets 21. Exchange can bust him if his drawn card > yours."},
+                          "note": "Almost always gets 21. Opponent bet +5. Very dangerous."},
         "Ultimate Draw": {"freq": "high", "when": "any", "repeats": True,
                           "note": "Gets best card + 2 trumps. Very dangerous."},
         "Oblivion": {"freq": "medium", "when": "losing", "repeats": True,
-                     "note": "Cancels the round when he's losing. Cannot be countered. Just restart."},
+                     "note": "Cancels the round when losing. Cannot be countered."},
         "Two-Up+": {"freq": "medium", "when": "winning", "repeats": True,
-                    "note": "Returns your last card AND raises bet. Use when he thinks he'll win."},
-        "Remove": {"freq": "medium", "when": "any", "repeats": True,
-                   "note": "Takes your last face-up card. Common disruption."},
+                    "note": "Returns your last card AND raises bet by 2."},
     },
     "tip": (
         "!! FINAL BOSS — MOST DANGEROUS OPPONENT !!\n"
         "'Ultimate Draw' and 'Perfect Draw+' — almost always gets perfect cards.\n"
         "'Dead Silence' prevents you from drawing ANY cards (even via trumps).\n"
         "  He uses Dead Silence REPEATEDLY — save multiple Destroys!\n"
-        "'Oblivion' cancels the entire round — wastes your good hands. CANNOT be countered.\n"
+        "'Oblivion' cancels the entire round — wastes your good hands. Cannot be countered.\n"
         "'Two-Up+' returns your last card AND raises bet by 2.\n"
-        "He also uses 'Remove' to take your face-up cards!\n"
         "STRATEGY:\n"
         " 1) Save 'Destroy' for Dead Silence (highest priority). He WILL replay it.\n"
-        " 2) If Dead Silence is up and you can't Destroy: use Exchange to try busting him.\n"
+        " 2) If Dead Silence is up and you cannot Destroy: use Exchange to try busting him.\n"
         " 3) Stack shields — he hits HARD.\n"
-        " 4) Be patient — Oblivion wastes rounds but doesn't hurt you.\n"
+        " 4) Be patient — Oblivion wastes rounds but does not hurt you.\n"
         " 5) This fight is luck-heavy. Stay calm, play conservatively."
     ),
 }
+
 
 # ============================================================
 # TRUMP CARD DATABASE
@@ -431,7 +440,6 @@ TRUMPS = {
     "Ultimate Draw": {"cat": "Cards", "desc": "Draw the best possible card. Also, draw 2 trump cards.", "weight": 100, "etype": "Draw Forcer"},
 
     # ── Target Changers ──
-    "Go for 17": {"cat": "Target", "desc": "Closest to 17 wins while on table. Replaces other 'Go For' cards.", "weight": 30, "etype": "Target Modifier"},
     "Go for 24": {"cat": "Target", "desc": "Closest to 24 wins while on table. Replaces other 'Go For' cards.", "weight": 35, "etype": "Target Modifier"},
     "Go for 27": {"cat": "Target", "desc": "Closest to 27 wins while on table. Replaces other 'Go For' cards.", "weight": 40, "etype": "Target Modifier"},
 
@@ -440,41 +448,42 @@ TRUMPS = {
     "Love Your Enemy": {"cat": "Cards", "desc": "Opponent draws the best possible card for THEM from the deck.", "weight": 60, "etype": "Draw Forcer"},
 
     # ── Enemy-exclusive trump cards (weight 0 = not player-obtainable) ──
-    "Happiness": {"cat": "Switch", "desc": "Both players draw 1 trump card. (Enemy-used)", "weight": 0, "etype": "Attack"},
-    "Desire": {"cat": "Attack", "desc": "YOUR bet increased by half YOUR held trump count while on table. (Enemy-used)", "weight": 0, "etype": "Attack"},
-    "Desire+": {"cat": "Attack", "desc": "YOUR bet increased by YOUR full held trump count while on table. (Enemy-used)", "weight": 0, "etype": "Attack"},
+    "Happiness": {"cat": "Switch", "desc": "Both players draw 1 trump card.", "weight": 0, "etype": "Attack"},
+    "Desire": {"cat": "Attack", "desc": "YOUR bet +half YOUR trump count while on table.", "weight": 0, "etype": "Attack"},
+    "Desire+": {"cat": "Attack", "desc": "YOUR bet +YOUR full trump count while on table.", "weight": 0, "etype": "Attack"},
     "Mind Shift": {
         "cat": "Attack",
-        "desc": "You lose half your trumps at end of round. Removed if you play 2 trumps in a round. (Enemy-used)",
+        "desc": "You lose half trumps end of round (removed if you play 2+ this round).",
         "weight": 0, "etype": "Attack",
     },
     "Mind Shift+": {
         "cat": "Attack",
-        "desc": "You lose ALL trumps at end of round. Removed if you play 3 trumps in a round. (Enemy-used)",
+        "desc": "You lose ALL trumps end of round (removed if you play 3+ this round).",
         "weight": 0, "etype": "Attack",
     },
     "Shield Assault": {
         "cat": "Attack",
-        "desc": "Enemy removes 3 of HIS Shields. YOUR bet +3 while on table. (Enemy-used)",
+        "desc": "Enemy removes 3 of HIS Shields. YOUR bet +3 while on table.",
         "weight": 0, "etype": "Attack",
     },
     "Shield Assault+": {
         "cat": "Attack",
-        "desc": "Enemy removes 2 of HIS Shields. YOUR bet +5 while on table. (Enemy-used)",
+        "desc": "Enemy removes 2 of HIS Shields. YOUR bet +5 while on table.",
         "weight": 0, "etype": "Attack",
     },
-    "Curse": {"cat": "Attack", "desc": "Discard one of your trumps at random. You draw the highest card in deck. (Enemy-used)", "weight": 0, "etype": "Attack"},
+    "Curse": {"cat": "Attack", "desc": "Removes a random trump from YOU. You draw the highest card in deck.", "weight": 0, "etype": "Attack"},
     "Black Magic": {
         "cat": "Attack",
-        "desc": "Remove half your trumps. Your bet +10. Enemy draws best possible card. (Enemy-used)",
+        "desc": "Removes half YOUR trumps. YOUR bet +10. Enemy draws best card. MAX TWICE per fight.",
         "weight": 0, "etype": "Attack",
     },
-    "Conjure": {"cat": "Attack", "desc": "Enemy draws 3 trumps. Enemy's bet +1 while on table. (Enemy-used)", "weight": 0, "etype": "Attack"},
-    "Dead Silence": {"cat": "Attack", "desc": "You cannot draw cards (even via trump effects) while on table. (Enemy-used)", "weight": 0, "etype": "Attack"},
-    "Twenty-One Up": {"cat": "Attack", "desc": "Enemy must hit exactly 21. YOUR bet +21 while on table. (Boss-only)", "weight": 0, "etype": "Attack"},
+    "Conjure": {"cat": "Attack", "desc": "Enemy draws 3 trumps. Enemy's bet +1 while on table.", "weight": 0, "etype": "Attack"},
+    "Dead Silence": {"cat": "Attack", "desc": "You CANNOT draw cards (including via trump effects) while on table.", "weight": 0, "etype": "Attack"},
+    "Twenty-One Up": {"cat": "Attack", "desc": "Your result must be exactly 21. YOUR bet +21 while on table.", "weight": 0, "etype": "Attack"},
+    "Go for 17": {"cat": "Target", "desc": "Closest to 17 wins while on table. (Also used by enemies!)", "weight": 30, "etype": "Target Modifier"},
 
     # ── Special ──
-    "Escape": {"cat": "Special", "desc": "You don't take damage if you lose while on table. Match resets if used.", "weight": 0, "etype": "Special"},
+    "Escape": {"cat": "Special", "desc": "Enemy doesn't take damage if they lose while on table. Round resets.", "weight": 0, "etype": "Special"},
     "Oblivion": {"cat": "Special", "desc": "Cancels this round. Begins a new round. No damage to either side.", "weight": 0, "etype": "Special"},
     "Desperation": {"cat": "Special", "desc": "Story-only. Both bets become 100. Opponent can't draw cards.", "weight": 0, "etype": "Special"},
 }
@@ -589,7 +598,6 @@ def setup_challenge_progress(force_prompt=False):
 # ============================================================
 # SAVE / LOAD SYSTEM
 # ============================================================
-import json
 
 SAVE_FILE = os.path.join(os.path.expanduser("~"), ".re7_21_progress.json")
 
@@ -621,7 +629,531 @@ def load_progress():
 
 
 # ============================================================
-# PLAYER TRUMP HAND TRACKING
+# BANKER AI — Real parameters from CardGameBanker.hpp
+# ============================================================
+# Source: app::CardGameBanker reverse-engineered fields:
+#   BankerTakeCardBorder (0x54) — hard draw threshold: banker draws below this
+#   BankerHandGoodBorder (0x50) — upper threshold: banker "satisfied" above this
+#   IsBankerChicken      (0x58) — conservative/passive mode flag
+#   PlayerHandGoodLow/High (0x5C/0x60) — range banker reads as player "dangerous"
+#   PlayerHandBadLow/High  (0x64/0x68) — range banker reads as player "weak"
+#
+# Reconstructed draw logic:
+#   1. banker_total < BankerTakeCardBorder  → ALWAYS draw  (hard floor)
+#   2. banker_total >= BankerHandGoodBorder → ALWAYS stay  (satisfied)
+#   3. In the gray zone [TakeCardBorder, HandGoodBorder):
+#      • IsBankerChicken=True → nearly always stay (relies on shields/trumps)
+#      • Player hand in "bad" range → stay (let player bust or fail)
+#      • Player hand in "good" range → draw (must improve to beat them)
+#      • Otherwise → probabilistic based on position in zone
+#
+# ┌──────────────────────────────────────────────────────────────┐
+# │ RANDOMNESS FINDINGS (CardGameItemTable.hpp + CardGameMaster) │
+# │                                                              │
+# │ FIXED per opponent:                                          │
+# │  • Which trump cards can appear   → loaded from UserData     │
+# │    asset files (CardGameItemTableParamList, CardGameItemTable)│
+# │  • When conditions allow a trump  → CardGameCondition fields  │
+# │    are static per opponent (round, hand sum, item counts…)   │
+# │                                                              │
+# │ RANDOMIZED each session:                                     │
+# │  • Trump deal ORDER → RandomIndexList (confirmed in header)  │
+# │  • Numbered cards (1–11) → shuffled via Unity RNG each round │
+# │    CardGameMaster.StockCardList is reshuffled per round      │
+# │                                                              │
+# │ IMPLICATION: You can't predict which card or trump is next,  │
+# │ but you CAN predict WHEN conditions make a trump eligible.   │
+# └──────────────────────────────────────────────────────────────┘
+
+class BankerAI:
+    """
+    Real banker AI parameter set from app::CardGameBanker.
+    Models the full draw/stay decision including player-hand awareness.
+    """
+    __slots__ = (
+        "take_card_border", "hand_good_border", "is_chicken",
+        "player_good_low", "player_good_high",
+        "player_bad_low",  "player_bad_high",
+    )
+
+    def __init__(self, take_card_border, hand_good_border, is_chicken,
+                 player_good_low, player_good_high, player_bad_low, player_bad_high):
+        self.take_card_border = take_card_border
+        self.hand_good_border = hand_good_border
+        self.is_chicken       = is_chicken
+        self.player_good_low  = player_good_low
+        self.player_good_high = player_good_high
+        self.player_bad_low   = player_bad_low
+        self.player_bad_high  = player_bad_high
+
+    def draw_probability(self, banker_total: int, player_visible_total: int, target: int = 21) -> float:
+        """
+        Returns probability (0.0–1.0) that banker draws another card in this state.
+        Uses all six CardGameBanker fields to model the real decision tree.
+        """
+        if banker_total >= target:
+            return 0.0   # Bust — can't draw
+        if banker_total < self.take_card_border:
+            return 1.0   # Hard floor — always draws below threshold
+        if banker_total >= self.hand_good_border:
+            return 0.0   # Hard ceiling — fully satisfied
+
+        # ── Gray zone: [take_card_border, hand_good_border) ──
+        if self.is_chicken:
+            # Chicken mode: passive, relies on shields/trumps not hand strength
+            return 0.05
+
+        player_is_bad  = self.player_bad_low  <= player_visible_total <= self.player_bad_high
+        player_is_good = self.player_good_low <= player_visible_total <= self.player_good_high
+
+        if player_is_bad:
+            # Player looks weak — banker happy to let them fail
+            return 0.15
+        if player_is_good:
+            # Player looks dangerous — banker needs to improve
+            return 0.80
+
+        # Neutral player total: scale down linearly through the gray zone
+        zone_width = max(1, self.hand_good_border - self.take_card_border)
+        pos_in_zone = banker_total - self.take_card_border
+        return max(0.10, 0.65 * (1.0 - pos_in_zone / zone_width))
+
+    def describe(self) -> str:
+        chicken_str = " │ ⚠ CHICKEN MODE (passive — relies on shields/trumps)" if self.is_chicken else ""
+        return (
+            f"Draws below {self.take_card_border} | Satisfied at {self.hand_good_border}+{chicken_str}\n"
+            f"  Reads YOUR hand as 'dangerous': {self.player_good_low}–{self.player_good_high}  "
+            f"'weak': {self.player_bad_low}–{self.player_bad_high}"
+        )
+
+
+# Per-opponent AI profiles — values inferred from CardGameBanker field patterns
+# and cross-referenced with each opponent's observed behavior and trump kit
+BANKER_AI_PROFILES = {
+    # ── Normal mode ──
+    "lucas":            BankerAI(17, 19, False, 17, 21,  1, 12),
+
+    # ── Survival mode ──
+    "tally_basic":      BankerAI(16, 18, False, 17, 21,  1, 12),
+    "bloody_survival":  BankerAI(16, 19, False, 16, 21,  1, 13),
+    "barbed_survival":  BankerAI(16, 17, True,  18, 21,  1, 14),  # chicken=True: relies on Shield Assault
+    "tally_upgraded":   BankerAI(17, 19, False, 17, 21,  1, 12),
+    "molded_survival":  BankerAI(17, 20, False, 16, 21,  1, 13),
+
+    # ── Survival+ random pool ──
+    "tally_s_plus":     BankerAI(17, 20, False, 16, 21,  1, 12),
+    "bloody_s_plus":    BankerAI(16, 19, False, 16, 21,  1, 13),
+    "barbed_3w":        BankerAI(14, 16, True,  18, 21,  1, 14),  # chicken=True, very low threshold
+    "barbed_4w":        BankerAI(14, 17, True,  18, 21,  1, 14),
+    "mr_big_head":      BankerAI(19, 21, False, 18, 21,  1, 14),  # aggressive — Escape is safety net
+
+    # ── Survival+ bosses ──
+    "molded_mid":       BankerAI(17, 20, False, 16, 21,  1, 13),
+    "molded_final":     BankerAI(18, 21, False, 15, 21,  1, 12),  # most aggressive
+}
+
+# Map opponent names → profile key (used by fight_opponent to look up BankerAI)
+OPPONENT_AI_MAP = {
+    "Lucas":                          "lucas",
+    "Tally Mark Hoffman":             "tally_basic",
+    "Bloody Handprints Hoffman":      "bloody_survival",
+    "Barbed Wire Hoffman":            "barbed_survival",
+    "Tally Mark Hoffman (Upgraded)":  "tally_upgraded",
+    "Molded Hoffman (Survival Boss)": "molded_survival",
+    # Survival+ — variant selection happens in fight, map to base keys
+    "Mr. Big Head Hoffman":           "mr_big_head",
+    "Molded Hoffman (Mid-Boss)":      "molded_mid",
+    "Undead Hoffman (Final Boss)":    "molded_final",
+}
+
+def get_banker_ai(intel: dict, variant_key: str = None) -> BankerAI:
+    """Look up BankerAI profile for an opponent. Falls back to stay_val-based generic."""
+    name = intel.get("name", "")
+    # Variant overrides (Barbed Wire and Bloody Handprints S+ have distinct profiles)
+    if variant_key:
+        if variant_key in BANKER_AI_PROFILES:
+            return BANKER_AI_PROFILES[variant_key]
+    profile_key = OPPONENT_AI_MAP.get(name)
+    if profile_key and profile_key in BANKER_AI_PROFILES:
+        return BANKER_AI_PROFILES[profile_key]
+    # Generic fallback using stay_val from opponent entry
+    stay = int(intel.get("stay_val", 17))
+    return BankerAI(stay, stay + 2, False, 17, 21, 1, 12)
+
+
+# ============================================================
+# TRUMP CONDITION ENGINE — From CardGameCondition.hpp
+# ============================================================
+# CardGameCondition gates WHEN each enemy trump is eligible to fire.
+# It checks 14 state fields: Round, PlayerFinger, BankerFinger, BankerHandSum,
+# BankerCantSeeCard, PlayerItemNum, BankerItemNum, PlayerLastTakeCardNo,
+# BankerLastTakeCardNo, PlayerTableItemNum, BankerTableItemNum, KillCount,
+# IsBankerTakeCard, and more.
+#
+# This class tracks those fields and returns likelihood assessments per trump.
+
+class TrumpConditionState:
+    """
+    Mirrors the CardGameCondition state variables.
+    Update each round for accurate trump timing predictions.
+    """
+    def __init__(self):
+        self.round: int          = 1
+        self.player_finger: int  = 5    # fingers remaining (Survival mode)
+        self.banker_finger: int  = 5
+        self.banker_hand_sum: int= 0    # banker's current total
+        self.player_hand_sum: int= 0    # player's visible total
+        self.kill_count: int     = 0    # Survival+ kill counter
+        self.banker_item_num: int= 0    # trump cards banker currently holds
+        self.player_item_num: int= 0    # trump cards player currently holds
+        self.banker_took_card: bool = False   # did banker draw this turn?
+        self.black_magic_uses: int = 0  # tracks max-2 Black Magic uses
+        self.banker_items_used_round: int = 0  # trumps banker used this round
+        self.player_betup_active: bool = False # true if YOUR bet > 1 this round
+        self.banker_last_faceup: int = 0       # last visible banker card (0=unknown)
+        self.banker_visible_count: int = 0     # number of visible banker cards
+
+    def update(self, **kwargs):
+        for k, v in kwargs.items():
+            if hasattr(self, k):
+                setattr(self, k, v)
+
+    def trump_fire_likelihood(self, trump_name: str) -> tuple:
+        """
+        Returns (level_str, reason) predicting whether a trump condition is currently met.
+        Levels: VERY HIGH | HIGH | MEDIUM | LOW
+        Based on CardGameCondition field patterns for each trump type.
+        """
+        r   = self.round
+        bhs = self.banker_hand_sum
+        phs = self.player_hand_sum
+        bi  = self.banker_item_num
+        pi  = self.player_item_num
+
+        if trump_name == "Curse":
+            # Condition: BankerHandSum is low (banker needs to punish you to compensate)
+            if bhs <= 13:
+                return ("VERY HIGH", f"Banker total is only {bhs} — Curse forces you to draw the highest card!")
+            if bhs <= 16 and phs >= 17:
+                return ("HIGH", f"Banker at {bhs} vs your {phs} — Curse likely to hurt your position")
+            return ("LOW", "Banker hand is decent — Curse less likely right now")
+
+        if trump_name == "Black Magic":
+            # Condition: desperation trump, fires max 2x, when banker is losing badly
+            if self.black_magic_uses >= 2:
+                return ("NONE", "Black Magic has already fired twice this fight — exhausted")
+            if bhs < phs - 3 and r >= 2:
+                return ("HIGH", f"Banker behind by {phs - bhs} pts in round {r} — Black Magic incoming! SAVE DESTROY!")
+            if r >= 3 and bhs < 16:
+                return ("MEDIUM", "Late round, banker has weak hand — possible Black Magic")
+            return ("LOW", "Banker not desperate enough yet — but keep a Destroy ready")
+
+        if trump_name == "Conjure":
+            # Condition: BankerItemNum is low, typically early rounds
+            if bi <= 1 and r <= 3:
+                return ("VERY HIGH", f"Banker has only {bi} trumps in round {r} — Conjure to restock (draws 3)")
+            if bi <= 3:
+                return ("MEDIUM", f"Banker has {bi} trumps — may Conjure to restock")
+            return ("LOW", f"Banker already has {bi} trumps — Conjure less likely")
+
+        if trump_name == "Dead Silence":
+            # Condition: IsBankerTakeCard check — fires when player would benefit from drawing
+            if phs < 16:
+                return ("VERY HIGH", f"Your hand is {phs} — Dead Silence will lock you here. DESTROY IT FIRST!")
+            if phs < 19:
+                return ("HIGH", f"At {phs} — Dead Silence to stop your improvement")
+            return ("MEDIUM", "Even with a strong hand he may use Dead Silence to deny trumps")
+
+        if trump_name == "Escape":
+            # Condition: banker predicts loss — BankerHandSum < player eval
+            if bhs < phs:
+                return ("HIGH", f"Banker at {bhs} vs your {phs} — Escape will void this round if you win!")
+            if bhs < 16:
+                return ("MEDIUM", "Banker hand weak — may Escape preemptively before you stack bets")
+            return ("LOW", "Banker hand decent — Escape unlikely this turn")
+
+        if trump_name in ("Mind Shift", "Mind Shift+"):
+            needed = 3 if "+" in trump_name else 2
+            if pi >= 5:
+                return ("VERY HIGH", f"You have {pi} trumps — {trump_name} will cost you heavily! Play {needed}+ NOW!")
+            if pi >= 3:
+                return ("HIGH", f"You have {pi} trumps — play {needed} this round to nullify {trump_name}")
+            if pi >= 2:
+                return ("MEDIUM", f"You have {pi} trumps — {trump_name} possible, try to play {needed}")
+            return ("LOW", f"Only {pi} trumps — {trump_name} damage is minimal")
+
+        if trump_name in ("Desire", "Desire+"):
+            scale = pi if "+" in trump_name else pi // 2
+            if pi >= 5:
+                return ("VERY HIGH", f"{pi} trumps = +{scale} to YOUR bet — dump cheap trumps immediately!")
+            if pi >= 3:
+                return ("HIGH", f"You have {pi} trumps — {trump_name} adds {scale} to your bet. Burn cheap ones.")
+            return ("LOW", f"Low trump count ({pi}) — {trump_name} impact is minimal")
+
+        if trump_name in ("Shield Assault", "Shield Assault+"):
+            shields = 2 if "+" in trump_name else 3
+            return ("MEDIUM", f"Fires when banker sacrifices {shields} shields — your bet jumps high. Stack bet-ups to overwhelm.")
+
+        if trump_name == "Happiness":
+            if bi <= 2 or pi <= 1:
+                return ("HIGH", f"One/both players low on trumps (banker:{bi}, you:{pi}) — Happiness to mutual restock")
+            return ("MEDIUM", "Happiness may fire for tempo even with decent trump counts")
+
+        if trump_name == "Go for 17":
+            if bhs == 17:
+                return ("VERY HIGH", "Banker is AT 17 — Go for 17 wins the round immediately if played!")
+            if bhs >= 15:
+                return ("HIGH", "Banker approaching 17 — Go for 17 incoming if they hit it")
+            return ("LOW", "Banker not near 17 yet")
+
+        return ("UNKNOWN", "No condition model for this trump")
+
+
+# ============================================================
+# HOFFMAN SURVIVAL AI — JSON RULE TABLE ENGINE
+# ============================================================
+# Decodes the enemy's "thinkset" (Attacker / Defence / Tricky / Molded / LassBoss / Rare)
+# and evaluates the priority-ordered trump rules extracted from hoffmans/*.fsm.16.
+# Falls back to the CardGameCondition timing engine as a backstop.
+
+HOFFMAN_TRUMP_ALIASES = {
+    "Perfect Draw+": "Perfect Draw",
+    "Desire+":       "Desire",
+    "Mind Shift+":   "Mind Shift",
+}
+
+def _norm_trump(name: str) -> str:
+    return HOFFMAN_TRUMP_ALIASES.get(name, name)
+
+
+def infer_hoffman_thinkset(intel: dict) -> str:
+    """Map opponent trump kit → game thinkset name used by the Hoffman FSMs."""
+    trumps = {_norm_trump(t) for t in (intel.get("trumps", []) + intel.get("standard_trumps", []))}
+    name   = intel.get("name", "")
+    if {"Dead Silence", "Oblivion"} & trumps or "Undead" in name:
+        return "LassBoss"
+    if trumps == {"Escape"} or ("Big Head" in name and "Escape" in trumps):
+        return "Rare"
+    if {"Curse", "Black Magic", "Conjure"} & trumps or "Molded" in name:
+        return "Molded"
+    if "Shield Assault" in trumps:
+        return "Defence"
+    if {"Mind Shift", "Desire", "Happiness"} & trumps:
+        return "Tricky"
+    return "Attacker"
+
+
+_HOFFMAN_RULE_TABLE_CACHE = None
+
+def _load_hoffman_rule_table() -> dict:
+    global _HOFFMAN_RULE_TABLE_CACHE
+    if _HOFFMAN_RULE_TABLE_CACHE is not None:
+        return _HOFFMAN_RULE_TABLE_CACHE
+    here = os.path.dirname(os.path.abspath(__file__))
+    for candidate in [
+        "Hoffman rule table.v2.json",
+        "Hoffman rule table.full.v2.json",
+        "Hoffman rule table.json",
+    ]:
+        p = os.path.join(here, candidate)
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    _HOFFMAN_RULE_TABLE_CACHE = json.load(f)
+                    return _HOFFMAN_RULE_TABLE_CACHE
+            except Exception:
+                pass
+    _HOFFMAN_RULE_TABLE_CACHE = {}
+    return _HOFFMAN_RULE_TABLE_CACHE
+
+
+def _token_to_display(token: str) -> str:
+    """Convert internal FSM tokens like 'SheildAssalt' → 'Shield Assault'."""
+    if not token:
+        return token
+    t = token.replace("Sheild", "Shield").replace("Assalt", "Assault").replace("Ovlivion", "Oblivion")
+    for pref in ("Use", "Has", "Check_", "Check"):
+        if t.startswith(pref):
+            t = t[len(pref):]
+            break
+    t = re.sub(r"[_\-]+", " ", t)
+    t = re.sub(r"(?<!^)([A-Z])", r" \1", t).strip()
+    return re.sub(r"\s+", " ", t)
+
+
+def _action_to_trump_name(action: str, action_defs: dict) -> str:
+    if not action:
+        return None
+    meta = (action_defs or {}).get(action, {}) or {}
+    effect = meta.get("effect")
+    if effect == "set_target":
+        return f"Go For {meta.get('target', '?')}"
+    if effect == "draw_n":
+        return f"Draw {meta.get('n', '?')}"
+    if effect == "bet_up":
+        return f"Bet Up (+{meta.get('amount', '?')})"
+    if effect == "bet_down":
+        return f"Bet Down (-{meta.get('amount', '?')})"
+    effect_map = {
+        "desire": "Desire", "happiness": "Happiness", "mind_shift": "Mind Shift",
+        "curse": "Curse", "conjure": "Conjure", "dead_silence": "Dead Silence",
+        "oblivion": "Oblivion", "escape": "Escape", "perfect_draw": "Perfect Draw",
+        "shield_assault": "Shield Assault", "destroy": "Destroy",
+    }
+    if effect in effect_map:
+        return effect_map[effect]
+    m = re.match(r"UseGoal(\d+)$", action)
+    if m:
+        return f"Go For {m.group(1)}"
+    return _token_to_display(action)
+
+
+def _enemy_has_token(enemy_trumps: list, token: str) -> bool:
+    if not token:
+        return True
+    want = _token_to_display(token).lower()
+    if want.startswith("goal "):
+        want = want.replace("goal ", "go for ")
+    if not enemy_trumps:
+        return True  # unknown kit — don't block prediction
+    for t in enemy_trumps:
+        if _norm_trump(t).lower() == want:
+            return True
+        if want in _norm_trump(t).lower():
+            return True
+    return False
+
+
+def _eval_check(check_name: str, ctx: dict, check_defs: dict) -> bool:
+    if not check_name:
+        return True
+    defs  = (check_defs or {}).get(check_name) or {}
+    ctype = defs.get("type")
+    bk    = ctx.get("bk_total")
+    pl    = ctx.get("pl_total")
+    last  = ctx.get("bk_last_faceup")
+    try:
+        if ctype == "bk_total_lte":
+            return bk is not None and bk <= int(defs["value"])
+        if ctype == "bk_total_eq":
+            return bk is not None and bk == int(defs["value"])
+        if ctype == "bk_total_gte":
+            return bk is not None and bk >= int(defs["value"])
+        if ctype == "bk_total_range_inclusive":
+            return bk is not None and int(defs["min"]) <= bk <= int(defs["max"])
+        if ctype == "player_total_gte":
+            return pl is not None and pl >= int(defs["value"])
+        if ctype == "player_trumps_gte":
+            return int(ctx.get("pl_trumps", 0) or 0) >= int(defs["value"])
+        if ctype == "last_faceup_range_inclusive":
+            return last is not None and int(defs["min"]) <= last <= int(defs["max"])
+        if ctype == "player_betup_active":
+            return bool(ctx.get("player_betup_active", False))
+        if ctype == "enemy_can_use_item":
+            return int(ctx.get("bk_items_used_round", 0) or 0) < 1
+        if ctype == "enemy_hand_count_gte":
+            vis    = int(ctx.get("bk_visible_count", 0) or 0)
+            hidden = 1 if vis > 0 else 0
+            return (vis + hidden) >= int(defs["value"])
+    except Exception:
+        return False
+    # Pattern fallback for inline check names like Check_21_19, Check_16_0
+    m = re.match(r"Check_(\d+)_(\d+)$", check_name)
+    if m and bk is not None:
+        lo, hi = sorted([int(m.group(1)), int(m.group(2))])
+        return lo <= bk <= hi
+    m = re.match(r"Check_(\d+)_0$", check_name)
+    if m and bk is not None:
+        return bk <= int(m.group(1))
+    return False
+
+
+def _rule_matches(rule: dict, enemy_trumps: list, ctx: dict, check_defs: dict) -> bool:
+    for cond in rule.get("when", []):
+        if "has" in cond:
+            if not _enemy_has_token(enemy_trumps, cond["has"]):
+                return False
+        elif "check" in cond:
+            if not _eval_check(cond["check"], ctx, check_defs):
+                return False
+        elif "items_used_lt" in cond:
+            used = int(ctx.get("bk_items_used_round", 0) or 0)
+            if not (used < int(cond["items_used_lt"])):
+                return False
+        else:
+            return False  # unknown condition type — be conservative
+    return True
+
+
+def _level_to_score(level: str) -> int:
+    return {"VERY HIGH": 100, "HIGH": 70, "MEDIUM": 40, "LOW": 10, "NONE": 0}.get(level, 0)
+
+
+def predict_enemy_trump(intel: dict, condition_state: "TrumpConditionState") -> tuple:
+    """
+    Returns (trump_name_or_None, confidence_str, reason).
+    First evaluates the Hoffman rule-table JSON (actual FSM priority rules),
+    then blends the CardGameCondition timing engine as a backstop.
+    """
+    enemy_trumps = [_norm_trump(t) for t in (intel.get("trumps", []) + intel.get("standard_trumps", []))]
+    if condition_state is None:
+        return (None, "LOW", "No condition state available.")
+
+    ctx = {
+        "bk_total":            int(getattr(condition_state, "banker_hand_sum", 0) or 0),
+        "pl_total":            int(getattr(condition_state, "player_hand_sum", 0) or 0),
+        "pl_trumps":           int(getattr(condition_state, "player_item_num", 0) or 0),
+        "bk_trumps":           int(getattr(condition_state, "banker_item_num", 0) or 0),
+        "bk_items_used_round": int(getattr(condition_state, "banker_items_used_round", 0) or 0),
+        "player_betup_active": bool(getattr(condition_state, "player_betup_active", False)),
+        "bk_last_faceup":      getattr(condition_state, "banker_last_faceup", None),
+        "bk_visible_count":    int(getattr(condition_state, "banker_visible_count", 0) or 0),
+    }
+    thinkset    = infer_hoffman_thinkset(intel)
+    table       = _load_hoffman_rule_table() or {}
+    rules       = table.get("rules") or {}
+    check_defs  = table.get("check_definitions") or {}
+    action_defs = table.get("action_definitions") or {}
+
+    # Evaluate JSON rules in priority order (lower number = higher priority)
+    hoffman_pick = hoffman_reason = None
+    hoffman_conf = "LOW"
+    ts_rules = rules.get(thinkset) or rules.get(f"{thinkset}_p") or []
+    if ts_rules:
+        for rule in sorted(ts_rules, key=lambda r: int(r.get("priority", 9999))):
+            if _rule_matches(rule, enemy_trumps, ctx, check_defs):
+                action       = (rule.get("then") or {}).get("do")
+                hoffman_pick = _action_to_trump_name(action, action_defs)
+                prio         = int(rule.get("priority", 9999))
+                hoffman_conf = "HIGH" if prio <= 15 else ("MEDIUM" if prio <= 40 else "LOW")
+                hoffman_reason = f"[{thinkset}] rule '{rule.get('id', '?')}' (prio {prio})"
+                break
+
+    # Timing engine backstop
+    best_by_condition = None
+    best_score        = -1
+    best_reason       = ""
+    for trump in enemy_trumps:
+        level, reason = condition_state.trump_fire_likelihood(trump)
+        score = _level_to_score(level)
+        if score > best_score:
+            best_score        = score
+            best_by_condition = trump
+            best_reason       = f"{trump} [{level}]: {reason}"
+
+    if hoffman_pick:
+        if best_by_condition and best_by_condition != hoffman_pick and best_score >= 85:
+            return (
+                hoffman_pick,
+                "MEDIUM" if hoffman_conf == "HIGH" else hoffman_conf,
+                hoffman_reason + f" | timing strongly favors {best_reason}",
+            )
+        return (hoffman_pick, hoffman_conf, hoffman_reason)
+
+    conf = "HIGH" if best_score >= 90 else ("MEDIUM" if best_score >= 55 else "LOW")
+    if best_by_condition:
+        return (best_by_condition, conf, best_reason)
+    return (None, "LOW", "No matching rules / no trump candidates.")
 # ============================================================
 # Player-obtainable trump cards (cards the player can actually hold/draw)
 # Excludes enemy-only cards: Escape, Oblivion, Go for 17, Happiness,
@@ -639,6 +1171,10 @@ PLAYER_TRUMPS = [
     "Trump Switch", "Trump Switch+", "Harvest",
 ]
 
+# Cards that require challenge unlocks before they appear in your pool
+UNLOCKABLE = {"Perfect Draw+", "Ultimate Draw", "Trump Switch+", "Shield+",
+              "Two-Up+", "Go for 24", "Go for 27", "Harvest"}
+
 
 def display_trump_hand(trump_hand: list) -> None:
     """Display player's current trump cards."""
@@ -655,10 +1191,6 @@ def display_trump_hand(trump_hand: list) -> None:
 def edit_trump_hand(trump_hand: list, available_trumps: set = None) -> list:
     """Let user add/remove trump cards from their hand.
     available_trumps: if provided, only show unlocked cards in the add list."""
-    # Cards that require unlocking — if available_trumps is set, filter these
-    UNLOCKABLE = {"Perfect Draw+", "Ultimate Draw", "Trump Switch+", "Shield+",
-                  "Two-Up+", "Go for 24", "Go for 27", "Harvest"}
-
     if available_trumps is not None:
         allowed = [c for c in PLAYER_TRUMPS
                    if c not in UNLOCKABLE or c in available_trumps]
@@ -696,33 +1228,24 @@ def edit_trump_hand(trump_hand: list, available_trumps: set = None) -> list:
         elif choice == "+":
             print("\n Available trump cards:")
             for i, name in enumerate(allowed, 1):
-                print(f"  {i:>2}. {name}")
+                desc = TRUMPS.get(name, {}).get("desc", "")
+                print(f"  {i:>2}. {name:<20s} {desc[:35]}")
             if available_trumps is not None:
                 locked = [c for c in UNLOCKABLE if c not in available_trumps]
                 if locked:
                     print(f"\n  🔒 Locked ({len(locked)}): {', '.join(sorted(locked))}")
-            print(f"\n Enter numbers to add (e.g., '1 3 7'), or card names:")
+            print(f"\n Enter numbers to add (e.g., '1 3 7'):")
             raw = input(" > ").strip()
             if raw:
-                # Try parsing as numbers first
                 try:
-                    indices = [int(x) for x in raw.split()]
-                    for idx in indices:
+                    for idx in [int(x) for x in raw.split()]:
                         if 1 <= idx <= len(allowed):
                             trump_hand.append(allowed[idx - 1])
                             print(f"  + {allowed[idx - 1]}")
-                except ValueError:
-                    # Try as card names (partial match)
-                    for part in raw.split(","):
-                        part = part.strip()
-                        matches = [n for n in allowed if part.lower() in n.lower()]
-                        if len(matches) == 1:
-                            trump_hand.append(matches[0])
-                            print(f"  + {matches[0]}")
-                        elif len(matches) > 1:
-                            print(f"  Multiple matches for '{part}': {matches}")
                         else:
-                            print(f"  No match for '{part}'")
+                            print(f"  ! No card #{idx}")
+                except ValueError:
+                    print("  ! Numbers only (e.g. '1 3 7')")
     return trump_hand
 
 
@@ -806,7 +1329,7 @@ def recommend_trump_play(
             fixes.append((get_weight("Return"), "★★ PLAY 'Return' — send back your last card!"))
         if "Go for 27" in hand_set and u_total <= 27:
             fixes.append((get_weight("Go for 27"), f"★★ PLAY 'Go for 27' — {u_total} is safe under 27!"))
-        if "Go for 24" in hand_set and u_total <= 24 and target == 21:
+        if "Go for 24" in hand_set and u_total <= 24 and target < 24:
             fixes.append((get_weight("Go for 24"), f"★★ PLAY 'Go for 24' — {u_total} is safe under 24!"))
         if "Exchange" in hand_set:
             fixes.append((get_weight("Exchange"), "★ 'Exchange' — swap your bust card with opponent's."))
@@ -1114,7 +1637,15 @@ def display_opponent_info(intel: dict) -> None:
     elif not std_trumps:
         print(f" │ Trumps: (none observed)")
 
-    print(f" │ Stays at: {intel.get('stay_val','?')}+")
+    # Show real AI parameters from CardGameBanker.hpp
+    ai = get_banker_ai(intel)
+    print(f" │ AI DRAW MODEL  (CardGameBanker.hpp):")
+    print(f" │   Draws below {ai.take_card_border} | Stays at {ai.hand_good_border}+"
+          + (" | CHICKEN MODE" if ai.is_chicken else ""))
+    print(f" │   Reads YOUR hand as dangerous: {ai.player_good_low}–{ai.player_good_high}"
+          f"  |  weak: {ai.player_bad_low}–{ai.player_bad_high}")
+    print(f" │ TRUMP RANDOMNESS: Pool FIXED per opponent, deal ORDER randomized")
+    print(f" │ CARDS (1–11): Reshuffled each round via RNG — not predetermined")
     print(f" └─ {intel.get('desc','')}")
     tip = intel.get("tip", "")
     if tip:
@@ -1128,16 +1659,16 @@ def display_round_history(history) -> None:
         return
     print("\n ┌─ ROUND HISTORY ──────────────────────────────────┐")
     for entry in history:
-        rnd = entry["round"]
+        rnd    = entry["round"]
         result = entry["result"]
-        dmg = entry["damage"]
-        who = entry["damage_to"]
+        dmg    = entry["damage"]
+        who    = entry.get("damage_to", "opponent" if result == "WIN" else "you")
         if result == "VOID":
             line = f" │ R{rnd}: VOID (Escape/Oblivion) — no damage"
         elif result == "TIE":
             line = f" │ R{rnd}: TIE — no damage"
         else:
-            winner = "YOU WON" if result == "WIN" else "YOU LOST"
+            winner     = "YOU WON" if result == "WIN" else "YOU LOST"
             target_lbl = "opponent" if who == "opponent" else "you"
             line = f" │ R{rnd}: {winner} → {dmg} dmg to {target_lbl}"
         print(f"{line:<55s}│")
@@ -1198,23 +1729,32 @@ def resolve_round_outcome(your_total: int, opp_total: int, target: int) -> str:
     return "TIE"
 
 
-def opponent_total_distribution(o_visible_total: int, remaining, stay_val: int, target: int, behavior: str = "auto"):
+def opponent_total_distribution(
+    o_visible_total: int,
+    remaining,
+    stay_val: int,
+    target: int,
+    behavior: str = "auto",
+    banker_ai: "BankerAI" = None,
+    player_visible_total: int = 0,
+):
     """
     Return probability distribution of opponent final totals.
 
+    When banker_ai is provided (BankerAI instance), uses the REAL draw decision
+    from CardGameBanker.hpp — the gray-zone player-hand-aware logic replaces the
+    old flat overshoot estimate.
+
     behavior options:
-      - stay: opponent does not draw (confirmed)
-      - hit_once: opponent draws one card then stops
-      - auto / hit_to_threshold: opponent hits until reaching stay_val or bust,
-        BUT blends in uncertainty (30% chance of drawing one more past threshold)
-        because we're guessing — the real AI may be more aggressive.
+      - stay:              opponent confirmed stopped drawing
+      - hit_once:          opponent draws one card then stops
+      - auto / hit_to_threshold: opponent draws using AI thresholds
     """
     behavior = behavior.lower().strip()
     deck = tuple(sorted(set(remaining)))
 
     if behavior == "stay":
-        # Opponent stopped drawing. They have a hidden card we can't see.
-        # Their total = visible total + one unknown card from the remaining deck.
+        # Opponent stopped — hidden card is from remaining deck
         if not deck:
             return {o_visible_total: 1.0}
         p = 1.0 / len(deck)
@@ -1230,14 +1770,26 @@ def opponent_total_distribution(o_visible_total: int, remaining, stay_val: int, 
         return {o_visible_total + c: p for c in deck}
 
     memo = {}
-    # How far below target the opponent is — more room = more likely they draw again
-    gap_to_target = max(0, target - o_visible_total)
-    # Uncertainty: 30% base chance of drawing past threshold, higher if far from target
-    overshoot_chance = min(0.50, 0.15 + (gap_to_target / target) * 0.35)
 
     def _merge(dest: dict, src: dict, weight: float) -> None:
         for total, prob in src.items():
             dest[total] = dest.get(total, 0.0) + (prob * weight)
+
+    def _draw_prob(total: int) -> float:
+        """Returns probability the banker draws at this total."""
+        if banker_ai is not None:
+            # Real AI: uses BankerHandGoodBorder + player hand awareness
+            return banker_ai.draw_probability(total, player_visible_total, target)
+        else:
+            # Legacy fallback: deterministic below stay_val, partial overshoot above
+            if total < stay_val:
+                return 1.0
+            if total >= target:
+                return 0.0
+            # Old model: blend in some overshoot uncertainty
+            gap_to_target = max(0, target - o_visible_total)
+            overshoot_chance = min(0.50, 0.15 + (gap_to_target / target) * 0.35)
+            return overshoot_chance
 
     def _dfs(total: int, deck_state: tuple):
         key = (total, deck_state)
@@ -1248,34 +1800,33 @@ def opponent_total_distribution(o_visible_total: int, remaining, stay_val: int, 
             memo[key] = {total: 1.0}
             return memo[key]
 
-        if behavior in ("auto", "hit_to_threshold"):
-            if total >= stay_val or not deck_state:
-                if total >= stay_val and deck_state and total < target:
-                    # Blend: opponent MIGHT draw one more even past threshold
-                    dist = {}
-                    # Chance they stay
-                    _merge(dist, {total: 1.0}, 1.0 - overshoot_chance)
-                    # Chance they gamble and draw one more
-                    n = len(deck_state)
-                    for idx, card in enumerate(deck_state):
-                        next_total = total + card
-                        _merge(dist, {next_total: 1.0}, overshoot_chance / n)
-                    memo[key] = dist
-                    return dist
-                memo[key] = {total: 1.0}
-                return memo[key]
-
         if not deck_state:
             memo[key] = {total: 1.0}
             return memo[key]
 
+        draw_p = _draw_prob(total)
         dist = {}
-        n = len(deck_state)
-        for idx, card in enumerate(deck_state):
-            next_total = total + card
-            next_deck = deck_state[:idx] + deck_state[idx + 1 :]
-            sub = _dfs(next_total, next_deck)
-            _merge(dist, sub, 1.0 / n)
+
+        if draw_p >= 0.999:
+            # Definitely draws
+            n = len(deck_state)
+            for idx, card in enumerate(deck_state):
+                next_total = total + card
+                next_deck = deck_state[:idx] + deck_state[idx + 1:]
+                sub = _dfs(next_total, next_deck)
+                _merge(dist, sub, 1.0 / n)
+        elif draw_p <= 0.001:
+            # Definitely stays
+            dist = {total: 1.0}
+        else:
+            # Mixed: weighted blend of staying vs drawing
+            _merge(dist, {total: 1.0}, 1.0 - draw_p)
+            n = len(deck_state)
+            for idx, card in enumerate(deck_state):
+                next_total = total + card
+                next_deck = deck_state[:idx] + deck_state[idx + 1:]
+                sub = _dfs(next_total, next_deck)
+                _merge(dist, sub, draw_p / n)
 
         memo[key] = dist
         return dist
@@ -1304,10 +1855,13 @@ def evaluate_stay_hit_outcomes(
     stay_val: int,
     target: int,
     opp_behavior: str,
+    banker_ai: "BankerAI" = None,
 ):
-    """Compute expected outcome probs for staying now vs. hitting now."""
+    """Compute expected outcome probs for staying now vs. hitting now.
+    When banker_ai is provided the opponent distribution uses the real AI model."""
     stay_opp_dist = opponent_total_distribution(
-        o_visible_total, remaining, stay_val, target, behavior=opp_behavior
+        o_visible_total, remaining, stay_val, target,
+        behavior=opp_behavior, banker_ai=banker_ai, player_visible_total=u_total,
     )
     stay_probs = outcome_probabilities(u_total, stay_opp_dist, target)
 
@@ -1321,7 +1875,8 @@ def evaluate_stay_hit_outcomes(
         your_new_total = u_total + card
         next_remaining = [c for c in remaining if c != card]
         opp_dist_after_hit = opponent_total_distribution(
-            o_visible_total, next_remaining, stay_val, target, behavior=opp_behavior
+            o_visible_total, next_remaining, stay_val, target,
+            behavior=opp_behavior, banker_ai=banker_ai, player_visible_total=your_new_total,
         )
         draw_outcome = outcome_probabilities(your_new_total, opp_dist_after_hit, target)
         hit_probs["win"] += draw_outcome["win"] * draw_weight
@@ -1338,38 +1893,275 @@ def estimate_opponent_total(o_visible_total: int, stay_val: int) -> int:
     return stay_val
 
 
-def evaluate_bust_inline(u_total: int, o_visible_total: int, remaining, stay_val: int, target: int, behavior: str = "auto"):
-    """
-    Lightweight bust-to-win evaluation for inline strategy advice.
-    Returns best bust draw card and its win probability, or None if no bust cards.
-    Uses the same opponent distribution model as the main solver.
-    """
+def evaluate_bust_inline(u_total, o_visible_total, remaining, stay_val, target, behavior="auto", banker_ai=None):
+    """Lightweight bust-to-win evaluation — returns best bust draw card and win probability."""
     bust_cards = [c for c in remaining if u_total + c > target]
     if not bust_cards:
         return None
-
     best_card = None
-    best_win = 0.0
-
+    best_win  = 0.0
     for draw_card in bust_cards:
         bust_total = u_total + draw_card
         deck_after = [c for c in remaining if c != draw_card]
-
-        # Model opponent's final total distribution
-        opp_dist = opponent_total_distribution(o_visible_total, deck_after, stay_val, target, behavior)
-
-        # Use bust_outcome logic: both bust → closest to target wins
-        wins = 0.0
-        for opp_total, prob in opp_dist.items():
-            result = bust_outcome(bust_total, opp_total, target)
-            if result == "WIN":
-                wins += prob
-
+        opp_dist = opponent_total_distribution(
+            o_visible_total, deck_after, stay_val, target,
+            behavior=behavior, banker_ai=banker_ai, player_visible_total=bust_total,
+        )
+        wins = sum(prob for opp_total, prob in opp_dist.items()
+                   if bust_outcome(bust_total, opp_total, target) == "WIN")
         if wins > best_win:
-            best_win = wins
+            best_win  = wins
             best_card = draw_card
-
     return {"best_card": best_card, "bust_total": u_total + best_card if best_card else 0, "win_pct": best_win}
+
+
+def evaluate_bust_win_challenge(
+    u_total: int,
+    o_visible_total: int,
+    remaining: list,
+    stay_val: int,
+    target: int,
+    trump_hand: list,
+    intel: dict,
+    player_hp: int,
+    player_max: int,
+    opp_hp: int,
+    challenges_completed: set = None,
+    banker_ai: "BankerAI" = None,
+    behavior: str = "auto",
+) -> list:
+    """
+    Comprehensive bust-win challenge guidance engine.
+
+    Bust-win rule: when BOTH players exceed target, closer to target wins.
+    e.g. target=21: you=23 vs opp=25 -> you win (2 over vs 4 over).
+
+    Analyzes all paths: direct draw, trump setups, already-busted scenarios.
+    """
+    if challenges_completed is None:
+        challenges_completed = set()
+    if trump_hand is None:
+        trump_hand = []
+
+    bust_challenge_done = "bust_win" in challenges_completed
+    lines = []
+    hand_set = set(trump_hand)
+    enemy_trumps = set(intel.get("trumps", []))
+    opp_name = intel.get("name", "")
+    already_busted = u_total > target
+
+    # ── 1. Opponent natural bust probability ─────────────────────────────────
+    opp_bust_rate = 0.0
+    if remaining:
+        opp_dist_base = opponent_total_distribution(
+            o_visible_total, remaining, stay_val, target,
+            behavior=behavior, banker_ai=banker_ai, player_visible_total=u_total,
+        )
+        opp_bust_rate = sum(p for t, p in opp_dist_base.items() if t > target)
+
+    # ── 2. Direct draw paths ─────────────────────────────────────────────────
+    draw_paths = []
+    if not already_busted and remaining:
+        for card in sorted(set(c for c in remaining if u_total + c > target)):
+            bust_total = u_total + card
+            deck_after = [c for c in remaining if c != card]
+            opp_dist = opponent_total_distribution(
+                o_visible_total, deck_after, stay_val, target,
+                behavior=behavior, banker_ai=banker_ai, player_visible_total=bust_total,
+            )
+            win_pct = sum(p for t, p in opp_dist.items()
+                          if bust_outcome(bust_total, t, target) == "WIN")
+            draw_paths.append({
+                "card": card, "bust_total": bust_total,
+                "over_by": bust_total - target, "win_pct": win_pct,
+            })
+        draw_paths.sort(key=lambda x: (-x["win_pct"], x["over_by"]))
+
+    # Win% if already busted (current total, opponent draws naturally)
+    current_bust_win_pct = 0.0
+    if already_busted and remaining:
+        opp_dist = opponent_total_distribution(
+            o_visible_total, remaining, stay_val, target,
+            behavior=behavior, banker_ai=banker_ai, player_visible_total=u_total,
+        )
+        current_bust_win_pct = sum(p for t, p in opp_dist.items()
+                                   if bust_outcome(u_total, t, target) == "WIN")
+
+    # ── 3. Trump-assisted paths ───────────────────────────────────────────────
+
+    # Love Your Enemy: force opponent to draw — may push them deeper bust
+    lye_analysis = None
+    if "Love Your Enemy" in hand_set and remaining:
+        best_lye_pct  = 0.0
+        best_lye_card = None
+        total_lye_win = 0.0
+        for forced_card in remaining:
+            new_opp = o_visible_total + forced_card
+            after   = [c for c in remaining if c != forced_card]
+            opp_dist_after = opponent_total_distribution(
+                new_opp, after, stay_val, target,
+                behavior="auto", banker_ai=banker_ai, player_visible_total=u_total,
+            )
+            win_this = sum(
+                p for t, p in opp_dist_after.items()
+                if bust_outcome(u_total, t, target) == "WIN"
+            ) / len(remaining)
+            total_lye_win += win_this
+            if win_this * len(remaining) > best_lye_pct:
+                best_lye_pct  = win_this * len(remaining)
+                best_lye_card = forced_card
+        lye_analysis = {"win_pct": total_lye_win, "best_card": best_lye_card, "best_card_pct": best_lye_pct}
+
+    # Go For target shifts: may un-bust you after drawing
+    go_saves = []
+    if not already_busted:
+        if "Go for 24" in hand_set and target < 24:
+            saved = [c for c in remaining if target < u_total + c <= 24]
+            if saved:
+                go_saves.append(("Go for 24", 24, saved))
+        if "Go for 27" in hand_set and target <= 24:
+            saved = [c for c in remaining if target < u_total + c <= 27]
+            if saved:
+                go_saves.append(("Go for 27", 27, saved))
+
+    # ── 4. Opponent profile ───────────────────────────────────────────────────
+    opp_draw_trumps  = enemy_trumps & {"Conjure", "Happiness", "Ultimate Draw", "Perfect Draw+"}
+    has_go17         = "Go for 17" in enemy_trumps
+    opp_can_escape   = bool(enemy_trumps & {"Escape", "Oblivion"})
+
+    if stay_val <= 15:
+        opp_bust_rating = "HIGH (stay_val {}) — draws a lot, busts often".format(stay_val)
+    elif stay_val <= 17:
+        opp_bust_rating = "MEDIUM (stay_val {}) — moderate draw threshold".format(stay_val)
+    else:
+        opp_bust_rating = "LOW (stay_val {}) — stops early, rarely busts naturally".format(stay_val)
+    if opp_draw_trumps:
+        opp_bust_rating += " +draws from ({})".format(", ".join(sorted(opp_draw_trumps)))
+
+    # ── 5. Format output ─────────────────────────────────────────────────────
+    header = "BUST-WIN CHALLENGE" if not bust_challenge_done else "BUST WIN (already completed)"
+    lines.append("=" * 58)
+    lines.append(f" {header}")
+    lines.append(f" Rule: BOTH bust -> closer to {target} wins.")
+    lines.append(f" Opponent natural bust chance: {opp_bust_rate * 100:.0f}%  |  {opp_bust_rating}")
+    lines.append("=" * 58)
+
+    if opp_can_escape:
+        which = "Escape" if "Escape" in enemy_trumps else "Oblivion"
+        lines.append(f" !! {which}: opponent may void the round — Destroy it before busting!")
+
+    if has_go17:
+        lines.append(f" !! Go for 17 in play — if active, you'll bust at 18+ on target 17.")
+
+    if already_busted:
+        over = u_total - target
+        lines.append(f"")
+        lines.append(f" You are BUST at {u_total} ({over} over {target}).")
+        lines.append(f" Win chance AS-IS: {current_bust_win_pct * 100:.1f}%")
+
+        if current_bust_win_pct >= 0.30:
+            lines.append(f" -> Decent odds. STAY and let opponent draw into a deeper bust.")
+        elif current_bust_win_pct >= 0.10:
+            lines.append(f" -> Marginal. Use trumps to worsen opponent position before resolving.")
+        else:
+            lines.append(f" -> Poor odds. You need trumps to improve the situation.")
+
+        # Trump improvements from busted state
+        trump_helps = []
+        if lye_analysis and lye_analysis["win_pct"] > current_bust_win_pct + 0.04:
+            trump_helps.append(
+                f"  'Love Your Enemy' -> {lye_analysis['win_pct'] * 100:.1f}% win chance "
+                f"(forces card [{lye_analysis['best_card']}] on opponent)."
+            )
+        if "Exchange" in hand_set and o_visible_total > 0:
+            trump_helps.append(
+                f"  'Exchange' -> swap your last drawn card with opponent's face-up card "
+                f"(opp visible: {o_visible_total}) — may un-bust or deepen their total."
+            )
+        if "Return" in hand_set:
+            trump_helps.append(f"  'Return' -> send back your last face-up card — may un-bust you.")
+        if "Go for 27" in hand_set and u_total <= 27 and target < 27:
+            trump_helps.append(f"  'Go for 27' -> your {u_total} is safe at target 27! Un-busts you entirely.")
+        if "Go for 24" in hand_set and u_total <= 24 and target < 24:
+            trump_helps.append(f"  'Go for 24' -> your {u_total} is safe at target 24! Un-busts you entirely.")
+        if trump_helps:
+            lines.append(f"")
+            lines.append(f" Trump options:")
+            lines.extend(trump_helps)
+
+    else:
+        lines.append(f"")
+        lines.append(f" You are at {u_total}. Goal: draw over {target}, stay closer to it than opponent.")
+
+        if draw_paths:
+            best = draw_paths[0]
+            lines.append(f"")
+            lines.append(f" BEST BUST DRAW:  card [{best['card']}]  ->  total {best['bust_total']}  ({best['over_by']} over)  |  Win {best['win_pct'] * 100:.1f}%")
+
+            if len(draw_paths) > 1:
+                lines.append(f"")
+                lines.append(f" ALL BUST OPTIONS:")
+                for path in draw_paths[:6]:
+                    sym = "+" if path["win_pct"] >= 0.30 else ("~" if path["win_pct"] >= 0.15 else "-")
+                    lines.append(
+                        f"  [{sym}] Draw [{path['card']:>2}] -> {path['bust_total']:>2} "
+                        f"({path['over_by']} over) | Win {path['win_pct'] * 100:.0f}%"
+                    )
+        else:
+            lines.append(f" No single draw busts you from {u_total} — need 2 draws or a trump setup first.")
+
+        # Trump setups
+        trump_lines = []
+        if go_saves:
+            for trump_name, new_target, saved_cards in go_saves:
+                trump_lines.append(
+                    f"  '{trump_name}' first -> draw {sorted(saved_cards)} "
+                    f"(bust at {target}, safe at {new_target}). Then bust vs opp at {new_target}."
+                )
+        if lye_analysis and lye_analysis["win_pct"] >= 0.12:
+            trump_lines.append(
+                f"  'Love Your Enemy' (after busting) -> {lye_analysis['win_pct'] * 100:.0f}% win. "
+                f"Best forced card: [{lye_analysis['best_card']}]."
+            )
+        if "Remove" in hand_set and o_visible_total > 0:
+            trump_lines.append(
+                f"  'Remove' -> strip opponent's face-up card, forcing them to draw more -> higher bust risk."
+            )
+        if "Exchange" in hand_set:
+            trump_lines.append(
+                f"  'Exchange' after busting -> give your bust card to opponent, "
+                f"deepening THEIR total if their card is lower."
+            )
+        if trump_lines:
+            lines.append(f"")
+            lines.append(f" Trump setups:")
+            lines.extend(trump_lines)
+
+    # ── Final verdict ─────────────────────────────────────────────────────────
+    best_pct = 0.0
+    if draw_paths:
+        best_pct = draw_paths[0]["win_pct"]
+    if already_busted:
+        best_pct = max(current_bust_win_pct, lye_analysis["win_pct"] if lye_analysis else 0)
+
+    if best_pct >= 0.40:
+        verdict = "GOOD opportunity — go for it."
+    elif best_pct >= 0.25:
+        verdict = "FAIR — worth it, especially with trump support."
+    elif best_pct >= 0.10:
+        verdict = "RISKY — only attempt on draw-heavy opponents."
+    else:
+        verdict = "POOR — wait for a better setup or opponent."
+
+    lines.append(f"")
+    if not bust_challenge_done:
+        lines.append(f" VERDICT: {verdict}")
+        lines.append(f" Reward: Starting Trump Card +1")
+    else:
+        lines.append(f" (Challenge already completed.)")
+    lines.append("")
+
+    return lines
 
 
 def generate_advice(
@@ -1388,9 +2180,12 @@ def generate_advice(
     challenges_completed: set = None,
     available_trumps: set = None,
     trump_hand: list = None,
+    banker_ai: "BankerAI" = None,
+    condition_state: "TrumpConditionState" = None,
 ):
     """Generate strategic advice factoring in HP state + opponent trumps.
-    trump_hand: player's current held trumps — used to gate Love Your Enemy / bust suggestions."""
+    banker_ai: real AI profile from CardGameBanker fields (improves outcome model).
+    condition_state: current CardGameCondition-derived state for trump timing."""
     advice_lines = []
     priority_warnings = []
     if trump_hand is None:
@@ -1403,7 +2198,38 @@ def generate_advice(
         stay_val += (target - 21)
         stay_val = max(1, stay_val)  # Don't go below 1
 
-    # ── HP-aware urgency ──
+    # ── REAL AI PROFILE DISPLAY ──
+    if banker_ai is not None:
+        draw_p = banker_ai.draw_probability(o_visible_total, u_total, target)
+        # Only show if in the interesting gray zone (not trivially 0% or 100%)
+        if 0.05 < draw_p < 0.95:
+            advice_lines.append(
+                f"AI MODEL: Banker draw probability at {o_visible_total} vs your {u_total} = {draw_p * 100:.0f}% "
+                f"(real CardGameBanker logic: draw<{banker_ai.take_card_border}, stay≥{banker_ai.hand_good_border}"
+                + (" | CHICKEN MODE" if banker_ai.is_chicken else "") + ")"
+            )
+        elif draw_p <= 0.05 and o_visible_total >= banker_ai.take_card_border:
+            advice_lines.append(
+                f"AI MODEL: Banker will likely STAY at {o_visible_total} "
+                f"(satisfied threshold: {banker_ai.hand_good_border}"
+                + (", CHICKEN MODE" if banker_ai.is_chicken else "") + ")"
+            )
+
+    # ── TRUMP CONDITION STATE WARNINGS ──
+    if condition_state is not None:
+        enemy_trumps_set = set(intel.get("trumps", []))
+        high_priority_trumps = {
+            "Dead Silence", "Black Magic", "Curse", "Escape",
+            "Mind Shift+", "Desire+", "Go for 17",
+        }
+        for trump_name in (enemy_trumps_set & high_priority_trumps):
+            level, reason = condition_state.trump_fire_likelihood(trump_name)
+            if level in ("VERY HIGH", "HIGH"):
+                priority_warnings.append(f"⚡ {trump_name} [{level}]: {reason}")
+            elif level == "MEDIUM":
+                advice_lines.append(f"  {trump_name} [{level}]: {reason}")
+            elif level == "NONE":
+                advice_lines.append(f"  {trump_name}: {reason}")  # e.g. exhausted Black Magic
     if player_hp <= 3:
         priority_warnings.append(
             f"!! LOW HP ({player_hp}/{player_max}) !! Play ultra-conservatively.\n"
@@ -1430,12 +2256,12 @@ def generate_advice(
             )
 
     if "Twenty-One Up" in trumps and remaining:
-        cards_giving_21 = [c for c in remaining if o_visible_total + c == 21]
+        cards_giving_21 = [c for c in remaining if o_visible_total + c == target]
         if cards_giving_21:
             priority_warnings.append(
-                "!! INSTANT KILL RISK !! He can hit EXACTLY 21 by drawing: "
+                f"!! INSTANT KILL RISK !! He can hit EXACTLY {target} by drawing: "
                 f"{sorted(cards_giving_21)}.\n"
-                "'Twenty-One Up' sets bet to 21 — keep 'Destroy' ready."
+                f"'Twenty-One Up' sets bet to {target} — keep 'Destroy' ready."
             )
 
     if "Dead Silence" in trumps:
@@ -1473,21 +2299,37 @@ def generate_advice(
     if "Oblivion" in trumps:
         advice_lines.append("OBLIVION: Can void a round. Annoying, not fatal — replay and keep pressure.")
 
+    # ── Enemy trump prediction (rule table + timing engine) ──
+    if condition_state is not None:
+        pick, conf, why = predict_enemy_trump(intel, condition_state)
+        if pick and conf in ("HIGH", "VERY HIGH", "MEDIUM"):
+            advice_lines.append(f"ENEMY AI [{conf}]: likely plays '{pick}' — {why}")
+
     # ── Core draw/stay decision ──
-    estimated_opp = estimate_opponent_total(o_visible_total, stay_val)
     behavior_key = (opp_behavior or "auto").strip().lower()
 
+    # Use real AI thresholds in labels if available
+    if banker_ai is not None:
+        ai_label = (
+            f"draws below {banker_ai.take_card_border}, stays at {banker_ai.hand_good_border}+"
+            + (" [CHICKEN]" if banker_ai.is_chicken else "")
+        )
+        expected_opp_stay = banker_ai.hand_good_border
+    else:
+        ai_label = f"draws until {stay_val}+"
+        expected_opp_stay = stay_val
+
     behavior_label = {
-        "stay": "Opponent stopped drawing (hidden card modeled across remaining deck)",
-        "auto": f"Opponent AI draws until {stay_val}+",
-        "hit_to_threshold": f"Opponent AI draws until {stay_val}+",
-    }.get(behavior_key, f"Opponent AI draws until {stay_val}+")
+        "stay": "Opponent confirmed stopped drawing (hidden card modeled across remaining deck)",
+        "auto": f"Opponent AI: {ai_label}",
+        "hit_to_threshold": f"Opponent AI: {ai_label}",
+    }.get(behavior_key, f"Opponent AI: {ai_label}")
 
     # Rough estimate for potential damage if you lose (for messaging only)
+    estimated_opp = max(o_visible_total, expected_opp_stay)
     if u_total <= target:
         potential_loss_dmg = max(1, estimated_opp - u_total)
     else:
-        # bust-ish estimate: how far over + opponent closeness-ish
         potential_loss_dmg = (u_total - target) + max(0, target - estimated_opp)
 
     if u_total == target:
@@ -1504,7 +2346,8 @@ def generate_advice(
 
     # Outcome model: compare staying now vs hitting now using selected opponent behavior.
     stay_probs, hit_probs = evaluate_stay_hit_outcomes(
-        u_total, o_visible_total, remaining, stay_val, target, behavior_key
+        u_total, o_visible_total, remaining, stay_val, target, behavior_key,
+        banker_ai=banker_ai,
     )
     bust_pct = 100.0 - safe_pct
     advice_lines.append(f"MODEL: {behavior_label}.")
@@ -1539,7 +2382,8 @@ def generate_advice(
             after_remaining = [c for c in remaining if c != forced_card]
             # After forced draw, opponent continues with normal AI
             opp_dist = opponent_total_distribution(
-                new_opp_total, after_remaining, stay_val, target, behavior="auto"
+                new_opp_total, after_remaining, stay_val, target,
+                behavior="auto", banker_ai=banker_ai, player_visible_total=u_total,
             )
             outcome = outcome_probabilities(u_total, opp_dist, target)
             force_probs["win"] += outcome["win"] * card_weight
@@ -1554,60 +2398,52 @@ def generate_advice(
             f"(busts opponent: {opp_bust_from_force:.0f}%)."
         )
 
-    # Bust-to-win analysis — gated by multiple conditions
-    bust_result = None
+    # ── Bust-win challenge analysis ─────────────────────────────────────────
     if challenges_completed is None:
         challenges_completed = set()
     if available_trumps is None:
         available_trumps = set()
     bust_challenge_done = "bust_win" in challenges_completed
+
+    # Always compute bust inline result for use in action recommendation
+    bust_result = None
     bust_cards = [c for c in remaining if u_total + c > target]
-
-    # Gate bust suggestion: only show when it makes sense
-    # - Challenge not yet completed
-    # - Bust cards exist and opponent hasn't stayed
-    # - Player HP > 2 (too risky — you take damage if bust-lose)
-    # - Stay win% isn't already dominant (>60% means just play normally)
-    # - Not early game at full HP (don't encourage risky plays round 1)
-    early_game_full_hp = (player_hp == player_max and opp_hp == opp_max)
-    show_bust = (
-        bust_cards
-        and behavior_key != "stay"
-        and not bust_challenge_done
-        and player_hp > 2
-        and stay_probs["win"] < 0.60
-        and not early_game_full_hp  # Don't suggest risky bust play in round 1
-    )
-
-    if show_bust:
-        bust_result = evaluate_bust_inline(u_total, o_visible_total, remaining, stay_val, target, behavior_key)
-        if bust_result and bust_result["win_pct"] >= 0.20:  # Only show if decent odds
+    if bust_cards and behavior_key != "stay":
+        bust_result = evaluate_bust_inline(
+            u_total, o_visible_total, remaining, stay_val, target, behavior_key, banker_ai=banker_ai
+        )
+        if bust_result and bust_result["win_pct"] >= 0.15:
+            label = "INTENTIONAL BUST (challenge)" if not bust_challenge_done else "INTENTIONAL BUST"
             advice_lines.append(
-                f"If you BUST ON PURPOSE -> "
-                f"Best card: {bust_result['best_card']} (total {bust_result['bust_total']}) → "
+                f"If you BUST ON PURPOSE [{label}] -> "
+                f"best card: [{bust_result['best_card']}] (total {bust_result['bust_total']}) -> "
                 f"Win {bust_result['win_pct'] * 100:.1f}%."
-                f" [Completes bust-win challenge!]"
             )
-        elif bust_result and bust_result["win_pct"] < 0.20:
-            bust_result = None  # Too low
+        else:
+            bust_result = None
 
-    # (UNLOCKED reminders removed — trump advice engine handles card suggestions contextually)
-
-    # ── Action recommendation ──
-    # Find the best option among STAY, HIT, FORCE DRAW, and INTENTIONAL BUST
+    # ── Action recommendation ─────────────────────────────────────────────────
     options = {
         "STAY": stay_probs["win"],
-        "HIT": hit_probs["win"],
+        "HIT":  hit_probs["win"],
     }
     if force_probs is not None:
-        options["FORCE A DRAW (Love Your Enemy)"] = force_probs["win"]
-    if bust_result and bust_result["win_pct"] >= 0.20:
-        options["INTENTIONAL BUST ★ challenge"] = bust_result["win_pct"]
+        options["FORCE DRAW (Love Your Enemy)"] = force_probs["win"]
+    if bust_result and bust_result["win_pct"] >= 0.15:
+        options["INTENTIONAL BUST"] = bust_result["win_pct"]
 
     best_option = max(options, key=options.get)
-    best_win = options[best_option]
-    second_best_win = max(v for k, v in options.items() if k != best_option)
-    win_edge = best_win - second_best_win
+    best_win    = options[best_option]
+    second_best = max(v for k, v in options.items() if k != best_option)
+    win_edge    = best_win - second_best
+
+    # Low-HP nudge: prefer STAY over a marginal HIT when bust risk is high
+    if best_option == "HIT" and player_hp <= 2 and safe_pct < 50 and win_edge < 0.05:
+        best_option = "STAY"
+        best_win    = options["STAY"]
+        win_edge    = best_win - options["HIT"]
+
+    close_note = " (close call)" if abs(win_edge) < 0.05 else ""
 
     if win_edge >= 0.15 and not (player_hp <= 3 and safe_pct < 50 and best_option == "HIT"):
         advice_lines.append(
@@ -1626,24 +2462,22 @@ def generate_advice(
         )
         return priority_warnings, advice_lines
 
-    # If you're already at/above their likely stay value and beating their likely total, stay
     if u_total >= stay_val and u_total >= estimated_opp:
         advice_lines.append(f"ACTION: STAY — your {u_total} likely meets/beats his ~{estimated_opp}.")
         return priority_warnings, advice_lines
 
-    # Otherwise decision based on odds + HP risk
     if safe_pct >= 60:
         advice_lines.append(f"ACTION: HIT — {safe_pct:.0f}% safe. Good odds.")
     elif safe_pct >= 40:
         if player_hp <= 3:
             advice_lines.append(
                 f"ACTION: STAY (LOW HP) — {safe_pct:.0f}% is too risky at {player_hp} HP.\n"
-                f"Potential loss damage estimate: ~{potential_loss_dmg}. Consider a shield/trump."
+                f"Potential loss damage: ~{potential_loss_dmg}. Consider a shield/trump."
             )
         elif u_total < estimated_opp:
             advice_lines.append(
                 f"ACTION: RISKY HIT — {safe_pct:.0f}% safe, but {u_total} likely loses to ~{estimated_opp}.\n"
-                "Consider using a trump (Perfect Draw / Exchange / Love Your Enemy) instead."
+                "Consider Perfect Draw / Exchange / Love Your Enemy instead."
             )
         else:
             advice_lines.append(f"ACTION: STAY — {safe_pct:.0f}% safe is marginal; your {u_total} might hold.")
@@ -1656,13 +2490,13 @@ def generate_advice(
         else:
             advice_lines.append(f"ACTION: STAY — too risky ({safe_pct:.0f}% safe). Hope he busts or {u_total} holds.")
 
-    # Bust challenge nudge (when not yet completed and bust has decent odds)
-    if bust_result and not bust_challenge_done and bust_result["win_pct"] >= 0.20:
+    # Bust challenge nudge inline (brief — full panel shown when player presses B)
+    if bust_result and not bust_challenge_done and bust_result["win_pct"] >= 0.15:
         if "BUST" not in advice_lines[-1]:
             advice_lines.append(
-                f"💡 BUST CHALLENGE: Drawing {bust_result['best_card']} (→{bust_result['bust_total']}) "
-                f"has {bust_result['win_pct'] * 100:.0f}% win chance. "
-                f"Completing this unlocks Starting Trump +1!"
+                f"  ★ Bust challenge: draw [{bust_result['best_card']}] -> {bust_result['bust_total']} "
+                f"({bust_result['win_pct'] * 100:.0f}% win). "
+                f"Press B in fight menu for full bust analysis."
             )
 
     return priority_warnings, advice_lines
@@ -1841,7 +2675,7 @@ def record_round_result(round_num: int, player_hp: int, opp_hp: int, intel: dict
 # ============================================================
 # SINGLE ROUND ANALYSIS
 # ============================================================
-def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21, dead_cards: list = None, challenges_completed: set = None, available_trumps: set = None, trump_hand: list = None, fight_num: int = 0, mode_key: str = "3", face_down_card: int = None, player_visible: list = None, opp_visible: list = None) -> tuple:
+def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int, target: int = 21, dead_cards: list = None, challenges_completed: set = None, available_trumps: set = None, trump_hand: list = None, fight_num: int = 0, mode_key: str = "3", face_down_card: int = None, player_visible: list = None, opp_visible: list = None, banker_ai: "BankerAI" = None, condition_state: "TrumpConditionState" = None) -> tuple:
     """Run the solver for one round of 21 (read-only, no HP changes).
     Returns (updated_dead_cards, face_down_card, player_visible, opp_visible) for persistence."""
     if dead_cards is None:
@@ -1972,31 +2806,13 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         o_total = sum(o_vis)
 
         # What did the opponent do?
-        print("\n What did the opponent do? (Enter = nothing yet / still playing)")
-        print("  2. Opponent stayed (done drawing, hidden card still unknown)")
-        print("  3. I forced a draw (Love Your Enemy / similar)")
-        beh_input = input(" > ").strip()
-        if beh_input == "2":
+        print("\n Has the opponent stopped drawing? (y = yes, Enter = still playing)")
+        beh_input = input(" > ").strip().lower()
+        if beh_input == "y":
             opp_behavior = "stay"
-            # They stopped drawing but hidden card is unknown
-            print(f" → Opponent stopped drawing. Visible total: {o_total}")
+            print(f" → Opponent stopped. Visible total: {o_total}")
             print(f"   Hidden card is one of: {sorted(remaining)}")
             print(f"   Possible totals: {sorted(o_total + c for c in remaining)}")
-        elif beh_input == "3":
-            forced_raw = input(" What card did they draw? ").strip()
-            if forced_raw:
-                forced_card = int(forced_raw)
-                if 1 <= forced_card <= 11:
-                    o_total += forced_card
-                    o_vis.append(forced_card)
-                    if forced_card in remaining:
-                        remaining.remove(forced_card)
-                    if forced_card not in accounted:
-                        accounted = sorted(set(accounted + [forced_card]))
-                    print(f" → Opponent now at {o_total} (drew {forced_card})")
-                else:
-                    print(" Invalid card, ignoring.")
-            opp_behavior = "auto"  # After forced draw, they continue with normal AI
         else:
             opp_behavior = "auto"
 
@@ -2026,6 +2842,21 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         # Strategic advice
         print_header("STRATEGY ADVICE")
 
+        # Use passed-in BankerAI profile (already resolved by fight_opponent)
+        _banker_ai = banker_ai if banker_ai is not None else get_banker_ai(intel)
+
+        # Update live fields on passed-in condition_state; fall back to fresh one
+        if condition_state is not None:
+            _cond = condition_state
+            _cond.banker_hand_sum = o_total
+            _cond.player_hand_sum = u_total
+            _cond.player_item_num = len(trump_hand) if trump_hand else 0
+        else:
+            _cond = TrumpConditionState()
+            _cond.banker_hand_sum = o_total
+            _cond.player_hand_sum = u_total
+            _cond.player_item_num = len(trump_hand) if trump_hand else 0
+
         # Compute stay win% to share with both advice and trump recommendation
         _stay_val = int(intel.get("stay_val", 17))
         if target != 21:
@@ -2035,7 +2866,8 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         if u_total <= target and remaining:
             try:
                 sp, _ = evaluate_stay_hit_outcomes(
-                    u_total, o_total, remaining, _stay_val, target, opp_behavior
+                    u_total, o_total, remaining, _stay_val, target, opp_behavior,
+                    banker_ai=_banker_ai,
                 )
                 _stay_win_pct = sp.get("win", 0.5)
             except Exception:
@@ -2044,7 +2876,8 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
         warnings, advice = generate_advice(
             u_total, o_total, intel, remaining, target, safe_pct, perfect_draws,
             player_hp, player_max, opp_hp, opp_max, opp_behavior,
-            challenges_completed, available_trumps, trump_hand
+            challenges_completed, available_trumps, trump_hand,
+            banker_ai=_banker_ai, condition_state=_cond,
         )
         for w in warnings:
             print(f"\n \033[91m{w}\033[0m")
@@ -2053,7 +2886,6 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
 
         # Trump card play recommendations (suppressed when not needed)
         if trump_hand:
-            import re as _re
             trump_recs = recommend_trump_play(
                 trump_hand, u_total, o_total, remaining, target, _stay_val,
                 intel, player_hp, opp_hp, opp_behavior,
@@ -2064,12 +2896,12 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
                 print("\n ┌─ TRUMP CARD ADVICE ─────────────────────────────┐")
                 for rec in trump_recs:
                     # Strip ANSI for width calculation
-                    clean = _re.sub(r'\033\[[0-9;]*m', '', rec)
+                    clean = re.sub(r'\033\[[0-9;]*m', '', rec)
                     while len(clean) > 53:
                         # Print first 53 visible chars
                         print(f" │ {rec[:53 + (len(rec) - len(clean))]}│")
                         rec = rec[53 + (len(rec) - len(clean)):]
-                        clean = _re.sub(r'\033\[[0-9;]*m', '', rec)
+                        clean = re.sub(r'\033\[[0-9;]*m', '', rec)
                     pad = 53 - len(clean)
                     print(f" │ {rec}{' ' * pad}│")
                 print(" └─────────────────────────────────────────────────┘")
@@ -2086,7 +2918,173 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
 # ============================================================
 # FIGHT LOOP — Multiple rounds vs. one opponent until death
 # ============================================================
-def handle_interrupt(dead_cards: list, current_target: int, player_bet: int = 1, opp_bet: int = 1, player_visible: list = None, opp_visible: list = None, face_down_card: int = None, intel: dict = None, trump_hand: list = None) -> tuple:
+
+def apply_trump_usage(trump_hand: list, raw: str) -> list:
+    """Remove trumps from hand by index number(s) (space-separated)."""
+    raw = (raw or "").strip()
+    if not raw:
+        return trump_hand
+    try:
+        indices = sorted({int(x) - 1 for x in raw.split()}, reverse=True)
+        for idx in indices:
+            if 0 <= idx < len(trump_hand):
+                print(f"  - USED: {trump_hand.pop(idx)}")
+            else:
+                print(f"  ! No card at #{idx + 1}")
+    except ValueError:
+        print(" ! Enter numbers only (e.g. '1 3')")
+    return trump_hand
+
+
+def apply_trump_additions(trump_hand: list, raw: str, available_trumps: set = None) -> list:
+    """Add trumps to hand by number(s) from PLAYER_TRUMPS list (space-separated)."""
+    raw = (raw or "").strip()
+    if not raw:
+        return trump_hand
+    pool = [c for c in PLAYER_TRUMPS if not available_trumps or c not in UNLOCKABLE or c in available_trumps]
+    try:
+        for idx in [int(x) - 1 for x in raw.split()]:
+            if 0 <= idx < len(pool):
+                trump_hand.append(pool[idx])
+                print(f"  + GAINED: {pool[idx]}")
+            else:
+                print(f"  ! No card #{idx + 1} in list (max {len(pool)})")
+    except ValueError:
+        print(" ! Enter numbers only (e.g. '3 7')")
+    return trump_hand
+
+
+def show_trump_addition_list(available_trumps: set = None) -> None:
+    """Print numbered PLAYER_TRUMPS list so user can add by number."""
+    pool = [c for c in PLAYER_TRUMPS if not available_trumps or c not in UNLOCKABLE or c in available_trumps]
+    print("\n ┌─ TRUMP LIST ─────────────────────────────────────┐")
+    for i, name in enumerate(pool, 1):
+        desc = TRUMPS.get(name, {}).get("desc", "")
+        print(f" │ {i:>2}. {name:<20s} {desc[:32]:<32s}│")
+    print(" └─────────────────────────────────────────────────┘")
+
+
+def analyze_board_state(
+    intel: dict, player_hp: int, player_max: int, opp_hp: int, opp_max: int,
+    target: int, dead_cards: list, challenges_completed: set, available_trumps: set,
+    trump_hand: list, *, fight_num: int = 0, mode_key: str = "3",
+    face_down_card: int, player_visible: list, opp_visible: list,
+    opp_hidden_known: int = None,
+    opp_behavior: str = "auto", banker_ai: "BankerAI" = None,
+    condition_state: "TrumpConditionState" = None,
+) -> None:
+    """
+    Pure display — no input(). Prints the full board state + advice.
+    Called after every action (H/O/P/I/S) so the board always reflects current state.
+    """
+    clear_screen()
+    display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
+
+    if face_down_card is None:
+        print(" ⚠  No face-down card set yet.")
+        return
+
+    u_hand = [face_down_card] + list(player_visible)
+    o_vis  = list(opp_visible)
+
+    # Sync condition_state live fields
+    if condition_state is not None and o_vis:
+        condition_state.banker_last_faceup  = o_vis[-1]
+        condition_state.banker_visible_count = len(o_vis)
+        condition_state.banker_hand_sum     = sum(o_vis)
+        condition_state.player_hand_sum     = sum(u_hand)
+
+    dead       = sorted(set(dead_cards or []))
+    all_seen   = set(u_hand + o_vis + dead)
+    if opp_hidden_known is not None:
+        all_seen.add(int(opp_hidden_known))
+    remaining  = [c for c in range(1, 12) if c not in all_seen]
+    u_total    = sum(u_hand)
+    o_total    = sum(o_vis)
+
+    if target != 21:
+        print(f"\n ★ TARGET IS {target}!")
+
+    if opp_behavior == "stay":
+        print(f"\n → Opponent STAYED. Their visible total: {o_total}")
+        if opp_hidden_known is not None:
+            h = int(opp_hidden_known)
+            print(f"   Hidden card is: {h}  (deduced / known)")
+            print(f"   Total: {o_total + h}")
+        else:
+            print(f"   Hidden card is one of: {sorted(remaining)}")
+            print(f"   Possible totals: {sorted(o_total + c for c in remaining)}")
+
+    display_card_matrix(sorted(all_seen))
+    safe_pct, bust_pct, perfect_draws = calculate_probabilities(remaining, u_total, target)
+    safe_count = len([c for c in remaining if u_total + c <= target])
+
+    opp_label = "OPPONENT STAYED" if opp_behavior == "stay" else "OPPONENT VISIBLE"
+    print(f"\n YOUR TOTAL : {u_total}  (cards: {u_hand})")
+    print(f" {opp_label}: {o_total}  (cards: {o_vis})")
+    print(f" TARGET     : {target}")
+    print(f" SAFE HIT   : {safe_pct:.0f}%  ({safe_count}/{len(remaining)} cards safe)")
+    print(f" BUST RISK  : {bust_pct:.0f}%")
+    if perfect_draws:
+        print(f" PERFECT    : {sorted(perfect_draws)} → exactly {target}!")
+
+    if remaining:
+        print("\n Draw outcomes:")
+        for c in sorted(remaining):
+            new_tot = u_total + c
+            ok      = "✓" if new_tot <= target else "✖ BUST"
+            star    = " ★ PERFECT!" if new_tot == target else ""
+            print(f"  [{c:>2}] → {new_tot:<2} {ok}{star}")
+
+    # Derive stay_val for advice engine
+    stay_val = int(intel.get("stay_val", 17))
+    if target != 21:
+        stay_val = max(1, stay_val + (target - 21))
+    if banker_ai is not None:
+        stay_val = banker_ai.take_card_border
+
+    _stay_win_pct = None
+    if u_total <= target and remaining:
+        try:
+            sp, _ = evaluate_stay_hit_outcomes(
+                u_total, o_total, remaining, stay_val, target, opp_behavior, banker_ai=banker_ai
+            )
+            _stay_win_pct = sp.get("win", 0.5)
+        except Exception:
+            _stay_win_pct = 0.5
+
+    print_header("STRATEGY ADVICE")
+    warnings, advice = generate_advice(
+        u_total, o_total, intel, remaining, target, safe_pct, perfect_draws,
+        player_hp, player_max, opp_hp, opp_max, opp_behavior,
+        challenges_completed, available_trumps, trump_hand,
+        banker_ai=banker_ai, condition_state=condition_state,
+    )
+    for w in warnings:
+        print(f"\n \033[91m{w}\033[0m")
+    for a in advice:
+        print(f"\n {a}")
+
+    if trump_hand:
+        trump_recs = recommend_trump_play(
+            trump_hand, u_total, o_total, remaining, target, stay_val,
+            intel, player_hp, opp_hp, opp_behavior,
+            fight_num=fight_num, mode_key=mode_key, stay_win_pct=_stay_win_pct,
+        )
+        if trump_recs:
+            print("\n ┌─ TRUMP CARD ADVICE ─────────────────────────────┐")
+            for rec in trump_recs:
+                clean = re.sub(r'\033\[[0-9;]*m', '', rec)
+                while len(clean) > 53:
+                    print(f" │ {rec[:53 + (len(rec) - len(clean))]}│")
+                    rec   = rec[53 + (len(rec) - len(clean)):]
+                    clean = re.sub(r'\033\[[0-9;]*m', '', rec)
+                pad = 53 - len(clean)
+                print(f" │ {rec}{' ' * pad}│")
+            print(" └─────────────────────────────────────────────────┘")
+
+    print("\n" + "=" * 60)
+def handle_interrupt(dead_cards: list, current_target: int, player_bet: int = 1, opp_bet: int = 1, player_visible: list = None, opp_visible: list = None, face_down_card: int = None, intel: dict = None, trump_hand: list = None, condition_state: "TrumpConditionState" = None) -> tuple:
     """
     Interrupt handler: enemy played a trump card mid-round.
     Shows opponent's known trumps and walks through effects step by step.
@@ -2245,6 +3243,8 @@ def handle_interrupt(dead_cards: list, current_target: int, player_bet: int = 1,
         except ValueError:
             player_bet += 10
             msg = f"★★ BLACK MAGIC! YOUR bet +10 → now {player_bet}. LETHAL if you lose!"
+        if condition_state is not None:
+            condition_state.black_magic_uses += 1
 
     # --- CONTROL TRUMPS ---
     elif pt in ("dead silence",):
@@ -2363,424 +3363,496 @@ def handle_interrupt(dead_cards: list, current_target: int, player_bet: int = 1,
 
 def fight_opponent(intel: dict, player_hp: int, player_max: int,
                    challenges_completed: set = None, available_trumps: set = None,
-                   mode_key: str = "3", fight_num: int = 1) -> int:
+                   mode_key: str = "3", fight_num: int = 1,
+                   trump_hand: list = None) -> tuple:
     """
     Fight one opponent across multiple rounds until one side reaches 0 HP.
-    Returns player's remaining HP when the fight ends.
-    mode_key: "1" Normal, "2" Survival, "3" Survival+
-    fight_num: which opponent number in the gauntlet (1-10)
+    Returns (player_hp, trump_hand) so the trump hand persists across fights.
     """
-    opp_hp = int(intel["hp"])
-    opp_max = int(intel["hp"])
-    round_num = 0
-    round_history = []
-    current_target = 21  # Reset each round (Go For cards are "while on table")
-    trump_hand = []  # Player's held trump cards — persists across rounds
+    if challenges_completed is None: challenges_completed = set()
+    if available_trumps     is None: available_trumps     = set()
+    if trump_hand           is None: trump_hand           = []
+
+    opp_hp       = int(intel["hp"])
+    opp_max      = int(intel["hp"])
+    round_num    = 0
+    round_history: list = []
 
     print_header(f"FIGHT: vs. {intel['name']}")
 
-    # Variant selection — if opponent has sub-variants, let player pick
-    variants = intel.get("variants", {})
+    # ── Variant selection ──────────────────────────────────────────────────────
+    variants       = intel.get("variants", {})
+    variant_ai_key = None
     if variants:
-        print(f"\n Which variant of {intel['name']}?")
-        print(" (Look at the sack on their head to identify)\n")
         variant_keys = list(variants.keys())
+        print(f"\n ┌─ IDENTIFY THE VARIANT ─────────────────────────────────┐")
+        print(f" │ Look at the sack on their head RIGHT NOW and count:    │")
         for i, key in enumerate(variant_keys, 1):
-            v = variants[key]
+            v          = variants[key]
+            visual     = v.get("visual_id", key)
             trumps_str = ", ".join(v["trumps"]) if v["trumps"] else "None"
-            print(f"  {i}. {key} — Trumps: {trumps_str}")
-        print(f"  {len(variant_keys) + 1}. Not sure (use combined loadout)")
-
+            print(f" │   {i}. {visual:<52s} │")
+            print(f" │      Trumps: {trumps_str:<47s} │")
+        not_sure = len(variant_keys) + 1
+        print(f" │   {not_sure}. Can't tell — use combined loadout{' ' * 21} │")
+        print(f" └─────────────────────────────────────────────────────────┘")
         v_input = input("\n > ").strip()
         try:
             v_idx = int(v_input) - 1
             if 0 <= v_idx < len(variant_keys):
-                chosen = variants[variant_keys[v_idx]]
-                intel = dict(intel)  # Copy so we don't mutate original
+                chosen_key     = variant_keys[v_idx]
+                chosen         = variants[chosen_key]
+                intel          = dict(intel)
                 intel["trumps"] = chosen["trumps"]
-                intel["tip"] = chosen["tip"]
-                intel["name"] = f"{intel['name']} ({variant_keys[v_idx]})"
-                print(f"\n ★ Set to: {variant_keys[v_idx]}")
-                print(f"   Trumps: {', '.join(chosen['trumps'])}")
+                intel["tip"]    = chosen["tip"]
+                base_name       = intel["name"]
+                intel["name"]   = f"{base_name} ({chosen_key})"
+                variant_ai_key  = {
+                    ("Barbed Wire Hoffman",      "3 wires"): "barbed_3w",
+                    ("Barbed Wire Hoffman",      "4 wires"): "barbed_4w",
+                    ("Bloody Handprints Hoffman","2 hands"): "bloody_s_plus",
+                    ("Bloody Handprints Hoffman","4 hands"): "bloody_s_plus",
+                }.get((base_name, chosen_key))
+                print(f"\n ★ {chosen_key} — Trumps: {', '.join(chosen['trumps'])}")
             else:
-                print(f" Using combined loadout (all possible trumps).")
+                print(" Using combined loadout.")
         except (ValueError, IndexError):
-            print(f" Using combined loadout (all possible trumps).")
+            print(" Using combined loadout.")
+
+    # ── AI models — persist for all rounds ────────────────────────────────────
+    _banker_ai = get_banker_ai(intel, variant_key=variant_ai_key)
+    _condition = TrumpConditionState()
+    _condition.player_finger = player_hp
+    _condition.banker_finger = opp_hp
 
     display_opponent_info(intel)
 
-    # Always enter starting trump hand — you always begin with trumps
-    print("\n Enter your starting trump cards:")
-    trump_hand = edit_trump_hand(trump_hand, available_trumps)
+    # ── Starting trump hand (only prompt if empty — run_mode pre-fills it) ────
+    if not trump_hand:
+        print("\n Enter your starting trump cards:")
+        trump_hand = edit_trump_hand([], available_trumps)
 
+    # ── Lucas scripted round 3 helper ─────────────────────────────────────────
+    def _lucas_round3() -> bool:
+        if mode_key != "1" or round_num != 3:
+            return False
+        print("\n" + "=" * 60)
+        print("\033[91m" + " ★★★ LUCAS SAW ROUND — SCRIPTED SEQUENCE ★★★".center(60) + "\033[0m")
+        print("=" * 60)
+        print("""
+ Standard probability logic is SUSPENDED.
+
+ WHAT WILL HAPPEN:
+ • Lucas plays 'Perfect Draw' → guarantees himself 21
+ • Lucas plays 'Desperation' → bets 100, drawing LOCKED
+
+ WHAT YOU MUST DO:
+ 1. Have 'Love Your Enemy' in hand
+ 2. Wait for Desperation
+ 3. IMMEDIATELY play 'Love Your Enemy' → he busts → you win
+""")
+        print("=" * 60)
+        input("\n Press Enter once this round concludes...")
+        return True
+
+    opp_hidden_known = None  # known/deduced opponent face-down card for this round
+
+    # helper — re-render the board after any state change
+    def _render():
+        if face_down_card is None:
+            return
+        analyze_board_state(
+            intel, player_hp, player_max, opp_hp, opp_max, current_target,
+            dead_cards, challenges_completed, available_trumps, trump_hand,
+            fight_num=fight_num, mode_key=mode_key,
+            face_down_card=face_down_card, player_visible=player_visible,
+            opp_visible=opp_visible, opp_hidden_known=opp_hidden_known,
+            opp_behavior=opp_behavior,
+            banker_ai=_banker_ai, condition_state=_condition,
+        )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # OUTER LOOP — one pass per round
+    # ══════════════════════════════════════════════════════════════════════════
     while player_hp > 0 and opp_hp > 0:
-        round_num += 1
-        dead_cards = []  # Fresh deck each round
-        player_bet = 1   # Base bet — modified by trumps (resets each round)
-        opp_bet = 1      # Base opponent bet (resets each round)
-        current_target = 21  # Go For cards are "while on table" — reset each round
-        face_down_card = None  # Your face-down card — locked once set
-        player_visible = []   # Your visible drawn cards — remembered across re-analyzes
-        opp_visible = []      # Opponent's visible cards — remembered across re-analyzes
+        round_num     += 1
+        current_target = 21
+        player_bet     = 1
+        opp_bet        = 1
+        opp_behavior   = "auto"
+        dead_cards     = []
+        player_visible = []
+        opp_visible    = []
+        opp_hidden_known = None
+        face_down_card = None
+
+        _condition.round                   = round_num
+        _condition.player_item_num         = len(trump_hand)
+        _condition.player_finger           = player_hp
+        _condition.banker_finger           = opp_hp
+        _condition.banker_items_used_round = 0
+        _condition.player_betup_active     = False
+
         print_header(f"ROUND {round_num} vs. {intel['name']}")
         display_round_history(round_history)
         display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
 
-        # ── LUCAS SAW ROUND HARD BYPASS ──
-        # Normal 21 final round: Lucas cheats with Desperation + Perfect Draw.
-        # Standard math is INVALID. Only solution: Love Your Enemy.
-        if mode_key == "1" and round_num == 3:
-            print("\n" + "=" * 60)
-            print("\033[91m" + " ★★★ CRITICAL: LUCAS SAW ROUND — SCRIPTED SEQUENCE ★★★".center(60) + "\033[0m")
-            print("=" * 60)
-            print("""
- Standard probability logic is SUSPENDED for this round.
- This is a scripted narrative sequence that breaks normal rules.
-
- WHAT WILL HAPPEN:
- • Lucas will play 'Perfect Draw' → guarantees himself 21
- • Lucas will play 'Desperation' → bets become 100, NO drawing
-
- WHAT YOU MUST DO:
- 1. Make sure 'Love Your Enemy' is in your trump hand
- 2. Wait for Lucas to play Desperation
- 3. IMMEDIATELY play 'Love Your Enemy'
- 4. This forces Lucas to draw → he busts past 21 → YOU WIN
-
- ⚠ Do NOT try to beat him with standard probability or
-   target manipulation. Drawing is permanently locked.
- ⚠ If you don't have 'Love Your Enemy', you CANNOT win.
-""")
-            print("=" * 60)
-            input("\n Press Enter once this round concludes...")
+        if _lucas_round3():
             player_hp, opp_hp, entry = record_round_result(round_num, player_hp, opp_hp, intel)
             if entry is not None:
                 round_history.append(entry)
             continue
 
+        # ── Initial card entry ─────────────────────────────────────────────
+        while face_down_card is None:
+            fd = input("\n Your face-DOWN card (hidden, 1-11): ").strip()
+            if fd.isdigit() and 1 <= int(fd) <= 11:
+                face_down_card = int(fd)
+            else:
+                print(" Must be 1–11.")
+
+        fu = input(" Your face-UP  card (visible, 1-11, or Enter if none): ").strip()
+        if fu.isdigit() and 1 <= int(fu) <= 11:
+            player_visible.append(int(fu))
+
+        while not opp_visible:
+            ov = input(" Opponent's face-up card     (1-11): ").strip()
+            if ov.isdigit() and 1 <= int(ov) <= 11:
+                opp_visible = [int(ov)]
+            else:
+                print(" Must be 1–11.")
+
+        _render()
+
+        # ══════════════════════════════════════════════════════════════════════
+        # INNER LOOP — event-driven actions within one round
+        # ══════════════════════════════════════════════════════════════════════
         while True:
-            target_label = f" [Target: {current_target}]" if current_target != 21 else ""
-            trump_count = len(trump_hand)
-            bet_label = ""
-            if player_bet != 1 or opp_bet != 1:
-                bet_label = f" [Your bet: {player_bet} | Opp bet: {opp_bet}]"
-            print(f"\n ─── Round {round_num} Menu ───{target_label}{bet_label}")
-            print(" A. Analyze hand (get advice)")
-            print(f" \033[96mI. Interrupt — enemy played a trump!\033[0m")
-            print(f" P. Play a trump card ({trump_count} in hand)")
-            print(f" W. Edit trump hand ({trump_count} cards)")
-            print(" D. Done — record round result")
-            dead_label = f" ({sorted(dead_cards)})" if dead_cards else " (none)"
-            print(f" X. Dead cards{dead_label}")
-            print(" T. Trump card reference")
-            print(" O. Opponent intel")
-            print(" H. Round history")
-            print(" S. HP status")
-            print(" Q. Quit fight")
+            t_lbl = f" [Target:{current_target}]" if current_target != 21 else ""
+            b_lbl = f" [Bet {player_bet}v{opp_bet}]" if (player_bet != 1 or opp_bet != 1) else ""
+            print(f"\n ─── Round {round_num}{t_lbl}{b_lbl} [{len(trump_hand)} trumps] ───")
+            print("  H  You draw a card         O  Opponent draws a card")
+            print("  S  Opponent stays          \033[96mI  Enemy plays a trump\033[0m")
+            print(f"  P  Play your trump  ({len(trump_hand)})    D  Resolve round")
+            print("  Q  Quit fight               ?  Tools / reference")
 
-            action = input("\n Action: ").strip().upper()
+            action = input("\n > ").strip().upper()
 
-            if action == "A":
-                dead_cards, face_down_card, player_visible, opp_visible = analyze_round(intel, player_hp, player_max, opp_hp, opp_max, current_target, dead_cards, challenges_completed, available_trumps, trump_hand, fight_num=fight_num, mode_key=mode_key, face_down_card=face_down_card, player_visible=player_visible, opp_visible=opp_visible)
+            # ── ? submenu ──────────────────────────────────────────────────
+            if action == "?":
+                print("\n  W  Edit trump hand    X  Dead cards")
+                print("  T  Trump reference    F  Opponent info")
+                print("  G  Round history      V  HP status")
+                print("  B  Bust-win analysis  (challenge guide)")
+                sub = input(" > ").strip().upper()
+                action = {"F": "_OI", "G": "_HI"}.get(sub, sub)
 
+            # ── H: You drew ────────────────────────────────────────────────
+            if action == "H":
+                c = input(" Card you drew (1-11): ").strip()
+                if c.isdigit() and 1 <= int(c) <= 11:
+                    cv = int(c)
+                    player_visible.append(cv)
+                    if opp_hidden_known == cv:
+                        print(" ⚠  That value was previously locked as the opponent's hidden card — clearing the lock.")
+                        opp_hidden_known = None
+                    _render()
+                else:
+                    print(" Must be 1–11.")
+
+            # ── O: Opponent drew ───────────────────────────────────────────
+            elif action == "O":
+                c = input(" Card opponent drew (1-11): ").strip()
+                if c.isdigit() and 1 <= int(c) <= 11:
+                    cv = int(c)
+                    opp_visible.append(cv)
+                    if opp_hidden_known == cv:
+                        print(" ⚠  That value was previously locked as the opponent's hidden card — clearing the lock.")
+                        opp_hidden_known = None
+                    _condition.banker_took_card = True
+                    _render()
+                else:
+                    print(" Must be 1–11.")
+
+            # ── S: Opponent stopped ────────────────────────────────────────
+            elif action == "S":
+                opp_behavior = "stay"
+                print(" ✓ Opponent is staying.")
+                _render()
+
+            # ── I: Enemy trump ─────────────────────────────────────────────
+            elif action == "I":
+                dead_cards, current_target, player_bet, opp_bet, _msg, \
+                player_visible, opp_visible, face_down_card, trump_hand = handle_interrupt(
+                    dead_cards, current_target, player_bet, opp_bet,
+                    player_visible, opp_visible, face_down_card, intel, trump_hand,
+                    condition_state=_condition,
+                )
+                _condition.banker_items_used_round += 1
+                _condition.player_betup_active      = (player_bet > 1)
+                _render()
+
+            # ── P: You play a trump ────────────────────────────────────────
             elif action == "P":
                 if not trump_hand:
-                    print(" No trump cards in hand. Use W to add them.")
+                    print(" No trumps in hand.")
                     continue
                 display_trump_hand(trump_hand)
-                print("\n Which card to play? (number, or Enter to cancel)")
-                p_input = input(" > ").strip()
-                if not p_input:
+                p = input("\n Which card? (number, Enter to cancel): ").strip()
+                if not p:
                     continue
                 try:
-                    idx = int(p_input) - 1
-                    if 0 <= idx < len(trump_hand):
-                        played = trump_hand[idx]
-                        print(f"\n Playing: {played}")
-                        print(f" Effect: {TRUMPS.get(played, {}).get('desc', '?')}")
-
-                        # Handle target changers — auto-updates target
-                        if played in ("Go for 17", "Go for 24", "Go for 27"):
-                            new_target = int(played.split()[-1])
-                            current_target = new_target
-                            trump_hand.pop(idx)
-                            print(f" ★ Target changed to {current_target}!")
-
-                        # Handle bet modifiers — auto-updates bets
-                        elif played == "One-Up":
-                            opp_bet += 1
-                            trump_hand.pop(idx)
-                            print(f" ★ Opponent's bet +1 → now {opp_bet}. (Also draw 1 trump — use W to add it.)")
-
-                        elif played == "Two-Up":
-                            opp_bet += 2
-                            trump_hand.pop(idx)
-                            print(f" ★ Opponent's bet +2 → now {opp_bet}. (Also draw 1 trump — use W to add it.)")
-
-                        elif played == "Two-Up+":
-                            opp_bet += 2
-                            trump_hand.pop(idx)
-                            print(f" ★ Returned opponent's last face-up card to deck. Opp bet +2 → now {opp_bet}.")
-                            print(" What card was returned? (value)")
-                            r_input = input(" > ").strip()
-                            if r_input:
-                                try:
-                                    rv = int(r_input)
-                                    if rv in dead_cards:
-                                        dead_cards.remove(rv)
-                                    if rv in opp_visible:
-                                        opp_visible.remove(rv)
-                                    print(f" Card {rv} removed from opponent, returned to deck.")
-                                except ValueError:
-                                    pass
-
-                        elif played == "Shield":
-                            player_bet = max(0, player_bet - 1)
-                            trump_hand.pop(idx)
-                            print(f" ★ Your bet -1 → now {player_bet}.")
-
-                        elif played == "Shield+":
-                            player_bet = max(0, player_bet - 2)
-                            trump_hand.pop(idx)
-                            print(f" ★ Your bet -2 → now {player_bet}.")
-
-                        # Handle Return (needs current hand state — ask for card)
-                        elif played == "Return":
-                            print(" Which card are you returning? (card value)")
-                            ret_input = input(" > ").strip()
-                            if ret_input:
-                                try:
-                                    ret_card = int(ret_input)
-                                    if 1 <= ret_card <= 11:
-                                        # Remove from hand memory
-                                        if ret_card in player_visible:
-                                            player_visible.remove(ret_card)
-                                        elif ret_card == face_down_card:
-                                            face_down_card = None
-                                        print(f" ★ Returned {ret_card} to deck. Hand updated.")
-                                        trump_hand.pop(idx)
-                                    else:
-                                        print(" Invalid card value.")
-                                except ValueError:
-                                    print(" Invalid input.")
-                            else:
-                                print(" Cancelled.")
-
-                        # Handle Remove
-                        elif played == "Remove":
-                            print(" Which opponent card was removed? (card value)")
-                            rem_input = input(" > ").strip()
-                            if rem_input:
-                                try:
-                                    rem_card = int(rem_input)
-                                    if 1 <= rem_card <= 11:
-                                        dead_cards = sorted(set(dead_cards + [rem_card]))
-                                        # Remove from opponent hand memory
-                                        if rem_card in opp_visible:
-                                            opp_visible.remove(rem_card)
-                                        print(f" ★ Removed opponent's {rem_card}. Hand updated.")
-                                        trump_hand.pop(idx)
-                                    else:
-                                        print(" Invalid card value.")
-                                except ValueError:
-                                    print(" Invalid input.")
-                            else:
-                                print(" Cancelled.")
-
-                        # Handle Exchange
-                        elif played == "Exchange":
-                            print(" What card did you give? (your card value)")
-                            give_input = input(" > ").strip()
-                            print(" What card did you take? (opponent's card value)")
-                            take_input = input(" > ").strip()
-                            if give_input and take_input:
-                                try:
-                                    gave = int(give_input)
-                                    took = int(take_input)
-                                    # Update hand memory
-                                    if gave in player_visible:
-                                        player_visible.remove(gave)
-                                    elif gave == face_down_card:
-                                        face_down_card = took
-                                        took = None  # Already placed as face-down
-                                    if took is not None and 1 <= took <= 11:
-                                        player_visible.append(took)
-                                    if gave not in opp_visible and 1 <= gave <= 11:
-                                        opp_visible.append(gave)
-                                    if took is not None and took in opp_visible:
-                                        opp_visible.remove(took)
-                                    print(f" ★ Exchanged: gave {gave}, took {take_input}. Hand updated.")
-                                    trump_hand.pop(idx)
-                                except ValueError:
-                                    print(" Invalid input.")
-                            else:
-                                print(" Cancelled.")
-
-                        # Handle Love Your Enemy
-                        elif played == "Love Your Enemy":
-                            print(" What card did the opponent draw?")
-                            lye_input = input(" > ").strip()
-                            if lye_input:
-                                try:
-                                    drawn = int(lye_input)
-                                    if 1 <= drawn <= 11:
-                                        print(f" ★ Forced opponent to draw {drawn}.")
-                                        trump_hand.pop(idx)
-                                    else:
-                                        print(" Invalid card value.")
-                                except ValueError:
-                                    print(" Invalid input.")
-                            else:
-                                print(" Cancelled.")
-
-                        # Handle Perfect Draw / Ultimate Draw
-                        elif played in ("Perfect Draw", "Perfect Draw+", "Ultimate Draw"):
-                            print(" What card did you draw?")
-                            pd_input = input(" > ").strip()
-                            if pd_input:
-                                try:
-                                    drawn = int(pd_input)
-                                    if 1 <= drawn <= 11:
-                                        print(f" ★ Drew {drawn} via {played}.")
-                                        if played == "Perfect Draw+":
-                                            opp_bet += 5
-                                            print(f" ★ Opponent's bet +5 → now {opp_bet}.")
-                                        elif played == "Ultimate Draw":
-                                            print(" (Also draw 2 trumps — use W to add them.)")
-                                        trump_hand.pop(idx)
-                                    else:
-                                        print(" Invalid card value.")
-                                except ValueError:
-                                    print(" Invalid input.")
-                            else:
-                                print(" Cancelled.")
-
-                        # Handle numbered draw cards (2-7 Card) — with failed draw deduction
-                        elif played in ("2 Card", "3 Card", "4 Card", "5 Card", "6 Card", "7 Card"):
-                            card_val = int(played[0])
-                            print(f"\n Did the draw succeed? (Was {card_val} still in the deck?)")
-                            print(f"  Y = yes, drew {card_val}")
-                            print(f"  N = no, nothing happened (card not in deck)")
-                            result = input(" > ").strip().upper()
-                            if result == "Y":
-                                dead_cards = sorted(set(dead_cards + [card_val]))
-                                trump_hand.pop(idx)
-                                print(f" ★ Drew {card_val}. Added to your hand.")
-                            elif result == "N":
-                                trump_hand.pop(idx)
-                                # ── CRITICAL DEDUCTION ──
-                                # Card not in deck = opponent has it (face-down hidden card)
-                                # unless it's already visible on the board
-                                if card_val not in dead_cards:
-                                    print(f"\n \033[96m★★ INTEL: {card_val} is NOT in the deck!\033[0m")
-                                    print(f" \033[96m   → Opponent's hidden card is almost certainly {card_val}.\033[0m")
-                                    print(f"   (Unless {card_val} was already drawn and you forgot to track it.)")
-                                else:
-                                    print(f" {card_val} was already out of the deck.")
-                            else:
-                                print(" Cancelled.")
-
-                        else:
-                            # Generic trump — just remove from hand
-                            trump_hand.pop(idx)
-                            print(f" ★ {played} played.")
-                    else:
+                    idx = int(p) - 1
+                    if not (0 <= idx < len(trump_hand)):
                         print(" Invalid number.")
-                except ValueError:
+                        continue
+                    played = trump_hand[idx]
+                    print(f"\n Playing: {played}")
+                    print(f" Effect : {TRUMPS.get(played, {}).get('desc', '?')}")
+
+                    if played in ("Go for 17", "Go for 24", "Go for 27"):
+                        current_target = int(played.split()[-1])
+                        trump_hand.pop(idx)
+                        print(f" ★ Target → {current_target}!")
+
+                    elif played == "One-Up":
+                        opp_bet += 1; trump_hand.pop(idx)
+                        print(f" ★ Opp bet +1 → {opp_bet}. (Draw 1 trump — add via W)")
+
+                    elif played == "Two-Up":
+                        opp_bet += 2; trump_hand.pop(idx)
+                        print(f" ★ Opp bet +2 → {opp_bet}. (Draw 1 trump — add via W)")
+
+                    elif played == "Two-Up+":
+                        opp_bet += 2; trump_hand.pop(idx)
+                        rv = input(" Card returned to deck? (value) ").strip()
+                        if rv.isdigit():
+                            rv = int(rv)
+                            if rv in opp_visible: opp_visible.remove(rv)
+                            if rv in dead_cards:  dead_cards.remove(rv)
+                        print(f" ★ Opp bet +2 → {opp_bet}. Card returned.")
+
+                    elif played == "Shield":
+                        player_bet = max(0, player_bet - 1); trump_hand.pop(idx)
+                        print(f" ★ Your bet -1 → {player_bet}.")
+
+                    elif played == "Shield+":
+                        player_bet = max(0, player_bet - 2); trump_hand.pop(idx)
+                        print(f" ★ Your bet -2 → {player_bet}.")
+
+                    elif played == "Return":
+                        if not player_visible:
+                            print(" No face-up cards to return (face-down card can't be returned).")
+                            continue
+                        rv = input(f" Which face-up card to return? {player_visible} (value) ").strip()
+                        if rv.isdigit() and 1 <= int(rv) <= 11:
+                            rv = int(rv)
+                            if rv in player_visible:
+                                player_visible.remove(rv)
+                                trump_hand.pop(idx)
+                                print(f" ★ Returned {rv} to deck.")
+                            else:
+                                print(f" Card {rv} not in your visible cards {player_visible}.")
+
+                    elif played == "Remove":
+                        rv = input(" Opponent card removed? (value) ").strip()
+                        if rv.isdigit() and 1 <= int(rv) <= 11:
+                            rv = int(rv)
+                            if rv in opp_visible: opp_visible.remove(rv)
+                            dead_cards = sorted(set(dead_cards + [rv]))
+                            trump_hand.pop(idx)
+                            print(f" ★ Removed opponent's {rv}.")
+
+                    elif played == "Exchange":
+                        gave = input(" Card you gave? (value) ").strip()
+                        took = input(" Card you took? (value) ").strip()
+                        if gave.isdigit() and took.isdigit():
+                            gave, took = int(gave), int(took)
+                            if gave in player_visible:    player_visible.remove(gave)
+                            elif gave == face_down_card:  face_down_card = took; took = None
+                            if took is not None:          player_visible.append(took)
+                            if gave not in opp_visible:   opp_visible.append(gave)
+                            if took is not None and took in opp_visible: opp_visible.remove(took)
+                            trump_hand.pop(idx)
+                            print(f" ★ Exchanged: gave {gave}.")
+
+                    elif played == "Love Your Enemy":
+                        rv = input(" Card opponent was forced to draw? (value) ").strip()
+                        if rv.isdigit() and 1 <= int(rv) <= 11:
+                            opp_visible.append(int(rv))
+                            trump_hand.pop(idx)
+                            print(f" ★ Forced opponent to draw {rv}.")
+
+                    elif played in ("Perfect Draw", "Perfect Draw+", "Ultimate Draw"):
+                        rv = input(" Card you drew? (value) ").strip()
+                        if rv.isdigit() and 1 <= int(rv) <= 11:
+                            player_visible.append(int(rv))
+                            if played == "Perfect Draw+":
+                                opp_bet += 5
+                                print(f" ★ Opp bet +5 → {opp_bet}.")
+                            elif played == "Ultimate Draw":
+                                print(" (Draw 2 trumps — add via W)")
+                            trump_hand.pop(idx)
+
+                    elif played in ("2 Card","3 Card","4 Card","5 Card","6 Card","7 Card"):
+                        cv = int(played[0])
+                        drew = input(f" Drew the {cv}? (y/n) ").strip().lower()
+                        if drew == "y":
+                            player_visible.append(cv)
+                        else:
+                            # Failed numbered draw: card wasn't in the deck.
+                            # In RE7 (single-copy deck), that usually means the opponent's hidden face-down card is that value.
+                            accounted = set(([face_down_card] if face_down_card else []) + player_visible + opp_visible + (dead_cards or []))
+                            if opp_hidden_known is not None:
+                                accounted.add(int(opp_hidden_known))
+                            if cv not in accounted:
+                                opp_hidden_known = cv
+                                print(f" ★ Failed draw: {cv} is not in the deck → opponent hidden card must be {cv}.")
+                            else:
+                                print(f" (Failed draw: {cv} already accounted for — no new deduction.)")
+                        trump_hand.pop(idx)
+
+                    elif played in ("Destroy", "Destroy+", "Destroy++"):
+                        trump_hand.pop(idx)
+                        print(f" ★ {played} — enemy trump removed.")
+
+                    else:
+                        trump_hand.pop(idx)
+                        print(f" ★ {played} played. Update state manually if needed.")
+
+                    _condition.player_betup_active = (player_bet > 1)
+                    _render()
+
+                except (ValueError, IndexError):
                     print(" Invalid input.")
 
-            elif action == "I":
-                # ── INTERRUPT: Enemy played a trump card ──
-                dead_cards, current_target, player_bet, opp_bet, int_msg, player_visible, opp_visible, face_down_card, trump_hand = handle_interrupt(
-                    dead_cards, current_target, player_bet, opp_bet,
-                    player_visible, opp_visible, face_down_card, intel, trump_hand
-                )
+            # ── D: Resolve round ───────────────────────────────────────────
+            elif action == "D":
+                hid = input("\n Opponent's hidden card? (value, or Enter for manual entry): ").strip()
+                if hid.isdigit() and 1 <= int(hid) <= 11:
+                    hidden     = int(hid)
+                    your_total = (face_down_card or 0) + sum(player_visible)
+                    opp_total  = sum(opp_visible) + hidden
+                    print(f" You: {your_total}  Opp: {opp_total}  Target: {current_target}")
 
+                    outcome = resolve_round_outcome(your_total, opp_total, current_target)
+
+                    print(f" Outcome: {outcome}")
+                    dmg_tracked = player_bet if outcome == "LOSS" else opp_bet
+                    bet_in = input(f" Damage multiplier? (Enter = {dmg_tracked}): ").strip()
+                    dmg = int(bet_in) if bet_in.isdigit() else dmg_tracked
+
+                    if outcome == "WIN":
+                        opp_hp = max(0, opp_hp - dmg)
+                        print(f" ✓ Opponent -{dmg} HP → {opp_hp}/{opp_max}")
+                        round_history.append({"round": round_num, "result": "WIN",  "damage": dmg})
+                    elif outcome == "LOSS":
+                        player_hp = max(0, player_hp - dmg)
+                        print(f" ✖ You -{dmg} HP → {player_hp}/{player_max}")
+                        round_history.append({"round": round_num, "result": "LOSS", "damage": dmg})
+                    else:
+                        print(" Tie — no damage.")
+                        round_history.append({"round": round_num, "result": "TIE",  "damage": 0})
+                else:
+                    # Interactive fallback
+                    player_hp, opp_hp, entry = record_round_result(round_num, player_hp, opp_hp, intel)
+                    if entry is None:
+                        continue
+                    round_history.append(entry)
+
+                display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
+                if opp_hp <= 0:
+                    print(f"\n ★★★ {intel['name']} DEFEATED! ({round_num} rounds) ★★★")
+                elif player_hp <= 0:
+                    print(f"\n ✖✖✖ YOU DIED vs. {intel['name']} ({round_num} rounds) ✖✖✖")
+
+                # End-of-round trump update
+                print("\n ── TRUMP UPDATE ──────────────────────────────────────")
+                display_trump_hand(trump_hand)
+                used = input(" Trumps PLAYED this round (names/nums, or Enter): ").strip()
+                if used:
+                    trump_hand = apply_trump_usage(trump_hand, used)
+                show_trump_addition_list(available_trumps)
+                gained = input(" Trumps GAINED this round (number(s) or name, or Enter): ").strip()
+                if gained:
+                    trump_hand = apply_trump_additions(trump_hand, gained, available_trumps)
+                break
+
+            # ── W: Edit trump hand ─────────────────────────────────────────
             elif action == "W":
                 trump_hand = edit_trump_hand(trump_hand, available_trumps)
 
+            # ── Reference / info ───────────────────────────────────────────
+            elif action == "T":
+                display_trumps_reference(); input(" Press Enter to continue...")
+            elif action == "_OI":
+                display_opponent_info(intel)
+            elif action == "_HI":
+                display_round_history(round_history)
+            elif action == "V":
+                display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
+
+            # ── B: Bust-win challenge analysis ─────────────────────────────
+            elif action == "B":
+                u_total_b   = (face_down_card or 0) + sum(player_visible)
+                o_vis_b     = sum(opp_visible)
+                all_known_b = set(
+                    ([face_down_card] if face_down_card else [])
+                    + player_visible + opp_visible + dead_cards
+                )
+                remaining_b = [c for c in range(1, 12) if c not in all_known_b]
+                bust_lines  = evaluate_bust_win_challenge(
+                    u_total=u_total_b,
+                    o_visible_total=o_vis_b,
+                    remaining=remaining_b,
+                    stay_val=intel.get("stay_val", 17),
+                    target=current_target,
+                    trump_hand=trump_hand,
+                    intel=intel,
+                    player_hp=player_hp,
+                    player_max=player_max,
+                    opp_hp=opp_hp,
+                    challenges_completed=challenges_completed,
+                    banker_ai=_banker_ai,
+                    behavior=opp_behavior,
+                )
+                print()
+                for ln in bust_lines:
+                    print(ln)
+                input(" Press Enter to continue...")
             elif action == "X":
                 if dead_cards:
-                    print(f"\n Dead cards: {sorted(dead_cards)}")
-                    print(" Options: Enter = keep, 'c' = clear all, or enter cards to add")
-                    x_input = input(" > ").strip().lower()
-                    if x_input == "c":
+                    print(f" Dead cards: {sorted(dead_cards)}")
+                    xi = input(" 'c'=clear, values to add, or Enter: ").strip().lower()
+                    if xi == "c":
                         dead_cards = []
-                        print(" Dead cards cleared.")
-                    elif x_input:
+                    elif xi:
                         try:
-                            new_cards = [int(x) for x in x_input.split()]
-                            dead_cards = sorted(set(dead_cards + [c for c in new_cards if 1 <= c <= 11]))
-                            print(f" Dead cards: {dead_cards}")
+                            dead_cards = sorted(set(dead_cards + [int(x) for x in xi.split() if 1 <= int(x) <= 11]))
                         except ValueError:
-                            print(" Invalid input.")
+                            pass
                 else:
-                    print("\n No dead cards yet. Enter cards to add (or Enter to skip):")
-                    x_input = input(" > ").strip()
-                    if x_input:
+                    xi = input(" No dead cards. Add? (values or Enter): ").strip()
+                    if xi:
                         try:
-                            dead_cards = sorted(set(int(x) for x in x_input.split() if 1 <= int(x) <= 11))
-                            print(f" Dead cards: {dead_cards}")
+                            dead_cards = sorted(set(int(x) for x in xi.split() if 1 <= int(x) <= 11))
                         except ValueError:
-                            print(" Invalid input.")
+                            pass
 
-            elif action == "D":
-                player_hp, opp_hp, entry = record_round_result(round_num, player_hp, opp_hp, intel)
-                if entry is None:
-                    # User cancelled — stay in current round
-                    continue
-                round_history.append(entry)
-
-                display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
-
-                if opp_hp <= 0:
-                    print(f"\n ★★★ {intel['name']} DEFEATED! ★★★")
-                    print(f" Rounds fought: {round_num}")
-                    wins = sum(1 for e in round_history if e["result"] == "WIN")
-                    losses = sum(1 for e in round_history if e["result"] == "LOSS")
-                    voids = sum(1 for e in round_history if e["result"] == "VOID")
-                    ties = sum(1 for e in round_history if e["result"] == "TIE")
-                    print(f" Record: {wins}W / {losses}L / {ties}T / {voids}V")
-                    break
-
-                if player_hp <= 0:
-                    print(f"\n ✖✖✖ YOU DIED vs. {intel['name']} ✖✖✖")
-                    print(f" Rounds survived: {round_num}")
-                    break
-
-                # Round recorded and neither died → ask about trump changes
-                enemy_trump_effects = [t for t in intel.get("trumps", [])
-                                       if t in ("Curse", "Mind Shift", "Mind Shift+", "Desire", "Desire+", "Happiness")]
-                if enemy_trump_effects or trump_hand:
-                    print(f"\n Did your trump hand change this round? (opponent trumps, draws, etc.)")
-                    print(f"  Current hand: {trump_hand if trump_hand else '(empty)'}")
-                    print(f"  Y = edit hand, Enter = no changes")
-                    if input(" > ").strip().lower() == "y":
-                        trump_hand = edit_trump_hand(trump_hand, available_trumps)
-                break
-
-            elif action == "T":
-                display_trumps_reference()
-                input(" Press Enter to continue...")
-
-            elif action == "O":
-                display_opponent_info(intel)
-
-            elif action == "H":
-                display_round_history(round_history)
-
-            elif action == "S":
-                display_hp_status(player_hp, player_max, opp_hp, opp_max, intel["name"])
-
+            # ── Q: Quit ────────────────────────────────────────────────────
             elif action == "Q":
-                confirm = input(" Quit fight? Progress is lost. (y/n): ").strip().lower()
-                if confirm == "y":
-                    return player_hp
+                if input(" Quit fight? (y/n): ").strip().lower() == "y":
+                    return player_hp, trump_hand
 
             else:
-                print(" Invalid action. Use A/I/P/W/D/X/T/O/H/S/Q.")
+                print(" H/O/S/I/P/D  — draw card, stay, trump, resolve")
+                print(" W/X/T/F/G/V  — trump hand, dead cards, refs, info")
 
-    return player_hp
+        if player_hp <= 0 or opp_hp <= 0:
+            break
+
+    return player_hp, trump_hand
+
 
 
 # ============================================================
@@ -2874,6 +3946,11 @@ def run_mode(mode_key: str, challenges_completed: set = None, available_trumps: 
         print(f"   Take zero damage to unlock Ultimate Draw!")
     input("\n Press Enter to begin...")
 
+    # ── Run-wide trump hand — persists across all fights ─────────────────────
+    run_trump_hand: list = []
+    print("\n Enter your starting trump hand for this run (persists across all fights):")
+    run_trump_hand = edit_trump_hand([], available_trumps)
+
     for idx in range(total_opponents):
         fight_num = idx + 1
 
@@ -2900,8 +3977,10 @@ def run_mode(mode_key: str, challenges_completed: set = None, available_trumps: 
                 return
 
         hp_before_fight = player_hp
-        player_hp = fight_opponent(opp, player_hp, player_max, challenges_completed, available_trumps,
-                                   mode_key=mode_key, fight_num=fight_num)
+        player_hp, run_trump_hand = fight_opponent(
+            opp, player_hp, player_max, challenges_completed, available_trumps,
+            mode_key=mode_key, fight_num=fight_num, trump_hand=run_trump_hand
+        )
 
         if player_hp <= 0:
             print_header("GAME OVER")
@@ -2989,7 +4068,7 @@ def run_free_play(challenges_completed: set = None, available_trumps: set = None
             player_hp = int(hp_input) if hp_input else 10
             player_max = player_hp
             fight_opponent(opp, player_hp, player_max, challenges_completed, available_trumps,
-                          mode_key="3", fight_num=0)
+                          mode_key="3", fight_num=0, trump_hand=[])
         else:
             print(" Invalid selection.")
     except ValueError:
