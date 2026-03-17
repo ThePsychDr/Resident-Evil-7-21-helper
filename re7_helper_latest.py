@@ -165,7 +165,7 @@ OPPONENTS_SURVIVAL = [
         "mode": "Survival",
         "desc": "Head covered in black mold. Final boss of Survival.",
         "ai": "DECK MANIPULATOR",
-        "trumps": ["Curse", "Conjure"],
+        "trumps": ["Curse", "Conjure", "Go for 24"],
         "standard_trumps": ["One-Up", "Two-Up", "Shield"],
         "stay_val": 17,
         "hp": 5,
@@ -174,6 +174,7 @@ OPPONENTS_SURVIVAL = [
             "'Curse' discards one of your trumps AND forces you to draw\n"
             "the HIGHEST remaining card — can be lethal.\n"
             "'Conjure' lets him draw 3 trumps (his bet goes up by 1).\n"
+            "'Go for 24' raises the target to 24.\n"
             "STRATEGY: Save 'Destroy' for Curse.\n"
             "Use 'Return'/'Exchange' to fix a forced bad draw.\n"
             "Winning this unlocks Survival+ mode."
@@ -597,7 +598,6 @@ def setup_challenge_progress(force_prompt=False):
 # ============================================================
 # SAVE / LOAD SYSTEM
 # ============================================================
-import json
 
 SAVE_FILE = os.path.join(os.path.expanduser("~"), ".re7_21_progress.json")
 
@@ -1329,7 +1329,7 @@ def recommend_trump_play(
             fixes.append((get_weight("Return"), "★★ PLAY 'Return' — send back your last card!"))
         if "Go for 27" in hand_set and u_total <= 27:
             fixes.append((get_weight("Go for 27"), f"★★ PLAY 'Go for 27' — {u_total} is safe under 27!"))
-        if "Go for 24" in hand_set and u_total <= 24 and target == 21:
+        if "Go for 24" in hand_set and u_total <= 24 and target < 24:
             fixes.append((get_weight("Go for 24"), f"★★ PLAY 'Go for 24' — {u_total} is safe under 24!"))
         if "Exchange" in hand_set:
             fixes.append((get_weight("Exchange"), "★ 'Exchange' — swap your bust card with opponent's."))
@@ -2015,8 +2015,8 @@ def evaluate_bust_win_challenge(
     # Go For target shifts: may un-bust you after drawing
     go_saves = []
     if not already_busted:
-        if "Go for 24" in hand_set and target == 21:
-            saved = [c for c in remaining if u_total + c in (22, 23, 24)]
+        if "Go for 24" in hand_set and target < 24:
+            saved = [c for c in remaining if target < u_total + c <= 24]
             if saved:
                 go_saves.append(("Go for 24", 24, saved))
         if "Go for 27" in hand_set and target <= 24:
@@ -2082,7 +2082,7 @@ def evaluate_bust_win_challenge(
             trump_helps.append(f"  'Return' -> send back your last face-up card — may un-bust you.")
         if "Go for 27" in hand_set and u_total <= 27 and target < 27:
             trump_helps.append(f"  'Go for 27' -> your {u_total} is safe at target 27! Un-busts you entirely.")
-        if "Go for 24" in hand_set and u_total <= 24 and target == 21:
+        if "Go for 24" in hand_set and u_total <= 24 and target < 24:
             trump_helps.append(f"  'Go for 24' -> your {u_total} is safe at target 24! Un-busts you entirely.")
         if trump_helps:
             lines.append(f"")
@@ -2256,12 +2256,12 @@ def generate_advice(
             )
 
     if "Twenty-One Up" in trumps and remaining:
-        cards_giving_21 = [c for c in remaining if o_visible_total + c == 21]
+        cards_giving_21 = [c for c in remaining if o_visible_total + c == target]
         if cards_giving_21:
             priority_warnings.append(
-                "!! INSTANT KILL RISK !! He can hit EXACTLY 21 by drawing: "
+                f"!! INSTANT KILL RISK !! He can hit EXACTLY {target} by drawing: "
                 f"{sorted(cards_giving_21)}.\n"
-                "'Twenty-One Up' sets bet to 21 — keep 'Destroy' ready."
+                f"'Twenty-One Up' sets bet to {target} — keep 'Destroy' ready."
             )
 
     if "Dead Silence" in trumps:
@@ -2886,7 +2886,6 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
 
         # Trump card play recommendations (suppressed when not needed)
         if trump_hand:
-            import re as _re
             trump_recs = recommend_trump_play(
                 trump_hand, u_total, o_total, remaining, target, _stay_val,
                 intel, player_hp, opp_hp, opp_behavior,
@@ -2897,12 +2896,12 @@ def analyze_round(intel: dict, player_hp: int, player_max: int, opp_hp: int, opp
                 print("\n ┌─ TRUMP CARD ADVICE ─────────────────────────────┐")
                 for rec in trump_recs:
                     # Strip ANSI for width calculation
-                    clean = _re.sub(r'\033\[[0-9;]*m', '', rec)
+                    clean = re.sub(r'\033\[[0-9;]*m', '', rec)
                     while len(clean) > 53:
                         # Print first 53 visible chars
                         print(f" │ {rec[:53 + (len(rec) - len(clean))]}│")
                         rec = rec[53 + (len(rec) - len(clean)):]
-                        clean = _re.sub(r'\033\[[0-9;]*m', '', rec)
+                        clean = re.sub(r'\033\[[0-9;]*m', '', rec)
                     pad = 53 - len(clean)
                     print(f" │ {rec}{' ' * pad}│")
                 print(" └─────────────────────────────────────────────────┘")
@@ -3642,13 +3641,18 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                         print(f" ★ Your bet -2 → {player_bet}.")
 
                     elif played == "Return":
-                        rv = input(" Which card are you returning? (value) ").strip()
+                        if not player_visible:
+                            print(" No face-up cards to return (face-down card can't be returned).")
+                            continue
+                        rv = input(f" Which face-up card to return? {player_visible} (value) ").strip()
                         if rv.isdigit() and 1 <= int(rv) <= 11:
                             rv = int(rv)
-                            if rv in player_visible:   player_visible.remove(rv)
-                            elif rv == face_down_card: face_down_card = None
-                            trump_hand.pop(idx)
-                            print(f" ★ Returned {rv}.")
+                            if rv in player_visible:
+                                player_visible.remove(rv)
+                                trump_hand.pop(idx)
+                                print(f" ★ Returned {rv} to deck.")
+                            else:
+                                print(f" Card {rv} not in your visible cards {player_visible}.")
 
                     elif played == "Remove":
                         rv = input(" Opponent card removed? (value) ").strip()
@@ -3731,18 +3735,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                     opp_total  = sum(opp_visible) + hidden
                     print(f" You: {your_total}  Opp: {opp_total}  Target: {current_target}")
 
-                    if your_total > current_target and opp_total > current_target:
-                        outcome = "TIE"
-                    elif your_total > current_target:
-                        outcome = "LOSS"
-                    elif opp_total > current_target:
-                        outcome = "WIN"
-                    elif your_total > opp_total:
-                        outcome = "WIN"
-                    elif your_total < opp_total:
-                        outcome = "LOSS"
-                    else:
-                        outcome = "TIE"
+                    outcome = resolve_round_outcome(your_total, opp_total, current_target)
 
                     print(f" Outcome: {outcome}")
                     dmg_tracked = player_bet if outcome == "LOSS" else opp_bet
@@ -3808,7 +3801,6 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                     + player_visible + opp_visible + dead_cards
                 )
                 remaining_b = [c for c in range(1, 12) if c not in all_known_b]
-                opp_hp_now  = intel.get("hp", 1)
                 bust_lines  = evaluate_bust_win_challenge(
                     u_total=u_total_b,
                     o_visible_total=o_vis_b,
@@ -3819,7 +3811,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                     intel=intel,
                     player_hp=player_hp,
                     player_max=player_max,
-                    opp_hp=opp_hp_now,
+                    opp_hp=opp_hp,
                     challenges_completed=challenges_completed,
                     banker_ai=_banker_ai,
                     behavior=opp_behavior,
