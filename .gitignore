@@ -1,0 +1,10 @@
+# Developer scratchpad — local task notes, not project content
+todo
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS cruft
+.DS_Store
