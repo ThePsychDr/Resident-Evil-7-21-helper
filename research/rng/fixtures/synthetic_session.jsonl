@@ -1,0 +1,6 @@
+{"event":"trace_start","version":"1.0.0","master":"app.CardGameMaster"}
+{"event":"random_init_state","seed":12345,"random":{"available":true,"seed":12345}}
+{"event":"round_start","round":1,"stock":[3,7,1,11,5,2,9,4,8,6,10],"random":{"available":true,"seed":12345}}
+{"event":"stock_shuffle","round":1,"stock":[3,7,1,11,5,2,9,4,8,6,10]}
+{"event":"round_start","round":2,"stock":[6,1,8,3,11,4,2,10,7,5,9],"random":{"available":true,"seed":12345}}
+{"event":"stock_shuffle","round":2,"stock":[6,1,8,3,11,4,2,10,7,5,9]}

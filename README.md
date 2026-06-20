@@ -139,3 +139,15 @@ If you edit the JSON, keep in mind: **rules are evaluated top-to-bottom** and th
 - hoffman_rule_table.json
 - No external dependencies
 
+---
+
+## Research — RNG characterization (Phase H, private)
+
+The open question in the README intro (deducible seed vs opaque RNG) is investigated under [`research/rng/`](research/rng/README.md):
+
+- **REFramework script:** `reframework/autorun/re7_21_rng_trace.lua` — capture `StockCardList` + Unity `Random` state in-game
+- **Analyzer:** `python3 research/rng/analyze_rng_log.py <capture.jsonl> [--recover-seed]`
+- **Verdicts:** `DEDUCIBLE`, `SESSION_FIXED`, or `OPAQUE` → drives whether public perfect prediction is ever appropriate
+
+Capture files stay local (`research/captures/`, gitignored). No game binary is required to run the analyzer on exported logs.
+

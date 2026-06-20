@@ -8,3 +8,7 @@ __pycache__/
 
 # OS cruft
 .DS_Store
+
+# Phase H — private RNG captures (never commit real session logs)
+research/captures/
+**/re7_21_rng_trace.jsonl

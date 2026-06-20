@@ -663,6 +663,7 @@ def load_progress():
 # │                                                              │
 # │ IMPLICATION: You can't predict which card or trump is next,  │
 # │ but you CAN predict WHEN conditions make a trump eligible.   │
+# │ See research/rng/ for Phase H RNG trace + analysis tooling.  │
 # └──────────────────────────────────────────────────────────────┘
 
 class BankerAI:
