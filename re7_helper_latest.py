@@ -417,7 +417,7 @@ TRUMPS = {
     "7 Card": {"cat": "Cards", "desc": "Draw the 7 card. If not in deck, nothing happens.", "weight": 15, "etype": "Draw Forcer"},
 
     # ── Remove/Return/Swap ──
-    "Remove": {"cat": "Cards", "desc": "Return opponent's last face-up card to the deck.", "weight": 45, "etype": "Draw Forcer"},
+    "Remove": {"cat": "Cards", "desc": "Remove an opponent's face-up card from play for this round (it becomes a dead card).", "weight": 45, "etype": "Draw Forcer"},
     "Return": {"cat": "Cards", "desc": "Return your last face-up card to the deck.", "weight": 40, "etype": "Draw Forcer"},
     "Exchange": {"cat": "Cards", "desc": "Swap the last face-up cards drawn by you and opponent. Face-down cards can't be swapped.", "weight": 75, "etype": "Draw Forcer"},
 
@@ -951,6 +951,7 @@ def _load_hoffman_rule_table() -> dict:
         return _HOFFMAN_RULE_TABLE_CACHE
     here = os.path.dirname(os.path.abspath(__file__))
     for candidate in [
+        "hoffman_rule_table.json",
         "Hoffman rule table.v2.json",
         "Hoffman rule table.full.v2.json",
         "Hoffman rule table.json",
@@ -961,8 +962,9 @@ def _load_hoffman_rule_table() -> dict:
                 with open(p, "r", encoding="utf-8") as f:
                     _HOFFMAN_RULE_TABLE_CACHE = json.load(f)
                     return _HOFFMAN_RULE_TABLE_CACHE
-            except Exception:
-                pass
+            except (OSError, json.JSONDecodeError) as e:
+                print(f" ⚠ Could not load Hoffman rules from {candidate}: {e}")
+    print(" ⚠ Hoffman rule table not found — enemy trump prediction uses timing heuristics only.")
     _HOFFMAN_RULE_TABLE_CACHE = {}
     return _HOFFMAN_RULE_TABLE_CACHE
 
@@ -3275,8 +3277,27 @@ def handle_interrupt(dead_cards: list, current_target: int, player_bet: int = 1,
         msg = f"★ {played_trump}: Opponent can void the round if losing. Use Destroy to remove!"
 
     elif pt in ("remove",):
-        print(" Which of your table trumps was removed? Use W to update.")
-        msg = f"{played_trump}: Enemy removed one of your active trumps."
+        if player_visible:
+            print(f" Your face-up cards: {player_visible}")
+        print(" Which face-up number card was removed? (face-down cannot be removed)")
+        v = input(" Card value: ").strip()
+        if v:
+            try:
+                val = int(v)
+                if 1 <= val <= 11:
+                    if val in player_visible:
+                        player_visible.remove(val)
+                    dead_cards = sorted(set(dead_cards + [val]))
+                    msg = (
+                        f"★ {played_trump}: Removed your face-up {val} from play "
+                        f"(dead card). Visible: {player_visible or '(none)'}"
+                    )
+                else:
+                    msg = f"{played_trump} played. Card value must be 1–11."
+            except ValueError:
+                msg = f"{played_trump} played. Couldn't parse card value."
+        else:
+            msg = f"{played_trump} played. Re-analyze via A when you know the card."
 
     # --- DRAW CARDS ---
     elif pt in ("perfect draw", "perfect draw+", "ultimate draw"):

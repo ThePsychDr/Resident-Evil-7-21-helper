@@ -3,9 +3,7 @@ Using REFramework, I can deduce the actual 21 game rules (trumps, damage, AI beh
 What I won’t ship publicly is a solution that requires tracing/instrumentation to reconstruct RNG state or seeds—because that only guarantees perfect prediction on PC, and this tool was meant to help console/ all players.
 If it turns out the game uses a fixed, in-game-deducible seed (something you can determine without special tools), or a random seed everytime. I’ll revisit a public release. Otherwise, the tool can still be useful as a rules-accurate simulator + probability/strategy solver rather than a perfect “next card” predictor.
 If anyone wants to continue and publish their own build using my work as a base, please give credit.
-Its pretty accurate already from using internet sources and in game testing but still has some issues
-
--the current build can be found in the "sigh" branch - so far no rng state found
+It's pretty accurate already from using internet sources and in-game testing, but still has some issues. No in-game-deducible RNG seed has been found yet.
 
 # Resident Evil 7: 21 — Card Game Solver
 
@@ -87,10 +85,11 @@ The solver will switch into “scripted survival instructions” mode for that r
 
 ## How to use it during a game
 
-1. Run the script:
+1. Run the script (either entry point works):
    ```bash
    python3 re7_helper.py
    ```
+   (`re7_helper_latest.py` is the same program under its development filename.)
 2. Pick mode (Normal / Survival / Survival+).
 3. Identify your opponent when prompted (variant markers).
 4. Enter your starting trump hand (the solver asks up front).
