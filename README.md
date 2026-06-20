@@ -140,3 +140,11 @@ If you edit the JSON, keep in mind: **rules are evaluated top-to-bottom** and th
 - hoffman_rule_table.json
 - No external dependencies
 
+---
+
+## Planned public GUI ([Issue #4](https://github.com/ThePsychDr/Resident-Evil-7-21-helper/issues/4))
+
+A separate **second-screen companion** (local web UI) is scoped for a fun public build — tap-based trump picker, 1–11 card pad, and fight dashboard without terminal hotkeys. Research/RNG tooling stays out of that release.
+
+Design spec: [`docs/PUBLIC_GUI_V1.md`](docs/PUBLIC_GUI_V1.md)
+
