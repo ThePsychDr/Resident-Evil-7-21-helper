@@ -7,20 +7,22 @@ Covers all three game modes from the Banned Footage Vol. 2 DLC:
 2. Survival 21
 3. Survival+ 21
 
-Rules of 21 (RE7 version, simplified for practical play):
-- Deck uses cards numbered 1–11 (one of each per round). Deck resets each round.
-- Each player is dealt one face-up card, then takes turns drawing.
-- Goal: get closer to target (17/21/24/27 depending on active "Go For" trump) without going over.
-- In RE7, the loser takes damage based on outcome and trump modifiers.
+Rules of 21 (RE7 version) — sources are listed in README.md ("Rules & sources"):
+- One 11-card deck (1–11, one of each), shared by both players, reshuffled each round.
+- Each player holds one face-down card plus face-up cards and takes turns drawing.
+- Goal: get closest to the target (21, or 17/24/27 while a "Go For" trump is on the
+  table) without going over. If BOTH go over, the lower total wins.
+- The loser takes damage equal to their bet (base 1, raised/lowered by trumps).
 
 This helper focuses on:
 - Tracking which cards are still in the deck
-- Computing safe/bust odds for your next draw
+- Exact odds for your next draw, and win/tie/lose if you stay vs hit
 - Providing opponent-specific warnings based on their trump kit
 - Keeping a simple round history + HP tracker across fights
 
 Run:
-  python3 re7_helper.py
+  python3 re7_helper_latest.py              # interactive solver
+  python3 re7_helper_latest.py odds --help  # one-shot odds calculator
 """
 
 import os
@@ -1406,9 +1408,9 @@ def recommend_trump_play(
 
     if "Love Your Enemy" in hand_set and opp_behavior != "stay":
         if o_visible_total >= target - 3:
-            bust_cards = [c for c in remaining if o_visible_total + c > target]
-            if bust_cards:
-                recs.append(f"'Love Your Enemy' — {len(bust_cards)}/{len(remaining)} remaining cards bust opponent!")
+            lye_bust = love_your_enemy_bust_chance(o_visible_total, remaining, target)
+            if lye_bust > 0:
+                recs.append(f"'Love Your Enemy' — {lye_bust * 100:.0f}% chance even their best card busts them!")
 
     if gap_to_target > 0:
         draw_options = sorted(
@@ -1458,101 +1460,6 @@ def recommend_trump_play(
     return recs
 
 
-def apply_trump_effect(
-    trump_name: str,
-    u_hand: list,
-    o_vis: list,
-    remaining: list,
-    dead_cards: list,
-    target: int,
-) -> dict:
-    """
-    Apply a trump card's mechanical effect to the game state.
-    Returns dict with updated state and a description of what happened.
-    """
-    result = {
-        "u_hand": list(u_hand),
-        "o_vis": list(o_vis),
-        "remaining": list(remaining),
-        "dead_cards": list(dead_cards),
-        "target": target,
-        "msg": "",
-    }
-
-    if trump_name == "Return":
-        if not result["u_hand"] or len(result["u_hand"]) < 2:
-            result["msg"] = "Can't Return — need at least 2 cards in hand."
-            return result
-        returned = result["u_hand"].pop()
-        result["remaining"].append(returned)
-        result["remaining"].sort()
-        result["msg"] = f"Returned card {returned} to the deck. Your hand: {result['u_hand']}, total: {sum(result['u_hand'])}"
-
-    elif trump_name == "Remove":
-        if not result["o_vis"]:
-            result["msg"] = "Can't Remove — no visible opponent cards."
-            return result
-        removed = result["o_vis"].pop()
-        result["dead_cards"].append(removed)
-        result["dead_cards"] = sorted(set(result["dead_cards"]))
-        result["msg"] = f"Removed opponent's card {removed}. Opponent visible: {result['o_vis']}, total: {sum(result['o_vis'])}"
-
-    elif trump_name == "Exchange":
-        if not result["u_hand"] or not result["o_vis"]:
-            result["msg"] = "Can't Exchange — both sides need at least one card."
-            return result
-        your_card = result["u_hand"].pop()
-        opp_card = result["o_vis"].pop()
-        result["u_hand"].append(opp_card)
-        result["o_vis"].append(your_card)
-        result["msg"] = (
-            f"Exchanged: gave your {your_card}, took their {opp_card}. "
-            f"Your hand: {result['u_hand']} (total {sum(result['u_hand'])}), "
-            f"Opponent: {result['o_vis']} (total {sum(result['o_vis'])})"
-        )
-
-    elif trump_name == "Perfect Draw":
-        needed = target - sum(result["u_hand"])
-        if needed in result["remaining"]:
-            result["u_hand"].append(needed)
-            result["remaining"].remove(needed)
-            result["msg"] = f"Perfect Draw! Drew {needed} → total {sum(result['u_hand'])} = {target}!"
-        else:
-            # Draws the closest card to what's needed
-            if result["remaining"]:
-                best = min(result["remaining"], key=lambda c: abs(c - needed))
-                result["u_hand"].append(best)
-                result["remaining"].remove(best)
-                result["msg"] = f"Perfect Draw: needed {needed} but drew {best}. Total: {sum(result['u_hand'])}"
-            else:
-                result["msg"] = "No cards left to draw!"
-
-    elif trump_name in ("Go for 17", "Go for 24", "Go for 27"):
-        new_target = int(trump_name.split()[-1])
-        result["target"] = new_target
-        result["msg"] = f"Target changed to {new_target}!"
-
-    elif trump_name == "Love Your Enemy":
-        if result["remaining"]:
-            # Opponent draws a random card — we'll ask what they drew
-            result["msg"] = "FORCE_DRAW"  # Signal to caller to ask for drawn card
-        else:
-            result["msg"] = "No cards left for opponent to draw!"
-
-    elif trump_name == "Destroy":
-        result["msg"] = "Destroyed opponent's last trump card. (No card state change needed.)"
-
-    elif trump_name in ("Destroy+", "Destroy++"):
-        result["msg"] = "Destroyed ALL opponent trump cards on the table."
-
-    else:
-        result["msg"] = f"'{trump_name}' played. (Effect is trump-only, no card state change.)"
-
-    return result
-
-# ============================================================
-# DISPLAY HELPERS
-# ============================================================
 def clear_screen() -> None:
     os.system("cls" if os.name == "nt" else "clear")
 
@@ -1731,6 +1638,21 @@ def resolve_round_outcome(your_total: int, opp_total: int, target: int) -> str:
     return "TIE"
 
 
+def best_card_for(total: int, deck, target: int):
+    """The "best possible card" for a hand at `total` (Perfect Draw / Love Your Enemy).
+
+    Rule source: TRUMPS["Perfect Draw"] / TRUMPS["Love Your Enemy"] ("draw the best
+    possible card"), matching TheGamer's RE7 21 guide ("granting Hoffman the best card
+    in the deck").  Interpretation used here: the largest card that does not bust; if
+    every card busts, the smallest card (least bust).  Returns None for an empty deck.
+    """
+    deck = list(deck)
+    if not deck:
+        return None
+    fits = [c for c in deck if total + c <= target]
+    return max(fits) if fits else min(deck)
+
+
 def opponent_total_distribution(
     o_visible_total: int,
     remaining,
@@ -1739,101 +1661,106 @@ def opponent_total_distribution(
     behavior: str = "auto",
     banker_ai: "BankerAI" = None,
     player_visible_total: int = 0,
+    opp_hidden: int = None,
 ):
     """
-    Return probability distribution of opponent final totals.
+    Return probability distribution {final_total: probability} for the opponent.
 
-    When banker_ai is provided (BankerAI instance), uses the REAL draw decision
-    from CardGameBanker.hpp — the gray-zone player-hand-aware logic replaces the
-    old flat overshoot estimate.
+    The opponent always holds ONE face-down card (RE7 21 deal: one hidden card +
+    face-up cards).  When it is unknown (`opp_hidden is None`) it is one of the
+    `remaining` unseen values, uniformly — it is NOT optional, so it is always added
+    before the draw policy runs.  When it is known/deduced, pass it as `opp_hidden`
+    and leave it out of `remaining`.
+
+    `remaining` = every value not visible to you (deck + opponent's hidden card).
+
+    When banker_ai is provided (BankerAI instance), uses its draw decision
+    (gray-zone, player-hand-aware) on the opponent's TRUE total.
 
     behavior options:
       - stay:              opponent confirmed stopped drawing
-      - hit_once:          opponent draws one card then stops
+      - hit_once:          opponent draws exactly one more card then stops
       - auto / hit_to_threshold: opponent draws using AI thresholds
     """
     behavior = behavior.lower().strip()
     deck = tuple(sorted(set(remaining)))
 
-    if behavior == "stay":
-        # Opponent stopped — hidden card is from remaining deck
-        if not deck:
-            return {o_visible_total: 1.0}
-        p = 1.0 / len(deck)
-        return {o_visible_total + c: p for c in deck}
-
-    if o_visible_total > target:
-        return {o_visible_total: 1.0}
-
-    if behavior == "hit_once":
-        if not deck:
-            return {o_visible_total: 1.0}
-        p = 1.0 / len(deck)
-        return {o_visible_total + c: p for c in deck}
-
-    memo = {}
-
     def _merge(dest: dict, src: dict, weight: float) -> None:
         for total, prob in src.items():
             dest[total] = dest.get(total, 0.0) + (prob * weight)
 
+    # Starting states: (opponent true total, deck the opponent can still draw from)
+    if opp_hidden is not None:
+        starts = [(o_visible_total + int(opp_hidden), deck, 1.0)]
+    elif not deck:
+        starts = [(o_visible_total, deck, 1.0)]
+    else:
+        p_h = 1.0 / len(deck)
+        starts = [
+            (o_visible_total + h, deck[:i] + deck[i + 1:], p_h)
+            for i, h in enumerate(deck)
+        ]
+
+    if behavior == "stay":
+        out = {}
+        for total, _d, w in starts:
+            _merge(out, {total: 1.0}, w)
+        return out
+
+    if behavior == "hit_once":
+        out = {}
+        for total, d, w in starts:
+            if total > target or not d:
+                _merge(out, {total: 1.0}, w)
+            else:
+                _merge(out, {total + c: 1.0 / len(d) for c in d}, w)
+        return out
+
+    memo = {}
+
     def _draw_prob(total: int) -> float:
         """Returns probability the banker draws at this total."""
         if banker_ai is not None:
-            # Real AI: uses BankerHandGoodBorder + player hand awareness
             return banker_ai.draw_probability(total, player_visible_total, target)
-        else:
-            # Legacy fallback: deterministic below stay_val, partial overshoot above
-            if total < stay_val:
-                return 1.0
-            if total >= target:
-                return 0.0
-            # Old model: blend in some overshoot uncertainty
-            gap_to_target = max(0, target - o_visible_total)
-            overshoot_chance = min(0.50, 0.15 + (gap_to_target / target) * 0.35)
-            return overshoot_chance
+        # Legacy fallback: deterministic below stay_val, partial overshoot above
+        if total < stay_val:
+            return 1.0
+        if total >= target:
+            return 0.0
+        gap_to_target = max(0, target - o_visible_total)
+        return min(0.50, 0.15 + (gap_to_target / target) * 0.35)
 
     def _dfs(total: int, deck_state: tuple):
         key = (total, deck_state)
         if key in memo:
             return memo[key]
 
-        if total > target:
-            memo[key] = {total: 1.0}
-            return memo[key]
-
-        if not deck_state:
+        if total > target or not deck_state:
             memo[key] = {total: 1.0}
             return memo[key]
 
         draw_p = _draw_prob(total)
-        dist = {}
-
+        if draw_p <= 0.001:
+            memo[key] = {total: 1.0}
+            return memo[key]
         if draw_p >= 0.999:
-            # Definitely draws
-            n = len(deck_state)
-            for idx, card in enumerate(deck_state):
-                next_total = total + card
-                next_deck = deck_state[:idx] + deck_state[idx + 1:]
-                sub = _dfs(next_total, next_deck)
-                _merge(dist, sub, 1.0 / n)
-        elif draw_p <= 0.001:
-            # Definitely stays
-            dist = {total: 1.0}
-        else:
-            # Mixed: weighted blend of staying vs drawing
+            draw_p = 1.0
+
+        dist = {}
+        if draw_p < 1.0:
             _merge(dist, {total: 1.0}, 1.0 - draw_p)
-            n = len(deck_state)
-            for idx, card in enumerate(deck_state):
-                next_total = total + card
-                next_deck = deck_state[:idx] + deck_state[idx + 1:]
-                sub = _dfs(next_total, next_deck)
-                _merge(dist, sub, draw_p / n)
+        n = len(deck_state)
+        for idx, card in enumerate(deck_state):
+            sub = _dfs(total + card, deck_state[:idx] + deck_state[idx + 1:])
+            _merge(dist, sub, draw_p / n)
 
         memo[key] = dist
         return dist
 
-    return _dfs(o_visible_total, deck)
+    out = {}
+    for total, d, w in starts:
+        _merge(out, _dfs(total, d), w)
+    return out
 
 
 def outcome_probabilities(your_total: int, opp_dist: dict, target: int):
@@ -1858,12 +1785,16 @@ def evaluate_stay_hit_outcomes(
     target: int,
     opp_behavior: str,
     banker_ai: "BankerAI" = None,
+    opp_hidden: int = None,
 ):
-    """Compute expected outcome probs for staying now vs. hitting now.
-    When banker_ai is provided the opponent distribution uses the real AI model."""
+    """Compute expected outcome probs for staying now vs. hitting once then staying.
+    When banker_ai is provided the opponent distribution uses the real AI model.
+    `remaining` = values you can't see; pass `opp_hidden` if the opponent's
+    face-down card is known (and leave it out of `remaining`)."""
     stay_opp_dist = opponent_total_distribution(
         o_visible_total, remaining, stay_val, target,
         behavior=opp_behavior, banker_ai=banker_ai, player_visible_total=u_total,
+        opp_hidden=opp_hidden,
     )
     stay_probs = outcome_probabilities(u_total, stay_opp_dist, target)
 
@@ -1879,6 +1810,7 @@ def evaluate_stay_hit_outcomes(
         opp_dist_after_hit = opponent_total_distribution(
             o_visible_total, next_remaining, stay_val, target,
             behavior=opp_behavior, banker_ai=banker_ai, player_visible_total=your_new_total,
+            opp_hidden=opp_hidden,
         )
         draw_outcome = outcome_probabilities(your_new_total, opp_dist_after_hit, target)
         hit_probs["win"] += draw_outcome["win"] * draw_weight
@@ -1888,14 +1820,57 @@ def evaluate_stay_hit_outcomes(
     return stay_probs, hit_probs
 
 
-def estimate_opponent_total(o_visible_total: int, stay_val: int) -> int:
-    """Simple heuristic: opponents tend to aim for stay_val+."""
-    if o_visible_total >= stay_val:
-        return o_visible_total
-    return stay_val
+def love_your_enemy_outcomes(u_total, o_visible_total, remaining, stay_val, target,
+                             banker_ai=None, opp_hidden=None):
+    """Outcome of playing 'Love Your Enemy' now, then the opponent continuing with its AI.
+
+    LYE makes the opponent draw the best possible card *for them* (see best_card_for),
+    so the forced card is deterministic once the opponent's hidden card is fixed;
+    the only uncertainty is that hidden card (and the opponent's later draws).
+
+    Returns {"win", "tie", "loss", "opp_bust", "forced_cards": {card: prob}}.
+    """
+    deck = sorted(set(remaining))
+    hiddens = [(int(opp_hidden), 1.0)] if opp_hidden is not None else [(h, 1.0 / len(deck)) for h in deck]
+    res = {"win": 0.0, "tie": 0.0, "loss": 0.0, "opp_bust": 0.0, "forced_cards": {}}
+    if not hiddens:
+        return res
+    for h, w in hiddens:
+        rest = [c for c in deck if c != h]
+        forced = best_card_for(o_visible_total + h, rest, target)
+        if forced is None:
+            dist = {o_visible_total + h: 1.0}
+        else:
+            res["forced_cards"][forced] = res["forced_cards"].get(forced, 0.0) + w
+            dist = opponent_total_distribution(
+                o_visible_total + forced, [c for c in rest if c != forced], stay_val, target,
+                behavior="auto", banker_ai=banker_ai, player_visible_total=u_total, opp_hidden=h,
+            )
+        out = outcome_probabilities(u_total, dist, target)
+        for k in ("win", "tie", "loss"):
+            res[k] += out[k] * w
+        res["opp_bust"] += w * sum(p for t, p in dist.items() if t > target)
+    return res
 
 
-def evaluate_bust_inline(u_total, o_visible_total, remaining, stay_val, target, behavior="auto", banker_ai=None):
+def love_your_enemy_bust_chance(o_visible_total, remaining, target, opp_hidden=None):
+    """Probability the card forced by 'Love Your Enemy' busts the opponent outright.
+    Because LYE gives the BEST card, it only busts them when every card left busts."""
+    deck = sorted(set(remaining))
+    hiddens = [int(opp_hidden)] if opp_hidden is not None else deck
+    if not hiddens:
+        return 0.0
+    busts = 0
+    for h in hiddens:
+        rest = [c for c in deck if c != h]
+        forced = best_card_for(o_visible_total + h, rest, target)
+        if forced is not None and o_visible_total + h + forced > target:
+            busts += 1
+    return busts / len(hiddens)
+
+
+def evaluate_bust_inline(u_total, o_visible_total, remaining, stay_val, target, behavior="auto", banker_ai=None,
+                         opp_hidden=None):
     """Lightweight bust-to-win evaluation — returns best bust draw card and win probability."""
     bust_cards = [c for c in remaining if u_total + c > target]
     if not bust_cards:
@@ -1908,6 +1883,7 @@ def evaluate_bust_inline(u_total, o_visible_total, remaining, stay_val, target, 
         opp_dist = opponent_total_distribution(
             o_visible_total, deck_after, stay_val, target,
             behavior=behavior, banker_ai=banker_ai, player_visible_total=bust_total,
+            opp_hidden=opp_hidden,
         )
         wins = sum(prob for opp_total, prob in opp_dist.items()
                    if bust_outcome(bust_total, opp_total, target) == "WIN")
@@ -1931,6 +1907,7 @@ def evaluate_bust_win_challenge(
     challenges_completed: set = None,
     banker_ai: "BankerAI" = None,
     behavior: str = "auto",
+    opp_hidden: int = None,
 ) -> list:
     """
     Comprehensive bust-win challenge guidance engine.
@@ -1958,6 +1935,7 @@ def evaluate_bust_win_challenge(
         opp_dist_base = opponent_total_distribution(
             o_visible_total, remaining, stay_val, target,
             behavior=behavior, banker_ai=banker_ai, player_visible_total=u_total,
+            opp_hidden=opp_hidden,
         )
         opp_bust_rate = sum(p for t, p in opp_dist_base.items() if t > target)
 
@@ -1970,6 +1948,7 @@ def evaluate_bust_win_challenge(
             opp_dist = opponent_total_distribution(
                 o_visible_total, deck_after, stay_val, target,
                 behavior=behavior, banker_ai=banker_ai, player_visible_total=bust_total,
+                opp_hidden=opp_hidden,
             )
             win_pct = sum(p for t, p in opp_dist.items()
                           if bust_outcome(bust_total, t, target) == "WIN")
@@ -1985,34 +1964,22 @@ def evaluate_bust_win_challenge(
         opp_dist = opponent_total_distribution(
             o_visible_total, remaining, stay_val, target,
             behavior=behavior, banker_ai=banker_ai, player_visible_total=u_total,
+            opp_hidden=opp_hidden,
         )
         current_bust_win_pct = sum(p for t, p in opp_dist.items()
                                    if bust_outcome(u_total, t, target) == "WIN")
 
     # ── 3. Trump-assisted paths ───────────────────────────────────────────────
 
-    # Love Your Enemy: force opponent to draw — may push them deeper bust
+    # Love Your Enemy: opponent is forced to take its best card, then plays on.
     lye_analysis = None
     if "Love Your Enemy" in hand_set and remaining:
-        best_lye_pct  = 0.0
-        best_lye_card = None
-        total_lye_win = 0.0
-        for forced_card in remaining:
-            new_opp = o_visible_total + forced_card
-            after   = [c for c in remaining if c != forced_card]
-            opp_dist_after = opponent_total_distribution(
-                new_opp, after, stay_val, target,
-                behavior="auto", banker_ai=banker_ai, player_visible_total=u_total,
-            )
-            win_this = sum(
-                p for t, p in opp_dist_after.items()
-                if bust_outcome(u_total, t, target) == "WIN"
-            ) / len(remaining)
-            total_lye_win += win_this
-            if win_this * len(remaining) > best_lye_pct:
-                best_lye_pct  = win_this * len(remaining)
-                best_lye_card = forced_card
-        lye_analysis = {"win_pct": total_lye_win, "best_card": best_lye_card, "best_card_pct": best_lye_pct}
+        lye = love_your_enemy_outcomes(
+            u_total, o_visible_total, remaining, stay_val, target,
+            banker_ai=banker_ai, opp_hidden=opp_hidden,
+        )
+        likely = max(lye["forced_cards"].items(), key=lambda kv: kv[1])[0] if lye["forced_cards"] else None
+        lye_analysis = {"win_pct": lye["win"], "best_card": likely}
 
     # Go For target shifts: may un-bust you after drawing
     go_saves = []
@@ -2073,7 +2040,7 @@ def evaluate_bust_win_challenge(
         if lye_analysis and lye_analysis["win_pct"] > current_bust_win_pct + 0.04:
             trump_helps.append(
                 f"  'Love Your Enemy' -> {lye_analysis['win_pct'] * 100:.1f}% win chance "
-                f"(forces card [{lye_analysis['best_card']}] on opponent)."
+                f"(likely forced card: [{lye_analysis['best_card']}])."
             )
         if "Exchange" in hand_set and o_visible_total > 0:
             trump_helps.append(
@@ -2123,7 +2090,7 @@ def evaluate_bust_win_challenge(
         if lye_analysis and lye_analysis["win_pct"] >= 0.12:
             trump_lines.append(
                 f"  'Love Your Enemy' (after busting) -> {lye_analysis['win_pct'] * 100:.0f}% win. "
-                f"Best forced card: [{lye_analysis['best_card']}]."
+                f"Likely forced card: [{lye_analysis['best_card']}]."
             )
         if "Remove" in hand_set and o_visible_total > 0:
             trump_lines.append(
@@ -2184,6 +2151,7 @@ def generate_advice(
     trump_hand: list = None,
     banker_ai: "BankerAI" = None,
     condition_state: "TrumpConditionState" = None,
+    opp_hidden: int = None,
 ):
     """Generate strategic advice factoring in HP state + opponent trumps.
     banker_ai: real AI profile from CardGameBanker fields (improves outcome model).
@@ -2246,10 +2214,16 @@ def generate_advice(
     if "Curse" in trumps and remaining:
         highest_card = max(remaining)
         forced_total = u_total + highest_card
+        # The highest unseen value may be the opponent's face-down card (not in the deck).
+        hidden_note = ""
+        if opp_hidden is None and len(remaining) > 1:
+            second = sorted(remaining)[-2]
+            hidden_note = (f"\n({100 / len(remaining):.0f}% chance the {highest_card} is their hidden card — "
+                           f"then you'd draw the {second} → {u_total + second}.)")
         if forced_total > target:
             priority_warnings.append(
                 f"!! CURSE DANGER !! Curse forces you to draw the {highest_card}.\n"
-                f"Total would be {forced_total} → BUST!\n"
+                f"Total would be {forced_total} → BUST!{hidden_note}\n"
                 "COUNTER: Hold 'Destroy' for Curse, or 'Return'/'Exchange' after."
             )
         else:
@@ -2349,14 +2323,14 @@ def generate_advice(
     # Outcome model: compare staying now vs hitting now using selected opponent behavior.
     stay_probs, hit_probs = evaluate_stay_hit_outcomes(
         u_total, o_visible_total, remaining, stay_val, target, behavior_key,
-        banker_ai=banker_ai,
+        banker_ai=banker_ai, opp_hidden=opp_hidden,
     )
     bust_pct = 100.0 - safe_pct
     advice_lines.append(f"MODEL: {behavior_label}.")
     if behavior_key == "stay":
         advice_lines.append("(Opponent stopped — hidden card modeled across all remaining cards.)")
     else:
-        advice_lines.append("(Opponent hasn't stayed — odds are estimates. Select '2' when they stop drawing.)")
+        advice_lines.append("(Opponent hasn't stayed — odds depend on the AI model. Press S when they stop drawing.)")
     advice_lines.append(
         "If YOU STAY now -> "
         f"Win {stay_probs['win'] * 100:.1f}% | Tie {stay_probs['tie'] * 100:.1f}% | "
@@ -2373,31 +2347,17 @@ def generate_advice(
     opp_bust_from_force = 0.0
     has_lye = "Love Your Enemy" in hand_set
     if remaining and behavior_key != "stay" and has_lye:
-        force_probs = {"win": 0.0, "tie": 0.0, "loss": 0.0}
-        card_weight = 1.0 / len(remaining)
-        opp_bust_count = 0
-
-        for forced_card in remaining:
-            new_opp_total = o_visible_total + forced_card
-            if new_opp_total > target:
-                opp_bust_count += 1
-            after_remaining = [c for c in remaining if c != forced_card]
-            # After forced draw, opponent continues with normal AI
-            opp_dist = opponent_total_distribution(
-                new_opp_total, after_remaining, stay_val, target,
-                behavior="auto", banker_ai=banker_ai, player_visible_total=u_total,
-            )
-            outcome = outcome_probabilities(u_total, opp_dist, target)
-            force_probs["win"] += outcome["win"] * card_weight
-            force_probs["tie"] += outcome["tie"] * card_weight
-            force_probs["loss"] += outcome["loss"] * card_weight
-
-        opp_bust_from_force = (opp_bust_count / len(remaining)) * 100
+        force_probs = love_your_enemy_outcomes(
+            u_total, o_visible_total, remaining, stay_val, target,
+            banker_ai=banker_ai, opp_hidden=opp_hidden,
+        )
+        opp_bust_from_force = love_your_enemy_bust_chance(
+            o_visible_total, remaining, target, opp_hidden=opp_hidden) * 100
         advice_lines.append(
             "If you FORCE A DRAW (Love Your Enemy) -> "
             f"Win {force_probs['win'] * 100:.1f}% | Tie {force_probs['tie'] * 100:.1f}% | "
             f"Lose {force_probs['loss'] * 100:.1f}% "
-            f"(busts opponent: {opp_bust_from_force:.0f}%)."
+            f"(forced card busts opponent: {opp_bust_from_force:.0f}% — it gives them their BEST card)."
         )
 
     # ── Bust-win challenge analysis ─────────────────────────────────────────
@@ -2412,7 +2372,8 @@ def generate_advice(
     bust_cards = [c for c in remaining if u_total + c > target]
     if bust_cards and behavior_key != "stay":
         bust_result = evaluate_bust_inline(
-            u_total, o_visible_total, remaining, stay_val, target, behavior_key, banker_ai=banker_ai
+            u_total, o_visible_total, remaining, stay_val, target, behavior_key, banker_ai=banker_ai,
+            opp_hidden=opp_hidden,
         )
         if bust_result and bust_result["win_pct"] >= 0.15:
             label = "INTENTIONAL BUST (challenge)" if not bust_challenge_done else "INTENTIONAL BUST"
@@ -2445,14 +2406,19 @@ def generate_advice(
         best_win    = options["STAY"]
         win_edge    = best_win - options["HIT"]
 
-    close_note = " (close call)" if abs(win_edge) < 0.05 else ""
-
-    if win_edge >= 0.15 and not (player_hp <= 3 and safe_pct < 50 and best_option == "HIT"):
+    # The win% above is exact for the opponent model, so follow it unless it's a
+    # close call (< 5 points apart); only then fall through to the rule-of-thumb tiebreaks.
+    if win_edge >= 0.05 and not (player_hp <= 3 and safe_pct < 50 and best_option == "HIT"):
         advice_lines.append(
             f"ACTION: {best_option} — best win chance at {best_win * 100:.1f}% "
             f"(+{win_edge * 100:.1f}% over next best)."
         )
         return priority_warnings, advice_lines
+
+    if win_edge < 0.05:
+        advice_lines.append(
+            f"(Close call: {best_option} is only {win_edge * 100:.1f}% ahead — tiebreak below.)"
+        )
 
     if safe_pct == 100:
         advice_lines.append("ACTION: HIT — every remaining card is safe. Free draw!")
@@ -2518,85 +2484,6 @@ def bust_outcome(your_total: int, opp_total: int, target: int) -> str:
     if your_over == opp_over:
         return "TIE"
     return "LOSS"
-
-
-def evaluate_bust_challenge(u_total: int, o_visible_total: int, remaining, target: int, hidden_candidates):
-    """
-    Evaluate odds for the priority challenge (win while bust).
-    Modes:
-      - stay: bust then stay
-      - force_random: bust then force random draw on opponent
-      - force_highest: bust then force highest draw on opponent
-    """
-    modes = ("stay", "force_random", "force_highest")
-    mode_results = {m: [] for m in modes}
-
-    for draw_card in sorted(remaining):
-        your_total = u_total + draw_card
-        if your_total <= target:
-            continue
-
-        deck_after_you = [c for c in remaining if c != draw_card]
-        valid_hidden = [h for h in hidden_candidates if h != draw_card]
-        if not valid_hidden:
-            continue
-
-        for mode in modes:
-            wins = 0.0
-            ties = 0.0
-            losses = 0.0
-            hidden_weight = 1.0 / len(valid_hidden)
-
-            for hidden in valid_hidden:
-                opp_base_total = o_visible_total + hidden
-                deck_after_hidden = [c for c in deck_after_you if c != hidden]
-
-                if mode == "stay":
-                    outcomes = [opp_base_total]
-                    weights = [1.0]
-                elif mode == "force_highest":
-                    if deck_after_hidden:
-                        outcomes = [opp_base_total + max(deck_after_hidden)]
-                    else:
-                        outcomes = [opp_base_total]
-                    weights = [1.0]
-                else:  # force_random
-                    if deck_after_hidden:
-                        outcomes = [opp_base_total + c for c in deck_after_hidden]
-                        weights = [1.0 / len(outcomes)] * len(outcomes)
-                    else:
-                        outcomes = [opp_base_total]
-                        weights = [1.0]
-
-                for opp_total, weight in zip(outcomes, weights):
-                    outcome = bust_outcome(your_total, opp_total, target)
-                    p = hidden_weight * weight
-                    if outcome == "WIN":
-                        wins += p
-                    elif outcome == "TIE":
-                        ties += p
-                    elif outcome == "LOSS":
-                        losses += p
-
-            mode_results[mode].append(
-                {
-                    "draw_card": draw_card,
-                    "your_total": your_total,
-                    "your_over": your_total - target,
-                    "win": wins,
-                    "tie": ties,
-                    "loss": losses,
-                }
-            )
-
-    best_by_mode = {}
-    for mode, rows in mode_results.items():
-        if not rows:
-            best_by_mode[mode] = None
-        else:
-            best_by_mode[mode] = max(rows, key=lambda r: (r["win"], -r["loss"], -r["your_over"]))
-
-    return mode_results, best_by_mode
 
 
 # ============================================================
@@ -3049,7 +2936,8 @@ def analyze_board_state(
     if u_total <= target and remaining:
         try:
             sp, _ = evaluate_stay_hit_outcomes(
-                u_total, o_total, remaining, stay_val, target, opp_behavior, banker_ai=banker_ai
+                u_total, o_total, remaining, stay_val, target, opp_behavior, banker_ai=banker_ai,
+                opp_hidden=opp_hidden_known,
             )
             _stay_win_pct = sp.get("win", 0.5)
         except Exception:
@@ -3061,6 +2949,7 @@ def analyze_board_state(
         player_hp, player_max, opp_hp, opp_max, opp_behavior,
         challenges_completed, available_trumps, trump_hand,
         banker_ai=banker_ai, condition_state=condition_state,
+        opp_hidden=opp_hidden_known,
     )
     for w in warnings:
         print(f"\n \033[91m{w}\033[0m")
@@ -3820,6 +3709,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                 all_known_b = set(
                     ([face_down_card] if face_down_card else [])
                     + player_visible + opp_visible + dead_cards
+                    + ([opp_hidden_known] if opp_hidden_known is not None else [])
                 )
                 remaining_b = [c for c in range(1, 12) if c not in all_known_b]
                 bust_lines  = evaluate_bust_win_challenge(
@@ -3836,6 +3726,7 @@ def fight_opponent(intel: dict, player_hp: int, player_max: int,
                     challenges_completed=challenges_completed,
                     banker_ai=_banker_ai,
                     behavior=opp_behavior,
+                    opp_hidden=opp_hidden_known,
                 )
                 print()
                 for ln in bust_lines:
@@ -4098,6 +3989,110 @@ def run_free_play(challenges_completed: set = None, available_trumps: set = None
 
 
 # ============================================================
+# QUICK ODDS — non-interactive one-shot calculator
+# ============================================================
+GO_FOR_TARGETS = (17, 21, 24, 27)  # base 21 + 'Go for 17/24/27' trump targets
+
+
+def quick_odds(my_cards, opp_visible, dead=(), target=21, opp_stayed=False,
+               opp_hidden=None, ai_profile="generic"):
+    """Pure calculation behind `odds`. Returns a dict; raises ValueError on bad input.
+
+    my_cards    : every card in your hand (face-down + face-up)
+    opp_visible : opponent's face-up cards
+    dead        : cards removed from play this round (e.g. by Remove)
+    opp_hidden  : opponent's face-down card, if known (e.g. a failed '4 Card' draw)
+    """
+    my_cards, opp_visible, dead = list(my_cards), list(opp_visible), list(dead)
+    seen = my_cards + opp_visible + dead + ([opp_hidden] if opp_hidden is not None else [])
+    for c in seen:
+        if not 1 <= c <= 11:
+            raise ValueError(f"Card {c} is out of range (1-11).")
+    dupes = sorted({c for c in seen if seen.count(c) > 1})
+    if dupes:
+        raise ValueError(f"Card(s) {dupes} entered twice — the deck has one of each 1-11.")
+    if ai_profile == "generic":
+        ai = BankerAI(16, 18, False, 17, 21, 1, 12)
+    elif ai_profile in BANKER_AI_PROFILES:
+        ai = BANKER_AI_PROFILES[ai_profile]
+    else:
+        raise ValueError(f"Unknown AI profile '{ai_profile}'. Choices: generic, "
+                         + ", ".join(sorted(BANKER_AI_PROFILES)))
+
+    remaining = [c for c in range(1, 12) if c not in seen]
+    u_total, o_total = sum(my_cards), sum(opp_visible)
+    behavior = "stay" if opp_stayed else "auto"
+
+    def _at(t):
+        safe_pct, bust_pct, perfect = calculate_probabilities(remaining, u_total, t)
+        stay, hit = evaluate_stay_hit_outcomes(
+            u_total, o_total, remaining, ai.take_card_border, t, behavior,
+            banker_ai=ai, opp_hidden=opp_hidden,
+        )
+        return {"target": t, "safe_pct": safe_pct, "bust_pct": bust_pct,
+                "perfect": sorted(perfect), "stay": stay, "hit": hit}
+
+    return {
+        "my_total": u_total, "opp_visible_total": o_total, "remaining": remaining,
+        "opp_hidden": opp_hidden, "behavior": behavior, "ai": ai,
+        "main": _at(target),
+        "targets": [_at(t) for t in GO_FOR_TARGETS],
+    }
+
+
+def _odds_cli(argv) -> int:
+    import argparse
+    ap = argparse.ArgumentParser(
+        prog="re7_helper_latest.py odds",
+        description="One-shot RE7 '21' odds: bust chance, and win/tie/lose if you stay vs hit once.",
+    )
+    ap.add_argument("--me", type=int, nargs="+", required=True, metavar="N",
+                    help="all of YOUR cards (face-down + face-up), e.g. --me 6 10")
+    ap.add_argument("--opp", type=int, nargs="*", default=[], metavar="N",
+                    help="opponent's FACE-UP cards, e.g. --opp 9 2")
+    ap.add_argument("--opp-hidden", type=int, default=None, metavar="N",
+                    help="opponent's face-down card if you know it (e.g. your '4 Card' failed -> 4)")
+    ap.add_argument("--dead", type=int, nargs="*", default=[], metavar="N",
+                    help="cards removed from play this round (Remove)")
+    ap.add_argument("--target", type=int, default=21, choices=GO_FOR_TARGETS,
+                    help="active target (Go for 17/24/27). Default 21")
+    ap.add_argument("--stayed", action="store_true", help="opponent has stopped drawing")
+    ap.add_argument("--ai", default="generic",
+                    help="opponent AI profile: generic, " + ", ".join(sorted(BANKER_AI_PROFILES)))
+    a = ap.parse_args(argv)
+    try:
+        r = quick_odds(a.me, a.opp, a.dead, a.target, a.stayed, a.opp_hidden, a.ai)
+    except ValueError as e:
+        ap.error(str(e))
+
+    m = r["main"]
+    print(f"You: {r['my_total']}  {sorted(a.me)}   Opponent showing: {r['opp_visible_total']}  {a.opp}"
+          + (f" + hidden {a.opp_hidden}" if a.opp_hidden is not None else " + 1 hidden card"))
+    print(f"Target {a.target}   Unseen cards: {r['remaining']}")
+    print(f"Opponent model: {'STAYED' if a.stayed else 'still drawing'} — {r['ai'].describe().splitlines()[0]}")
+    print()
+    if not r["remaining"]:
+        print("No unseen cards left — nothing to draw.")
+    else:
+        print(f"Next draw: {m['safe_pct']:.0f}% safe, {m['bust_pct']:.0f}% bust"
+              + (f", perfect {a.target} with {m['perfect']}" if m["perfect"] else ""))
+    for label, k in (("STAY now", "stay"), ("HIT once", "hit")):
+        o = m[k]
+        print(f"  {label:<9} -> win {o['win'] * 100:5.1f}%  tie {o['tie'] * 100:5.1f}%  lose {o['loss'] * 100:5.1f}%")
+    print()
+    print("If the target changed (Go for 17 / 24 / 27):")
+    print("  target  safe   stay-win  hit-win")
+    for row in r["targets"]:
+        mark = " <- now" if row["target"] == a.target else ""
+        print(f"  {row['target']:>6}  {row['safe_pct']:4.0f}%  {row['stay']['win'] * 100:7.1f}%  "
+              f"{row['hit']['win'] * 100:6.1f}%{mark}")
+    print()
+    print("Model: one face-down card each, 11-card deck (1-11, one copy each); if BOTH bust the lower")
+    print("total wins. Opponent draw behaviour comes from the AI profile and is an estimate.")
+    return 0
+
+
+# ============================================================
 # MAIN MENU
 # ============================================================
 def main() -> None:
@@ -4137,4 +4132,11 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "odds":
+        sys.exit(_odds_cli(sys.argv[2:]))
+    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
+        print("Usage:\n  python3 re7_helper_latest.py          interactive solver (menus)\n"
+              "  python3 re7_helper_latest.py odds ...  one-shot odds; see 'odds --help'")
+        sys.exit(0)
     main()
